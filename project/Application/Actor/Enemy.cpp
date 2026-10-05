@@ -8,6 +8,9 @@
 #include "Collision/SphereCollider.h"
 #include "Debug/Logger.h"
 #include "Effect/EffectManager.h"
+#include "Effect/EnemyDebris.h"
+#include "Framework/ActorManager.h"
+#include "Framework/PrefabManager.h"
 #include "Math/MathUtil.h"
 #include "Render/Object3d/Object3d.h"
 #include "Render/Particle/IParticleEmitter.h"
@@ -163,6 +166,14 @@ void Enemy::TakeDamage(int damage, bool isSelfDestruct) {
       // 死亡時エフェクト
       EffectManager::GetInstance()->PlayEnemyDeathSimpleEffect(
           transform_.translate, baseColor_);
+
+      // 敵のカラーとサイズを引き継いだ破片（デブリ）を発生させて四方に弾け飛ばす
+      auto renderer = PrefabManager::GetInstance()->GetObject3dRenderer();
+      if (renderer) {
+        auto debris = std::make_unique<EnemyDebris>(
+            renderer, transform_.translate, transform_.scale, baseColor_);
+        ActorManager::GetInstance()->AddActor(std::move(debris));
+      }
     }
 
     if (onDestroyedCallback_) {

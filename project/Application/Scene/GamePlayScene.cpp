@@ -117,7 +117,15 @@ public:
 #include <string>
 
 void GamePlayScene::RequestHitStop(int frames) {
+  if (frames <= 0) {
+    return;
+  }
+  // クールダウン中かつ既にストップ中なら多重ストップを防止してテンポを守る
+  if (hitStopCooldownTimer_ > 0 && hitStopTimer_ > 0) {
+    return;
+  }
   hitStopTimer_ = (std::max)(hitStopTimer_, frames);
+  hitStopCooldownTimer_ = frames + hitStopCooldown_;
 }
 
 void GamePlayScene::Initialize(EngineBase *engine) {
@@ -167,7 +175,7 @@ void GamePlayScene::Initialize(EngineBase *engine) {
   SoundManager::GetInstance()->Load("enemy_hit",
                                     "resources/Sounds/enemy_hit.wav");
   SoundManager::GetInstance()->Load("enemy_destroy",
-                                    "resources/Sounds/enemy_destroy.mp3");
+                                    "resources/Sounds/enemy_destroy.wav");
   SoundManager::GetInstance()->Load("player_damage",
                                     "resources/Sounds/player_damage.wav");
   SoundManager::GetInstance()->Load("boss_charge",
@@ -455,6 +463,9 @@ void GamePlayScene::Update() {
 
   if (hitStopTimer_ > 0) {
     hitStopTimer_--;
+  }
+  if (hitStopCooldownTimer_ > 0) {
+    hitStopCooldownTimer_--;
   }
 
   bool shouldUpdateWorld =
@@ -914,8 +925,6 @@ void GamePlayScene::Update() {
                                     &config.yawLerp, 0.01f, 1.0f);
       changed |= ImGui::SliderFloat((const char *)u8"通常弾のスピード",
                                     &config.normalShotSpeed, 1.0f, 50.0f);
-      changed |= ImGui::SliderFloat((const char *)u8"射撃の反動の強さ",
-                                    &config.recoilStrength, 0.0f, 1.0f);
       changed |= ImGui::DragFloat((const char *)u8"口元の左右オフセット (X)",
                                   &config.muzzleOffsetX, 0.05f, -10.0f, 10.0f);
       changed |= ImGui::DragFloat((const char *)u8"口元の上方オフセット (Y)",
@@ -1604,6 +1613,7 @@ void GamePlayScene::DrawEditorUI() {
                                            {1, 0, 1, 1});
     }
   }
+
 #endif
 }
 

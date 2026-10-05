@@ -369,7 +369,7 @@ void SoundManager::Unload(const std::string &key) {
   sounds_.erase(it);
 }
 
-void SoundManager::PlaySE(const std::string &key) {
+void SoundManager::PlaySE(const std::string &key, float volume, float pitchRatio) {
   assert(xAudio2_ &&
          "SoundManager::Initialize must be called before PlaySE().");
 
@@ -382,6 +382,13 @@ void SoundManager::PlaySE(const std::string &key) {
   IXAudio2SourceVoice *voice = nullptr;
   HRESULT hr = xAudio2_->CreateSourceVoice(&voice, sd.GetWfex());
   assert(SUCCEEDED(hr));
+
+  if (volume != 1.0f) {
+    voice->SetVolume(volume);
+  }
+  if (pitchRatio != 1.0f) {
+    voice->SetFrequencyRatio(pitchRatio);
+  }
 
   XAUDIO2_BUFFER buf{};
   buf.pAudioData = sd.buffer.data();

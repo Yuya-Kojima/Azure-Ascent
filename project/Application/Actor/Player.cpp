@@ -39,8 +39,6 @@ void Player::Initialize() {
   hp_ = 10;
   invincibleTimer_ = 0;
   isDead_ = false;
-  recoilOffset_ = 0.0f;
-  recoilVelocity_ = 0.0f;
   flashIntensity_ = 0.0f;
   flashColor_ = {1.0f, 0.0f, 0.0f};
 
@@ -90,13 +88,6 @@ void Player::Update() {
   if (isDead_) {
     return;
   }
-
-  // 射撃反動のバネ物理更新 (減衰振動)
-  float springK = 0.15f; // バネの強さ
-  float damper = 0.80f;  // ブレーキ
-  recoilVelocity_ += (0.0f - recoilOffset_) * springK;
-  recoilVelocity_ *= damper;
-  recoilOffset_ += recoilVelocity_;
 
   // 無敵タイマーの更新と当たり判定の切り替え
   if (invincibleTimer_ > 0) {
@@ -313,6 +304,9 @@ void Player::Update() {
     }
   }
 
+  // ホーミング弾のシーケンシャル発射キュー更新
+  UpdateHomingQueue();
+
   // ロックオンの更新処理
   if (lockOn_) {
     bool isLockOnMode = (attackState_ == AttackState::LockOn);
@@ -339,86 +333,106 @@ void Player::FireHomingShot() {
   if (targets.empty())
     return;
 
+  // 発射キューにロックオン対象をすべて登録
+  homingQueue_.clear();
+  homingQueue_.reserve(targets.size());
+  for (size_t i = 0; i < targets.size(); ++i) {
+    homingQueue_.push_back({targets[i], static_cast<int>(i), static_cast<int>(targets.size())});
+  }
+
+  // 捕捉中の敵をすべて追尾中（Tracking）マーカーへ昇格（targets_がクリアされる）
+  lockOn_->OnHomingFired();
+
+  // 1発目を即座に発射
+  homingFireTimer_ = 0;
+  UpdateHomingQueue();
+}
+
+void Player::UpdateHomingQueue() {
+  if (homingQueue_.empty())
+    return;
+
+  if (homingFireTimer_ > 0) {
+    --homingFireTimer_;
+    return;
+  }
+
+  // キューの先頭を取り出して発射
+  HomingQueueItem item = homingQueue_.front();
+  homingQueue_.erase(homingQueue_.begin());
+  homingFireTimer_ = kHomingFireInterval; // 次の弾まで数フレーム待機
+
+  // 発射待ちの間に敵が撃破されていた場合は追尾対象を解除して直進弾として射出
+  BaseActor *validTarget = item.target;
+  if (validTarget && validTarget->IsDead()) {
+    validTarget = nullptr;
+  }
+
+  SpawnHomingBullet(validTarget, item.index, item.totalCount);
+}
+
+void Player::SpawnHomingBullet(BaseActor *target, int index, int totalCount) {
+  if (!object3dRenderer_ || !object3d_ || !camera_)
+    return;
+
   // カメラ空間の各基底ベクトル（正面、右、上）を取得
   Matrix4x4 viewMatrix = camera_->GetViewMatrix();
   Matrix4x4 cameraWorld = Inverse(viewMatrix);
-  Vector3 cameraRight = {cameraWorld.m[0][0], cameraWorld.m[0][1],
-                         cameraWorld.m[0][2]};
-  Vector3 cameraUp = {cameraWorld.m[1][0], cameraWorld.m[1][1],
-                      cameraWorld.m[1][2]};
-  Vector3 cameraForward = {cameraWorld.m[2][0], cameraWorld.m[2][1],
-                           cameraWorld.m[2][2]};
+  Vector3 cameraRight = {cameraWorld.m[0][0], cameraWorld.m[0][1], cameraWorld.m[0][2]};
+  Vector3 cameraUp = {cameraWorld.m[1][0], cameraWorld.m[1][1], cameraWorld.m[1][2]};
+  Vector3 cameraForward = {cameraWorld.m[2][0], cameraWorld.m[2][1], cameraWorld.m[2][2]};
 
-  // 自機砲門の位置（一点）
+  // 自機砲門の位置
   Vector3 playerPos = object3d_->GetTranslation();
   Vector3 muzzlePos = {playerPos.x + cameraForward.x * 2.0f,
                        playerPos.y + cameraForward.y * 2.0f,
                        playerPos.z + cameraForward.z * 2.0f};
 
-  if (!targets.empty()) {
-    SoundManager::GetInstance()->PlaySE("lockon_fire");
+  // 弾数に応じた放射状（扇形）の拡散角度を計算
+  float angle = 0.0f;
+  if (totalCount > 1) {
+    float progress = static_cast<float>(index) / static_cast<float>(totalCount - 1); // 0.0 ～ 1.0
+    angle = (-1.0f + progress * 2.0f) * 1.05f; // 約 -60度 ～ +60度
   }
 
-  // ロックオンしている敵すべてに対して弾を発射
-  for (size_t i = 0; i < targets.size(); ++i) {
-    auto bullet = std::make_unique<HomingBullet>();
+  // 放射状の拡散量
+  float spreadRadius = actionConfig_.homingSpreadX * 2.2f;
+  float spreadX = std::sin(angle) * spreadRadius;
+  float heightOffset = ((index % 2 == 0) ? 0.4f : -0.2f) * (totalCount > 2 ? 1.0f : 0.0f);
+  float spreadY = actionConfig_.homingSpeedY + heightOffset;
 
-    // 弾数に応じた放射状（扇形）の拡散角度を計算
-    float angle = 0.0f;
-    if (targets.size() == 1) {
-      angle = 0.0f; // 1発ならまっすぐ前方
-    } else {
-      // 複数発なら左右均等に扇状に広げる（-60度 ～ +60度）
-      float progress = (float)i / (float)(targets.size() - 1); // 0.0 ～ 1.0
-      angle = (-1.0f + progress * 2.0f) * 1.05f; // 約 -60度 ～ +60度
+  // 自機の正面・右・上を基準に初速ベクトルを合成
+  Vector3 initialVelocity = {
+      cameraForward.x * actionConfig_.homingSpeedZ + cameraRight.x * spreadX + cameraUp.x * spreadY,
+      cameraForward.y * actionConfig_.homingSpeedZ + cameraRight.y * spreadX + cameraUp.y * spreadY,
+      cameraForward.z * actionConfig_.homingSpeedZ + cameraRight.z * spreadX + cameraUp.z * spreadY
+  };
+
+  Vector3 dir = Normalize(initialVelocity);
+  Vector3 startPos = {muzzlePos.x + dir.x * 8.0f, muzzlePos.y + dir.y * 8.0f, muzzlePos.z + dir.z * 8.0f};
+
+  auto bullet = std::make_unique<HomingBullet>();
+  bullet->Initialize(object3dRenderer_, startPos, target, initialVelocity);
+
+  // 3フレーム間隔でのシーケンシャル発射により確実な時間差が生まれる
+  // 後ろの弾ほど誘導開始ディレイを少し短縮し、一定テンポで突き刺さるようにする
+  float speed = actionConfig_.homingSpeed;
+  int fallTime = (std::max)(6, actionConfig_.homingFallTime - index * 2);
+  bullet->SetHomingParams(speed, fallTime, actionConfig_.homingStrengthIncrease, actionConfig_.homingStrengthMax);
+
+  // 弾消滅時（着弾または寿命切れ）にロックオン追尾マーカーを解除するコールバックを設定
+  LockOn *lockOnPtr = lockOn_.get();
+  std::weak_ptr<bool> isAliveWeak = isAliveToken_;
+  bullet->SetOnDestroyCallback([lockOnPtr, isAliveWeak](BaseActor *t) {
+    if (!isAliveWeak.expired() && lockOnPtr) {
+      lockOnPtr->RemoveTrackingTarget(t);
     }
+  });
 
-    // 放射状の拡散量
-    float spreadRadius = actionConfig_.homingSpreadX * 2.2f;
-    float spreadX = std::sin(angle) * spreadRadius;
-    float heightOffset =
-        ((i % 2 == 0) ? 0.4f : -0.2f) * (targets.size() > 2 ? 1.0f : 0.0f);
-    float spreadY = actionConfig_.homingSpeedY + heightOffset;
+  ActorManager::GetInstance()->AddActor(std::move(bullet));
 
-    // 自機の正面・右・上を基準に初速ベクトルを合成
-    Vector3 initialVelocity = {
-        cameraForward.x * actionConfig_.homingSpeedZ + cameraRight.x * spreadX +
-            cameraUp.x * spreadY,
-        cameraForward.y * actionConfig_.homingSpeedZ + cameraRight.y * spreadX +
-            cameraUp.y * spreadY,
-        cameraForward.z * actionConfig_.homingSpeedZ + cameraRight.z * spreadX +
-            cameraUp.z * spreadY};
-
-    Vector3 dir = Normalize(initialVelocity);
-    Vector3 startPos = {muzzlePos.x + dir.x * 8.0f, muzzlePos.y + dir.y * 8.0f,
-                        muzzlePos.z + dir.z * 8.0f};
-
-    bullet->Initialize(object3dRenderer_, startPos, targets[i],
-                       initialVelocity);
-
-    // アクションエディタのパラメータを適用
-    bullet->SetHomingParams(
-        actionConfig_.homingSpeed, actionConfig_.homingFallTime,
-        actionConfig_.homingStrengthIncrease, actionConfig_.homingStrengthMax);
-
-    // 弾消滅時（着弾または寿命切れ）にロックオン追尾マーカーを解除するコールバックを設定
-    LockOn *lockOnPtr = lockOn_.get();
-    std::weak_ptr<bool> isAliveWeak = isAliveToken_;
-    bullet->SetOnDestroyCallback([lockOnPtr, isAliveWeak](BaseActor *target) {
-      if (!isAliveWeak.expired() && lockOnPtr) {
-        lockOnPtr->RemoveTrackingTarget(target);
-      }
-    });
-
-    // ActorManagerに弾を登録して、自動でUpdate・Drawされるようにする
-    ActorManager::GetInstance()->AddActor(std::move(bullet));
-  }
-
-  // 発射完了後、捕捉中の敵をすべて追尾中（Tracking）マーカーへ昇格（ここで targets が clear される）
-  lockOn_->OnHomingFired();
-
-  // ホーミング弾発射時の反動を発生させる
-  recoilOffset_ += actionConfig_.recoilStrength * 1.5f;
+  // 発射音を小刻みに再生
+  SoundManager::GetInstance()->PlaySE("lockon_fire");
 }
 
 void Player::FireNormalShot() {
@@ -486,9 +500,6 @@ void Player::FireNormalShot() {
   ActorManager::GetInstance()->AddActor(std::move(bullet));
 
   SoundManager::GetInstance()->PlaySE("laser_shot");
-
-  // 通常弾発射時の反動を発生させる
-  recoilOffset_ += actionConfig_.recoilStrength;
 }
 
 void Player::Draw3D() {
@@ -568,10 +579,7 @@ void Player::UpdateTransform() {
     Vector3 cameraForward = {cameraWorld.m[2][0], cameraWorld.m[2][1],
                              cameraWorld.m[2][2]};
 
-    // 進行方向の真後ろに向けて反動分だけオフセットした座標を計算
-    Vector3 visualPos = transform_.translate - cameraForward * recoilOffset_;
-
-    object3d_->SetTranslation(visualPos);
+    object3d_->SetTranslation(transform_.translate);
     object3d_->SetRotation(transform_.rotate);
     object3d_->SetScale(transform_.scale);
     object3d_->Update();
@@ -655,7 +663,6 @@ void Player::SaveActionConfig() {
   root["homingSpeedY"] = actionConfig_.homingSpeedY;
   root["homingSpeedZ"] = actionConfig_.homingSpeedZ;
   root["normalShotSpeed"] = actionConfig_.normalShotSpeed;
-  root["recoilStrength"] = actionConfig_.recoilStrength;
   root["muzzleOffsetX"] = actionConfig_.muzzleOffsetX;
   root["muzzleOffsetY"] = actionConfig_.muzzleOffsetY;
   root["muzzleOffsetForward"] = actionConfig_.muzzleOffsetForward;
@@ -723,8 +730,6 @@ void Player::LoadActionConfig() {
         actionConfig_.homingSpeedZ = root["homingSpeedZ"];
       if (root.contains("normalShotSpeed"))
         actionConfig_.normalShotSpeed = root["normalShotSpeed"];
-      if (root.contains("recoilStrength"))
-        actionConfig_.recoilStrength = root["recoilStrength"];
       if (root.contains("muzzleOffsetX"))
         actionConfig_.muzzleOffsetX = root["muzzleOffsetX"];
       if (root.contains("muzzleOffsetY"))
