@@ -55,7 +55,7 @@ public:
   void Load(const std::string &key, const std::string &filename);
   void Unload(const std::string &key);
 
-  void PlaySE(const std::string &key);
+  void PlaySE(const std::string &key, float volume = 1.0f, float pitchRatio = 1.0f);
   void PlaySE_Once(const std::string &key);
 
   void PlayBGM(const std::string &key);

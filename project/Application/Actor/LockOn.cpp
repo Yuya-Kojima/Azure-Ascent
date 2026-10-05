@@ -121,7 +121,20 @@ void LockOn::Update(const std::vector<BaseActor *> &inputTargets,
 
       if (dist <= lockOnRadius) {
         targetInfos_.push_back({target, 0.0f, TargetState::Locking});
-        SoundManager::GetInstance()->PlaySE("lockon");
+
+        // 現在ロックオン中の敵数（今回のターゲットを含む）をカウント
+        size_t lockCount = 0;
+        for (const auto &info : targetInfos_) {
+          if (info.state == TargetState::Locking) {
+            lockCount++;
+          }
+        }
+
+        // ロックオン数が増えるごとにピッチを段階的に上昇（1体捕捉ごとに約8%）
+        // 1体目: 1.00, 2体目: 1.08, 3体目: 1.16 ... 最大8体目で約1.56
+        float pitchRatio = 1.0f + static_cast<float>(lockCount - 1) * 0.08f;
+        SoundManager::GetInstance()->PlaySE("lockon", 1.0f, pitchRatio);
+
         lockOnDelayTimer_ = kLockOnInterval; // ディレイを開始
         break; // 1フレームに1体ずつロックオンする
       }

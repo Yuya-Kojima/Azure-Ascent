@@ -72,8 +72,11 @@ private: // メンバ変数(ゲーム用)
   // ゲーム状態
   GameState gameState_ = GameState::Play;
 
-  // ヒットストップタイマー
+  // ヒットストップタイマー（被弾・ボス演出用）
   int hitStopTimer_ = 0;
+  int hitStopBossPartFrames_ = 6;      // ボス部位破壊・死亡演出時のヒットストップ（デフォルト6フレーム）
+  int hitStopCooldown_ = 4;           // 連続着弾による多重停止を防ぐクールダウン
+  int hitStopCooldownTimer_ = 0;
 
   // ダミー敵管理
   std::vector<std::unique_ptr<Enemy>> runtimeEnemies_;

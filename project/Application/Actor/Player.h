@@ -94,7 +94,6 @@ public:
     float homingSpeedY = 0.6f;     // ホーミング弾の上方初速
     float homingSpeedZ = 0.8f;     // ホーミング弾の前方初速
     float normalShotSpeed = 10.0f; // 通常弾の弾速
-    float recoilStrength = 0.0f;   // 射撃時の反動の強さ
     float muzzleOffsetX = 0.0f;       // 口元の左右オフセット
     float muzzleOffsetY = 0.5f;       // 口元の上方オフセット
     float muzzleOffsetForward = 2.5f; // 口元の前方オフセット
@@ -138,9 +137,6 @@ private:
   // 3D視線トンネル照準
   std::unique_ptr<ReticleTunnel> reticleTunnel_;
 
-  float recoilOffset_ = 0.0f;   // 射撃時の反動量
-  float recoilVelocity_ = 0.0f; // 射撃時の反動速度
-
   float flashIntensity_ = 0.0f;             // 画面フラッシュ強度
   Vector3 flashColor_ = {1.0f, 0.0f, 0.0f}; // 画面フラッシュカラー
 
@@ -162,4 +158,17 @@ private:
   };
   AttackState attackState_ = AttackState::Idle;
   float pressTimer_ = 0.0f;
+
+  // ホーミング弾シーケンシャル発射キュー
+  struct HomingQueueItem {
+    BaseActor *target = nullptr;
+    int index = 0;
+    int totalCount = 0;
+  };
+  std::vector<HomingQueueItem> homingQueue_;
+  int homingFireTimer_ = 0;
+  static constexpr int kHomingFireInterval = 3; // 3フレーム（約0.05秒）間隔で連続射出
+
+  void UpdateHomingQueue();
+  void SpawnHomingBullet(BaseActor *target, int index, int totalCount);
 };

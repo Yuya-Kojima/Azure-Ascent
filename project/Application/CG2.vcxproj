@@ -172,6 +172,7 @@ copy "$(WindowsSdkDir)bin\$(TargetPlatformVersion)\x64\dxil.dll" "$(TargetDir)dx
     <ClCompile Include="Actor\EnemyBullet.cpp" />
     <ClCompile Include="Framework\PrefabManager.cpp" />
     <ClCompile Include="Effect\EffectManager.cpp" />
+    <ClCompile Include="Effect\EnemyDebris.cpp" />
     <ClCompile Include="Actor\HomingBullet.cpp" />
     <ClCompile Include="Actor\LockOn.cpp" />
     <ClCompile Include="Actor\NormalBullet.cpp" />
@@ -263,6 +264,7 @@ copy "$(WindowsSdkDir)bin\$(TargetPlatformVersion)\x64\dxil.dll" "$(TargetDir)dx
     <ClInclude Include="Actor\EnemyBullet.h" />
     <ClInclude Include="Framework\PrefabManager.h" />
     <ClInclude Include="Effect\EffectManager.h" />
+    <ClInclude Include="Effect\EnemyDebris.h" />
     <ClInclude Include="Actor\HomingBullet.h" />
     <ClInclude Include="Actor\LockOn.h" />
     <ClInclude Include="Actor\NormalBullet.h" />
