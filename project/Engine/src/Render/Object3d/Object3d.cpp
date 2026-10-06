@@ -251,6 +251,8 @@ void Object3d::CreateMaterialData() {
   materialData->uvTransform = MakeIdentity4x4();
   materialData->shininess = 30.0f;
   materialData->environmentCoefficient = 0.0f;
+  materialData->rimColor = Vector4(0.0f, 0.0f, 0.0f, 0.0f);
+  materialData->rimPower = 3.0f;
 
   materialData->enableDissolve = 0;
   materialData->dissolveThreshold = 0.0f;

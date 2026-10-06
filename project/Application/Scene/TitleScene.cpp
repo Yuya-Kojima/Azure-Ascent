@@ -46,9 +46,7 @@ void TitleScene::Initialize(EngineBase *engine) {
 
   // ディレクショナルライト設定
   if (auto *dl = engine_->GetObject3dRenderer()->GetDirectionalLightData()) {
-    dl->color = {1.0f, 1.0f, 1.0f, 1.0f};
-    dl->direction = Normalize({0.55f, -0.45f, 0.65f}); // 斜光で雲海の凹凸を強調
-    dl->intensity = 1.05f;
+    dl->direction = Normalize({0.55f, -0.45f, 0.65f}); // 斜光で雲海の凹凸を強調（色・強度は UpdateSky が毎フレーム設定）
   }
 
   // ポストプロセス設定
@@ -60,25 +58,17 @@ void TitleScene::Initialize(EngineBase *engine) {
 
     // ブルーム設定
     postProcess_->SetUseBloom(true);
-    postProcess_->SetBloomIntensity(0.55f);
     postProcess_->SetBloomThreshold(0.92f);
     postProcess_->SetBloomSigma(3.0f);
 
     // ビネット無効化
     postProcess_->SetUseVignette(false);
 
-    // トーンマッピング・露出設定
+    // トーンマッピング設定（露出・ブルーム強度は UpdateSky が毎フレーム設定）
     postProcess_->SetToneMappingType(0);
-    postProcess_->SetExposure(1.05f);
   }
 
-  // フォグ設定
-  FogData fog;
-  fog.color = Vector4(0.72f, 0.86f, 1.0f, 1.0f);
-  fog.nearDist = 300.0f;
-  fog.farDist = 2800.0f;
-  fog.enabled = 1.0f;
-  engine_->GetObject3dRenderer()->SetFog(fog);
+  // フォグは UpdateSky が毎フレーム設定する
 
   //===========================
   // SkyBoxの初期化
@@ -89,6 +79,8 @@ void TitleScene::Initialize(EngineBase *engine) {
   skybox_->SetTexture("resources/Skybox/Skybox.dds");
   skybox_->SetScale({100.0f, 100.0f, 100.0f});
   skybox_->SetColor({1.0f, 1.0f, 1.0f, 1.0f});
+  // 地面が写り込む既存テクスチャの代わりに、全面青空の手続き空を使用
+  skybox_->SetProceduralSky(true);
 
   //===========================
   // 3Dオブジェクト関係の初期化
@@ -101,9 +93,11 @@ void TitleScene::Initialize(EngineBase *engine) {
   dragonObject_->Initialize(engine_->GetObject3dRenderer());
   dragonObject_->SetModel("player_dragon.obj");
   dragonObject_->SetColor({1.0f, 1.0f, 1.0f, 1.0f});
+  // 輪郭の視認性向上: 黒線ではなく淡い水色のリムライト（縁の発光）
+  dragonObject_->SetRimLight({0.15f, 0.55f, 1.0f}, 1.2f, 2.5f);
   baseDragonPos_ = {0.0f, 0.0f, 0.0f};
   baseDragonRot_ = {0.0f, 0.0f, 0.0f};
-  dragonTransform_.scale = {1.45f, 1.45f, 1.45f};
+  dragonTransform_.scale = {1.7f, 1.7f, 1.7f};
   dragonTransform_.rotate = baseDragonRot_;
   dragonTransform_.translate = baseDragonPos_;
   dragonObject_->SetScale(dragonTransform_.scale);
@@ -118,14 +112,17 @@ void TitleScene::Initialize(EngineBase *engine) {
   cloudsObject_->SetRotation({-1.5708f, 0.0f, 0.0f});
   cloudsObject_->SetTranslation({0.0f, -15.0f, 1500.0f});
   cloudsObject_->SetColor({0.88f, 0.93f, 0.98f, 1.0f});
+  // 鏡面反射は視点・ライト方向でカット毎に白飛びするため、実質無効化
+  cloudsObject_->SetShininess(4000.0f);
 
   cloudsObjectFar_ = std::make_unique<Object3d>();
   cloudsObjectFar_->Initialize(engine_->GetObject3dRenderer());
   cloudsObjectFar_->SetModel("sea_of_clouds.obj");
   cloudsObjectFar_->SetScale({6000.0f, 3000.0f, 1.0f});
   cloudsObjectFar_->SetRotation({-1.5708f, 0.0f, 0.0f});
-  cloudsObjectFar_->SetTranslation({0.0f, -15.0f, 4500.0f});
+  cloudsObjectFar_->SetTranslation({0.0f, -17.0f, 4500.0f});
   cloudsObjectFar_->SetColor({0.88f, 0.93f, 0.98f, 1.0f});
+  cloudsObjectFar_->SetShininess(4000.0f);
 
   // カメラの生成と初期化
   camera_ = std::make_unique<GameCamera>();
@@ -187,13 +184,8 @@ void TitleScene::UpdateUI() {
       if (camera_) {
         startCamPos_ = camera_->GetTranslate();
         startCamRot_ = camera_->GetRotate();
-      }
-      if (currentCut_ == TitleCameraCut::FrontTracking) {
-        startCamFov_ = 0.65f;
-      } else if (currentCut_ == TitleCameraCut::OverTheWing) {
-        startCamFov_ = 0.72f;
-      } else {
-        startCamFov_ = 0.70f;
+        // 発進直前の実際のFOVを引き継ぎ、Enter押下時のFOV跳ねを防ぐ
+        startCamFov_ = camera_->GetFovY();
       }
       startDragonPos_ = dragonTransform_.translate;
       startDragonRot_ = dragonTransform_.rotate;
@@ -214,22 +206,69 @@ void TitleScene::UpdateUI() {
     uiFadeAlpha = (std::max)(0.0f, 1.0f - startTimer_ / 0.30f);
   }
 
-  if (auto titleLogoNode = UIManager::GetInstance()->GetNodeByName("TitleLogo")) {
-    titleLogoNode->color = Vector4(1.0f, 1.0f, 1.0f, uiFadeAlpha);
+  // タイトルUIの登場演出（オープニングの引きが終わる kLogoLeadTime_ 秒前から開始、ズドンと決まる）
+  if (openingTimer_ >= kOpeningDuration_ - kLogoLeadTime_) {
+    uiIntroTimer_ += 1.0f / 60.0f;
+  }
+  float introT = (std::clamp)(uiIntroTimer_ / 0.95f, 0.0f, 1.0f);
+  // EaseOutBack: 手前巨大サイズから飛び込んできて定位置でキュッと止まる
+  const float c1 = 1.35f;
+  const float c3 = c1 + 1.0f;
+  float introEase = (introT >= 1.0f) ? 1.0f : (1.0f + c3 * std::pow(introT - 1.0f, 3.0f) + c1 * std::pow(introT - 1.0f, 2.0f));
+  float titleScale = 1.8f * (1.30f - 0.30f * (std::clamp)(introEase, 0.0f, 1.15f));
+  float titleSlideY = 25.0f * (1.0f - (std::clamp)(introEase, 0.0f, 1.0f));
+  float titleAlpha = (std::clamp)(introT * 2.5f, 0.0f, 1.0f) * uiFadeAlpha;
+
+  // ズドンと決まる瞬間（introT = 0.8〜1.0）のブルーム発光フラッシュ
+  float flash = (introT >= 0.75f && introT <= 1.05f) ? (1.0f - std::abs((introT - 0.90f) / 0.15f)) : 0.0f;
+  flash = (std::max)(0.0f, flash);
+
+  // タイトル各レイヤー（影・本体）。背景に依らず読めるよう白＋濃い濃紺の影
+  struct TitleLayer {
+    const char *name;
+    float offsetX;
+    float offsetY;
+    Vector4 color;
+  };
+  const TitleLayer kLayers[] = {
+      // 四方の濃紺シャドウ（全方位アウトライン：左上・右上・左下・右下）
+      {"TitleTextShadow_TL", -3.5f, -3.5f, {0.01f, 0.03f, 0.08f, 0.95f}},
+      {"TitleTextShadow_TR",  3.5f, -3.5f, {0.01f, 0.03f, 0.08f, 0.95f}},
+      {"TitleTextShadow_BL", -3.5f,  3.5f, {0.01f, 0.03f, 0.08f, 0.95f}},
+      {"TitleTextShadow_BR",  3.5f,  3.5f, {0.01f, 0.03f, 0.08f, 0.95f}},
+      // メイン文字: 鮮やかに輝く純白（決まる瞬間に眩しく発光フラッシュ）
+      {"TitleText",           0.0f,  0.0f, {1.0f + flash * 0.45f, 1.0f + flash * 0.45f, 1.0f + flash * 0.55f, 1.0f}},
+  };
+  const float kTitleCenterX = 640.0f;
+  const float kTitleCenterY = 145.0f; // 空の濃い青の帯に収まる位置
+  for (const auto &layer : kLayers) {
+    if (auto *node = UIManager::GetInstance()->GetNodeByName(layer.name)) {
+      node->position = {kTitleCenterX + layer.offsetX,
+                        kTitleCenterY + layer.offsetY + titleSlideY};
+      node->scale = {titleScale, titleScale};
+      node->color = {layer.color.x, layer.color.y, layer.color.z,
+                     layer.color.w * titleAlpha};
+    }
   }
 
-  // スタートテキストの呼吸明滅（サイン波アニメーション）
-  float breathAlpha = 0.35f + 0.65f * (0.5f + 0.5f * std::sin(motionTimer_ * 3.5f));
-
-  // シャドウの更新（濃い黒、フェード連動）
-  if (auto shadowNode = UIManager::GetInstance()->GetNodeByName("StartTextShadow")) {
-    shadowNode->color = Vector4(0.0f, 0.0f, 0.0f, 0.85f * breathAlpha * uiFadeAlpha);
+  // スタートテキストは、タイトルが出きった後に呼吸明滅しながら現れる
+  const Vector3 kShadowRgb = {0.01f, 0.03f, 0.08f};
+  auto setNodeColor = [](const char *name, const Vector4 &color) {
+    if (auto *node = UIManager::GetInstance()->GetNodeByName(name)) {
+      node->color = color;
+    }
+  };
+  float startAppear = (std::clamp)((uiIntroTimer_ - 0.95f) / 0.60f, 0.0f, 1.0f);
+  float breathAlpha = 0.55f + 0.45f * (0.5f + 0.5f * std::sin(motionTimer_ * 3.0f));
+  float startAlpha = breathAlpha * startAppear * uiFadeAlpha;
+  const char *kStartShadows[] = {
+      "StartTextShadow_TL", "StartTextShadow_TR",
+      "StartTextShadow_BL", "StartTextShadow_BR"};
+  for (const auto *shadowName : kStartShadows) {
+    setNodeColor(shadowName,
+                 Vector4(kShadowRgb.x, kShadowRgb.y, kShadowRgb.z, 0.92f * startAlpha));
   }
-
-  // 本体の更新（鮮やかな青、フェード連動）
-  if (auto startTextNode = UIManager::GetInstance()->GetNodeByName("StartText")) {
-    startTextNode->color = Vector4(0.05f, 0.45f, 0.95f, breathAlpha * uiFadeAlpha);
-  }
+  setNodeColor("StartText", Vector4(1.0f, 1.0f, 1.0f, startAlpha));
 }
 
 void TitleScene::UpdateLaunchSequence(Vector3 &outTargetCamPos, Vector3 &outTargetCamRot, float &outLaunchAccelCurve) {
@@ -257,7 +296,7 @@ void TitleScene::UpdateLaunchSequence(Vector3 &outTargetCamPos, Vector3 &outTarg
     cloudsObject_->SetTranslation({0.0f, -15.0f, 1500.0f + cloudsScrollZ_});
   }
   if (cloudsObjectFar_) {
-    cloudsObjectFar_->SetTranslation({0.0f, -15.0f, 4500.0f + cloudsScrollZ_});
+    cloudsObjectFar_->SetTranslation({0.0f, -17.0f, 4500.0f + cloudsScrollZ_});
   }
 
   switch (startCut_) {
@@ -301,8 +340,10 @@ void TitleScene::UpdateLaunchSequence(Vector3 &outTargetCamPos, Vector3 &outTarg
     }
     break;
   }
-  case TitleCameraCut::OverTheWing: {
-    // カット3（翼越し）：バンク角を保ったまま同調加速
+  case TitleCameraCut::WingtipCloseUp:
+  case TitleCameraCut::DistantOverlook:
+  case TitleCameraCut::LowAngle: {
+    // カット3〜5：発進時の相対オフセットとバンク角を保ったまま同調加速
     dragonTransform_.translate = startDragonPos_ + Vector3{0.0f, 0.15f * progress, accelDist};
     Vector3 targetRot = Vector3{0.12f, 0.0f, startDragonRot_.z * 0.6f};
     dragonTransform_.rotate = Lerp(startDragonRot_, targetRot, smoothPose);
@@ -355,32 +396,8 @@ void TitleScene::UpdateLaunchSequence(Vector3 &outTargetCamPos, Vector3 &outTarg
 }
 
 void TitleScene::UpdateIdleMotion(Vector3 &outTargetCamPos, Vector3 &outTargetCamRot) {
-  motionTimer_ += 1.0f / 60.0f;
-
-  // ドラゴンの待機フライトモーション（8の字旋回・バンク連動）
-  if (dragonObject_) {
-    float flightTime = motionTimer_ * 0.7f;
-
-    // 8の字旋回
-    float flightX = std::sin(flightTime) * 2.2f;
-    float flightY = std::sin(flightTime * 2.0f) * 0.65f - 0.1f;
-    float flightZ = std::cos(flightTime) * 0.8f;
-
-    // 速度ベクトルから旋回角・ピッチを計算
-    float vx = std::cos(flightTime) * 2.2f * 0.7f;
-    float vy = 2.0f * std::cos(flightTime * 2.0f) * 0.65f * 0.7f;
-
-    float roll = -vx * 0.28f;
-    float pitch = -vy * 0.18f;
-    float yaw = std::sin(flightTime) * 0.22f;
-
-    // 羽ばたきの微小上下動
-    float wingBeat = std::sin(motionTimer_ * 5.0f) * 0.08f;
-    float wingPitch = std::cos(motionTimer_ * 5.0f) * 0.02f;
-
-    dragonTransform_.translate = baseDragonPos_ + Vector3{flightX, flightY + wingBeat, flightZ};
-    dragonTransform_.rotate = baseDragonRot_ + Vector3{pitch + wingPitch, yaw, roll};
-  }
+  // 起動時オープニング演出のタイマー
+  openingTimer_ += 1.0f / 60.0f;
 
   // 雲海スクロール
   cloudsScrollZ_ -= 3.0f;
@@ -391,80 +408,220 @@ void TitleScene::UpdateIdleMotion(Vector3 &outTargetCamPos, Vector3 &outTargetCa
     cloudsObject_->SetTranslation({0.0f, -15.0f, 1500.0f + cloudsScrollZ_});
   }
   if (cloudsObjectFar_) {
-    cloudsObjectFar_->SetTranslation({0.0f, -15.0f, 4500.0f + cloudsScrollZ_});
+    cloudsObjectFar_->SetTranslation({0.0f, -17.0f, 4500.0f + cloudsScrollZ_});
   }
 
-  // カメラアングルの自動切り替え
-  if (!isManualCut_) {
-    cutTimer_ += 1.0f / 60.0f;
-    if (cutTimer_ >= kCutDuration_) {
-      cutTimer_ = 0.0f;
-      int nextCut = (static_cast<int>(currentCut_) + 1) % 3;
-      currentCut_ = static_cast<TitleCameraCut>(nextCut);
-      rightTrailHistory_.clear();
-      leftTrailHistory_.clear();
-    }
-  }
+  bool isOpening = (openingTimer_ < kOpeningDuration_);
 
-  switch (currentCut_) {
-  case TitleCameraCut::RearWide: {
-    // カット1: 後方ワイド追従
-    Vector3 drift = {std::sin(cutTimer_ * 0.4f) * 0.35f,
-                     std::cos(cutTimer_ * 0.3f) * 0.15f, 0.0f};
-    outTargetCamPos = Vector3{0.0f, 0.9f, -5.5f} + drift;
-    Vector3 lookTarget = {dragonTransform_.translate.x * 0.3f,
-                          dragonTransform_.translate.y * 0.2f,
-                          dragonTransform_.translate.z + 1.5f};
-    outTargetCamRot = CalcLookAtRot(outTargetCamPos, lookTarget);
+  if (isOpening) {
+    // 【オープニング演出中 (0.0s〜2.4s)】
+    // ドラゴンは左右ブレゼロで正面（画面奥）を向いてカメラの真上を直線通過！
+    float opProgress = (std::clamp)(openingTimer_ / kOpeningDuration_, 0.0f, 1.0f);
+
+    float forwardDist = opProgress * 3.0f; // 0.0m -> 3.0m
+    float wingBeat = std::sin(openingTimer_ * 5.0f) * 0.05f;
+    dragonTransform_.translate = baseDragonPos_ + Vector3{0.0f, wingBeat, forwardDist};
+    dragonTransform_.rotate = baseDragonRot_ + Vector3{0.03f, 0.0f, 0.0f}; // 完全正面
+
+    // 引きのイージング: 開始はSmootherStepで滑らかに、終盤はイーズアウトに寄せて
+    // 終端の平坦な尾（画面上で自機が止まって見える区間）を短くする
+    float sSmoother = opProgress * opProgress * opProgress * (opProgress * (opProgress * 6.0f - 15.0f) + 10.0f);
+    float sOut = 1.0f - std::pow(1.0f - opProgress, 1.6f);
+    float s = (1.0f - opProgress) * sSmoother + opProgress * sOut;
+    float f = 1.0f - s;
+
+    // カット1開始時ドリフト (motionTimer_=0 での {0.0, kRearWideDriftY_, 0.0})
+    Vector3 initDrift = {0.0f, kRearWideDriftY_, 0.0f};
+
+    // カメラの基準位置: カット1は羽ばたき(wingBeat)のYを追従しないため、
+    // オープニング終盤(f→0)にかけて羽ばたき分のYを徐々に除外して段差をなくす
+    Vector3 refPos = dragonTransform_.translate - Vector3{0.0f, wingBeat * (1.0f - f), 0.0f};
+
+    // カメラ位置: 冒頭(f=1)はドラゴン真下(Y=-2.8, Z=-0.5)から、
+    // 引き切ったカット1目標位置(dragonPos + {0, 0.9, -5.5} + initDrift)へ直線接続
+    Vector3 opCamPos = refPos + Vector3{
+        0.0f,
+        -2.8f * f + (0.9f + initDrift.y) * (1.0f - f),
+        -0.5f * f - 5.5f * (1.0f - f)
+    };
+
+    // 注視点: f=0 でカット1の注視点 (dragonPos + {0, 0.25, 1.2}) に完全一致
+    Vector3 closeLook = Lerp(refPos + Vector3{0.0f, 0.25f, 1.2f},
+                             refPos + Vector3{0.0f, 5.0f, 0.5f}, f);
+    outTargetCamPos = opCamPos;
+    outTargetCamRot = CalcLookAtRot(opCamPos, closeLook);
+
     if (camera_) {
-      camera_->SetFovY(0.70f);
+      camera_->SetFovY(0.70f + 0.35f * f);
     }
-    break;
-  }
+  } else {
+    // 【オープニング終了後 (2.4s以降)】
+    motionTimer_ += 1.0f / 60.0f;
+
+    // 飛行用のワープ時間: 最初の kFlightRampTime 秒で時間の進む速さを0〜1へ滑らかに立ち上げる。
+    // 振幅をブレンドする方式だと「振幅の微分×sin」で速度がオーバーシュートして
+    // ギュンと見えるため、時間自体をワープしてX/Y/Zすべての速度を同時に0から立ち上げる。
+    const float kFlightRampTime = 0.3f;
+    float warpedTime = (motionTimer_ < kFlightRampTime)
+                           ? (motionTimer_ * motionTimer_ / (2.0f * kFlightRampTime))
+                           : (motionTimer_ - kFlightRampTime * 0.5f);
+    float flightTime = warpedTime * 0.7f;
+
+    // poseBlend: 最初の0.4秒間で OP直後の完全正面姿勢(Pitch=0.03, Yaw=0, Roll=0)から8の字飛行姿勢へ滑らかにブレンド
+    float poseT = (std::min)(motionTimer_ / 0.4f, 1.0f);
+    float poseBlend = poseT * poseT * (3.0f - 2.0f * poseT); // SmoothStep
+
+    // 8の字旋回 (warpedTime=0 で Z=3.0m, X=0m, Y=0m から、速度0から滑らかに飛行)
+    float flightX = std::sin(flightTime) * 2.2f;
+    float flightY = -std::sin(flightTime * 2.0f) * 0.65f;
+
+    float flightZ = (1.0f - std::cos(flightTime)) * 0.8f + 3.0f;
+
+    // 速度ベクトルから目標の旋回・傾きを計算
+    float vx = std::cos(flightTime) * 2.2f * 0.7f;
+    float vy = -2.0f * std::cos(flightTime * 2.0f) * 0.65f * 0.7f;
+
+    float targetRoll = -std::sin(flightTime) * 0.35f;
+    float targetPitch = -vy * 0.18f + 0.03f;
+    float targetYaw = std::atan2(vx, 2.0f) * 0.40f;
+
+    float roll = Lerp(0.0f, targetRoll, poseBlend);
+    float pitch = Lerp(0.03f, targetPitch, poseBlend);
+    float yaw = Lerp(0.0f, targetYaw, poseBlend);
+
+    float wingBeat = std::sin((motionTimer_ + kOpeningDuration_) * 5.0f) * 0.05f;
+
+    dragonTransform_.translate = baseDragonPos_ + Vector3{flightX, flightY + wingBeat, flightZ};
+    dragonTransform_.rotate = baseDragonRot_ + Vector3{pitch, yaw, roll};
+
+    // カメラアングルの自動切り替え
+    if (!isManualCut_) {
+      cutTimer_ += 1.0f / 60.0f;
+      if (cutTimer_ >= kCutDuration_) {
+        cutTimer_ = 0.0f;
+        static const TitleCameraCut kCutOrder[] = {
+            TitleCameraCut::RearWide,
+            TitleCameraCut::FrontTracking,
+            TitleCameraCut::LowAngle,
+            TitleCameraCut::DistantOverlook,
+            TitleCameraCut::WingtipCloseUp,
+        };
+        const int kCutCount = static_cast<int>(sizeof(kCutOrder) / sizeof(kCutOrder[0]));
+        int currentIndex = 0;
+        for (int i = 0; i < kCutCount; ++i) {
+          if (kCutOrder[i] == currentCut_) {
+            currentIndex = i;
+            break;
+          }
+        }
+        currentCut_ = kCutOrder[(currentIndex + 1) % kCutCount];
+        rightTrailHistory_.clear();
+        leftTrailHistory_.clear();
+      }
+    }
+
+    switch (currentCut_) {
+    case TitleCameraCut::RearWide: {
+      // カット1: 後方ワイド追従（カメラは固定線上に留まり、ドラゴンが画面内でダイナミックに8の字飛行）
+      // X方向のドリフトはposeBlendで立ち上げ、開始時のカメラ速度を0にする
+      Vector3 drift = {std::sin(motionTimer_ * 0.5f) * 0.40f * poseBlend,
+                       std::cos(motionTimer_ * 0.35f) * kRearWideDriftY_, 0.0f};
+      outTargetCamPos = baseDragonPos_ + Vector3{0.0f, 0.9f, -5.5f + flightZ} + drift;
+      Vector3 lookTarget = baseDragonPos_ + Vector3{(dragonTransform_.translate.x - baseDragonPos_.x) * 0.25f, 0.25f, 1.2f + flightZ};
+      outTargetCamRot = CalcLookAtRot(outTargetCamPos, lookTarget);
+      if (camera_) {
+        camera_->SetFovY(0.70f);
+      }
+      break;
+    }
   case TitleCameraCut::FrontTracking: {
     // カット2: 斜め前方並走
     Vector3 baseOffset = {1.9f, 0.25f, 3.8f};
     Vector3 drift = {std::cos(cutTimer_ * 0.45f) * 0.2f,
                      std::sin(cutTimer_ * 0.35f) * 0.15f, -cutTimer_ * 0.05f};
     outTargetCamPos = dragonTransform_.translate + baseOffset + drift;
-    Vector3 lookTarget = dragonTransform_.translate + Vector3{0.0f, 0.1f, 0.0f};
+    // 注視点をドラゴンの画面右・上へずらし、ドラゴンを画面の左下寄りに配置する
+    Vector3 toDragon = Normalize(dragonTransform_.translate - outTargetCamPos);
+    Vector3 camRight = Normalize(Cross(Vector3{0.0f, 1.0f, 0.0f}, toDragon));
+    const float kFrameShiftRight = 0.15f; // 大きいほどドラゴンが画面左へ寄る（0で中央）
+    const float kFrameShiftUp = 0.4f;    // 大きいほどドラゴンが画面下へ寄る
+    Vector3 lookTarget = dragonTransform_.translate + camRight * kFrameShiftRight +
+                         Vector3{0.0f, kFrameShiftUp, 0.0f};
     outTargetCamRot = CalcLookAtRot(outTargetCamPos, lookTarget);
     if (camera_) {
       camera_->SetFovY(0.65f);
     }
     break;
   }
-  case TitleCameraCut::OverTheWing: {
-    // カット3: 翼越し（ロール連動）
-    Vector3 baseOffset = {-1.65f, 0.45f, -1.85f};
-    Vector3 drift = {std::sin(cutTimer_ * 0.35f) * 0.12f,
-                     std::cos(cutTimer_ * 0.25f) * 0.08f, cutTimer_ * 0.06f};
+  case TitleCameraCut::LowAngle: {
+    // カット3: 下からのあおり。ドラゴンの後方下から見上げ、ゆっくり浮上・接近する
+    Vector3 baseOffset = {0.9f, -1.9f, -3.6f};
+    Vector3 drift = {std::sin(cutTimer_ * 0.30f) * 0.20f,
+                     cutTimer_ * 0.05f, cutTimer_ * 0.06f};
     outTargetCamPos = dragonTransform_.translate + baseOffset + drift;
-
-    Vector3 lookTarget = dragonTransform_.translate + Vector3{0.6f, 0.05f, 10.0f};
+    Vector3 lookTarget = dragonTransform_.translate + Vector3{0.0f, 0.3f, 0.0f};
     outTargetCamRot = CalcLookAtRot(outTargetCamPos, lookTarget);
-    outTargetCamRot.z = dragonTransform_.rotate.z * 0.45f;
-
     if (camera_) {
-      camera_->SetFovY(0.72f);
+      camera_->SetFovY(0.75f);
     }
     break;
+  }
+  case TitleCameraCut::DistantOverlook: {
+    // カット4: 遠景の俯瞰（ロングショット）。高空斜め後方から、広大な雲海と空、小さなドラゴンを見下ろす
+    Vector3 baseOffset = {-4.5f, 4.0f, -11.0f};
+    Vector3 drift = {std::sin(cutTimer_ * 0.22f) * 0.6f,
+                     std::cos(cutTimer_ * 0.18f) * 0.3f, cutTimer_ * 0.08f};
+    outTargetCamPos = dragonTransform_.translate + baseOffset + drift;
+    Vector3 lookTarget = dragonTransform_.translate + Vector3{0.2f, -0.3f, 1.5f};
+    outTargetCamRot = CalcLookAtRot(outTargetCamPos, lookTarget);
+    if (camera_) {
+      camera_->SetFovY(0.70f);
+    }
+    break;
+  }
+  case TitleCameraCut::WingtipCloseUp: {
+    // カット5: 翼端トレイルクローズアップ。右翼の先端に超近接し、光るトレイルと羽ばたきの迫力を捉える
+    // 注視点を上にずらしてドラゴンを画面下寄りに収め、タイトルUIとの被りを防ぐ
+    Vector3 baseOffset = {2.2f, 0.65f, -2.0f};
+    Vector3 drift = {std::sin(cutTimer_ * 0.35f) * 0.10f,
+                     std::cos(cutTimer_ * 0.28f) * 0.08f, cutTimer_ * 0.05f};
+    outTargetCamPos = dragonTransform_.translate + baseOffset + drift;
+    Vector3 lookTarget = dragonTransform_.translate + Vector3{0.0f, 0.60f, 0.8f};
+    outTargetCamRot = CalcLookAtRot(outTargetCamPos, lookTarget);
+    outTargetCamRot.z = dragonTransform_.rotate.z * 0.35f; // バンクに同調
+    if (camera_) {
+      camera_->SetFovY(0.75f);
+    }
+    break;
+  }
   }
   }
 }
 
 void TitleScene::UpdateLighting() {
   // シネマティックカメラカットに連動したライトの向き制御
+  // 雲海(上向きの面)への当たり方がカットで変わると色味・明るさが変わるため、
+  // 仰角(Y成分)は固定し、水平方向の向き(方位角)だけをカットに合わせて変える。
   TitleCameraCut activeCut = isStarting_ ? startCut_ : currentCut_;
-  Vector3 targetLightDir = {0.55f, -0.45f, 0.65f};
+  const float kLightY = -0.45f;       // 固定の仰角成分
+  const float kLightHorizontal = 0.85f; // 水平成分の長さ
+  Vector3 targetHorizontal = {0.55f, 0.0f, 0.65f};
   if (activeCut == TitleCameraCut::FrontTracking) {
-    // カット2（正面・並走）：斜め前方上空から顔・胸元を美しく照らして逆光を防ぐ
-    targetLightDir = {-0.45f, -0.55f, -0.70f};
+    // カット2（正面・並走）：斜め前方から顔・胸元を照らして逆光を防ぐ
+    targetHorizontal = {-0.45f, 0.0f, -0.72f};
   }
-  targetLightDir = Normalize(targetLightDir);
+  float targetAz = std::atan2(targetHorizontal.x, targetHorizontal.z);
+  float currentAz = std::atan2(currentLightDir_.x, currentLightDir_.z);
 
-  // カット切り替え時に滑らかに光の向きを補間
-  currentLightDir_ = Normalize(Lerp(currentLightDir_, targetLightDir, 0.10f));
+  // 最短経路で方位角を補間（カット切替時に滑らかに回す）
+  const float kPi = 3.14159265f;
+  float diff = targetAz - currentAz;
+  while (diff > kPi) diff -= 2.0f * kPi;
+  while (diff < -kPi) diff += 2.0f * kPi;
+  float az = currentAz + diff * 0.10f;
+
+  currentLightDir_ = Normalize(Vector3{std::sin(az) * kLightHorizontal, kLightY,
+                                       std::cos(az) * kLightHorizontal});
 
   if (auto *dl = engine_->GetObject3dRenderer()->GetDirectionalLightData()) {
     dl->direction = currentLightDir_;
@@ -705,6 +862,114 @@ void TitleScene::UpdateWindStreaks(const ICamera *activeCamera) {
   }
 }
 
+namespace {
+// 時間帯キーフレーム（UpdateSky 内でのみ使用）
+struct SkyKeyframe {
+  Vector3 zenith;       // 天頂色
+  Vector3 horizon;      // 地平線色（フォグ色にも使用）
+  Vector3 sunDir;       // 太陽の方向（空上の位置）
+  Vector3 sunColor;     // 太陽色
+  float sunIntensity;   // 太陽の強さ
+  Vector3 lightColor;   // ディレクショナルライト色
+  float lightIntensity; // ディレクショナルライト強度
+  Vector3 cloudTint;    // 雲海の色味
+  float cloudAmount;    // 空の雲量
+  float exposure;       // 露出
+  float bloomIntensity; // ブルーム強度
+};
+constexpr float kSkyCycleDuration = 120.0f; // 1周(昼→午後→夕焼け→昼)の秒数
+} // namespace
+
+void TitleScene::UpdateSky(const ICamera *activeCamera) {
+  // 時間帯キーフレーム: 昼 → 午後 → 夕焼け → (昼へ)
+  static const SkyKeyframe kKeys[3] = {
+      // 昼: 空は鮮やかな青、雲海は白寄り（雲海が最も明るい）
+      {{0.04f, 0.24f, 0.74f}, {0.36f, 0.62f, 0.96f}, {-0.35f, 0.62f, 0.70f},
+       {1.00f, 0.97f, 0.90f}, 0.70f, {1.00f, 1.00f, 1.00f}, 1.05f,
+       {1.50f, 1.54f, 1.60f}, 0.40f, 1.00f, 0.40f},
+      // 午後: 少し温かみを帯びる
+      {{0.08f, 0.26f, 0.68f}, {0.58f, 0.68f, 0.88f}, {-0.45f, 0.30f, 0.85f},
+       {1.00f, 0.88f, 0.65f}, 0.80f, {1.00f, 0.97f, 0.92f}, 1.05f,
+       {1.50f, 1.50f, 1.52f}, 0.45f, 1.00f, 0.38f},
+      // 夕焼け: 橙は残しつつ明るさを抑え、天頂は紫がかった濃紺
+      {{0.10f, 0.13f, 0.38f}, {0.78f, 0.40f, 0.26f}, {-0.55f, 0.15f, 0.80f},
+       {1.00f, 0.55f, 0.25f}, 0.55f, {1.00f, 0.72f, 0.50f}, 0.95f,
+       {1.45f, 1.10f, 0.95f}, 0.55f, 0.88f, 0.25f},
+  };
+
+  skyTimer_ += 1.0f / 60.0f;
+  float phase = std::fmod(skyTimer_ / kSkyCycleDuration, 1.0f) * 3.0f;
+  int i0 = static_cast<int>(phase) % 3;
+  int i1 = (i0 + 1) % 3;
+  float f = phase - std::floor(phase);
+  f = f * f * (3.0f - 2.0f * f); // SmoothStep
+  const SkyKeyframe &a = kKeys[i0];
+  const SkyKeyframe &b = kKeys[i1];
+
+  Vector3 zenith = Lerp(a.zenith, b.zenith, f);
+  Vector3 horizon = Lerp(a.horizon, b.horizon, f);
+  Vector3 sunDir = Normalize(Lerp(a.sunDir, b.sunDir, f));
+  Vector3 sunColor = Lerp(a.sunColor, b.sunColor, f);
+  float sunIntensity = Lerp(a.sunIntensity, b.sunIntensity, f);
+  Vector3 lightColor = Lerp(a.lightColor, b.lightColor, f);
+  float lightIntensity = Lerp(a.lightIntensity, b.lightIntensity, f);
+  Vector3 cloudTint = Lerp(a.cloudTint, b.cloudTint, f);
+  float cloudAmount = Lerp(a.cloudAmount, b.cloudAmount, f);
+  float exposure = Lerp(a.exposure, b.exposure, f);
+  float bloomIntensity = Lerp(a.bloomIntensity, b.bloomIntensity, f);
+
+  // スカイボックス（手続き空）
+  if (skybox_) {
+    skybox_->SetCamera(activeCamera);
+    skybox_->SetSkyColors(zenith, horizon);
+    skybox_->SetSun(sunDir, sunColor, sunIntensity, cloudAmount);
+    skybox_->SetSkyTime(skyTimer_);
+    skybox_->Update();
+  }
+
+  // フォグ: 遠景の雲が空の濃い青に沈まないよう、地平線色を白寄りにして弱めにかける
+  // 空の地平線色と同一にして、雲海の端と空の境目を消す
+  Vector3 fogColor = horizon;
+  FogData fog;
+  fog.color = Vector4(fogColor.x, fogColor.y, fogColor.z, 1.0f);
+  fog.nearDist = 700.0f;
+  fog.farDist = 8000.0f;
+  fog.enabled = 1.0f;
+  engine_->GetObject3dRenderer()->SetFog(fog);
+
+  // 露出・ブルームを時間帯に連動（夕焼けの白飛びを抑える）
+  // オープニングの引きが終わりタイトルロゴが決まる瞬間（オープニング終了後約 0.1s を中心）に光の広がりを演出
+  const float kFlashCenter = kOpeningDuration_ + 0.1f;
+  const float kFlashHalfWidth = 0.35f;
+  float flashProg = 1.0f - std::abs((openingTimer_ - kFlashCenter) / kFlashHalfWidth);
+  if (flashProg > 0.0f) {
+    exposure += flashProg * 0.20f;
+    bloomIntensity += flashProg * 0.35f;
+  }
+  // ImGuiからの微調整オフセット（毎フレーム上書きされるため直接値ではなくオフセットで指定）
+  exposure += exposureOffset_;
+  bloomIntensity += bloomIntensityOffset_;
+  if (postProcess_ && !isStarting_) {
+    postProcess_->SetExposure(exposure);
+    postProcess_->SetBloomIntensity(bloomIntensity);
+  }
+
+  // ライト色（向きは UpdateLighting がカットに合わせて制御）
+  if (auto *dl = engine_->GetObject3dRenderer()->GetDirectionalLightData()) {
+    dl->color = {lightColor.x, lightColor.y, lightColor.z, 1.0f};
+    dl->intensity = lightIntensity;
+  }
+
+  // 雲海の色味
+  Vector4 cloudColor = {cloudTint.x, cloudTint.y, cloudTint.z, 1.0f};
+  if (cloudsObject_) {
+    cloudsObject_->SetColor(cloudColor);
+  }
+  if (cloudsObjectFar_) {
+    cloudsObjectFar_->SetColor(cloudColor);
+  }
+}
+
 void TitleScene::Update() {
   // Sound更新
   SoundManager::GetInstance()->Update();
@@ -728,6 +993,9 @@ void TitleScene::Update() {
 
   // カメラ更新とアクティブカメラの確定
   const ICamera *activeCamera = UpdateActiveCamera(targetCamPos, targetCamRot);
+
+  // 時間帯（空・フォグ・ライト色・雲海色）の更新
+  UpdateSky(activeCamera);
 
   // 3Dオブジェクトの更新
   Update3DObjects(activeCamera);
@@ -809,13 +1077,18 @@ void TitleScene::DrawEditorUI() {
     if (ImGui::DragFloat("Bloom Threshold", &bloomThresh, 0.02f, 0.0f, 2.0f)) {
       postProcess_->SetBloomThreshold(bloomThresh);
     }
-    float exposure = postProcess_->GetExposure();
-    if (ImGui::DragFloat("Exposure", &exposure, 0.05f, 0.1f, 5.0f)) {
-      postProcess_->SetExposure(exposure);
-    }
+    // 露出・ブルーム強度は UpdateSky が毎フレーム時間帯から計算するため、オフセットで調整する
+    ImGui::DragFloat("Exposure Offset", &exposureOffset_, 0.05f, -2.0f, 2.0f);
+    ImGui::DragFloat("Bloom Intensity Offset", &bloomIntensityOffset_, 0.02f, -1.0f, 2.0f);
   }
   if (ImGui::CollapsingHeader("Cinematic Camera Cuts", ImGuiTreeNodeFlags_DefaultOpen)) {
-    const char *cutNames[] = {"Rear Wide (Main)", "Front Tracking (Close-up)", "Over-The-Wing (Cockpit View)"};
+    const char *cutNames[] = {
+        "Cut 1: Rear Wide (後方ワイド)",
+        "Cut 2: Front Tracking (前方並走)",
+        "Cut 3: Low Angle (下からあおり)",
+        "Cut 4: Distant Overlook (遠景俯瞰)",
+        "Cut 5: Wingtip Close-up (翼端トレイル)",
+    };
     int cutIndex = static_cast<int>(currentCut_);
     if (ImGui::Combo("Active Cut", &cutIndex, cutNames, IM_ARRAYSIZE(cutNames))) {
       currentCut_ = static_cast<TitleCameraCut>(cutIndex);

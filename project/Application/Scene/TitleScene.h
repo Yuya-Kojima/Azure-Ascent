@@ -28,16 +28,29 @@ private: // メンバ変数(ゲーム用)
   Vector3 baseDragonPos_ = {0.0f, 0.0f, 0.0f};
   Vector3 baseDragonRot_ = {0.0f, 0.0f, 0.0f};
   float motionTimer_ = 0.0f;
+  float openingTimer_ = 0.0f; // 起動時オープニング演出用タイマー
+  const float kOpeningDuration_ = 2.4f; // オープニングのカメラ演出秒数（終了時にカット1へ完全一致）
+  const float kLogoLeadTime_ = 0.7f;    // オープニング終了の何秒前からタイトルUIを出し始めるか
+  const float kRearWideDriftY_ = 0.18f; // カット1のカメラYドリフト振幅（オープニング終端の初期値と共通）
+  float uiIntroTimer_ = 0.0f;  // タイトルUIの登場演出用タイマー
 
   // 雲海スクロール
   float cloudsScrollZ_ = 0.0f;
 
+  // 時間帯（昼→午後→夕焼け を循環）
+  float skyTimer_ = 0.0f;
+  // ImGuiからの露出・ブルーム強度の微調整（UpdateSkyが毎フレーム値を計算するためオフセットで指定）
+  float exposureOffset_ = 0.0f;
+  float bloomIntensityOffset_ = 0.0f;
+
   // シネマティックカメラ管理
 public:
   enum class TitleCameraCut {
-    RearWide,      // カット1: 後方ワイド追従
-    FrontTracking, // カット2: 斜め前方並走
-    OverTheWing,   // カット3: 翼越し（コックピット視点）
+    RearWide,        // カット1: 後方ワイド追従
+    FrontTracking,   // カット2: 斜め前方並走
+    LowAngle,        // カット3: 下からのあおり
+    DistantOverlook, // カット4: 遠景の俯瞰（ロングショット）
+    WingtipCloseUp,  // カット5: 翼端トレイルクローズアップ
   };
 
 private:
@@ -180,4 +193,9 @@ private: // 更新サブ処理（パイプライン用プライベート関数�
   /// 気流・風ストリークの更新と描画登録
   /// </summary>
   void UpdateWindStreaks(const ICamera *activeCamera);
+
+  /// <summary>
+  /// 時間帯（空・太陽・フォグ・ライト色・雲海色）の更新
+  /// </summary>
+  void UpdateSky(const ICamera *activeCamera);
 };

@@ -69,6 +69,10 @@ public:
     Vector2 maskTransform;
     float padding2;
     Vector4 dissolveEdgeColor;
+    // リムライト（縁の発光）: rgb=色, w=強度(0で無効)
+    Vector4 rimColor = {0.0f, 0.0f, 0.0f, 0.0f};
+    float rimPower = 3.0f; // 大きいほど縁の細い範囲だけ光る
+    float padding3[3] = {0.0f, 0.0f, 0.0f};
   };
 
   /// <summary>
