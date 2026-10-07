@@ -296,6 +296,9 @@ void Game::Update() {
         if (ImGui::MenuItem("Debug")) {
           SceneManager::GetInstance()->ChangeScene("DEBUG");
         }
+        if (ImGui::MenuItem("Fracture Test")) {
+          SceneManager::GetInstance()->ChangeScene("FRACTURE_TEST");
+        }
         ImGui::EndMenu();
       }
 
