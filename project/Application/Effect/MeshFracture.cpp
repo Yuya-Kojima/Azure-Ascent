@@ -157,6 +157,33 @@ ClipPolygon(const std::vector<Model::VertexData> &polygon, const Plane &plane,
 }
 
 Model::ModelData ClipMesh(const Model::ModelData &src, const Plane &plane) {
+
+  bool hasFront = false;
+  bool hasBack = false;
+
+  for (const Model::VertexData &vertex : src.vertices) {
+    float s = SignedDistance(plane, ToVector3(vertex.position));
+
+    // 平面がメッシュに触れているだけ（切っていない）かを先に調べる
+    // 平面上の頂点（|s| が小さい）は、表にも裏にも数えない
+    // （数えると、平面と重なる面が両方の破片に残り、余分なキャップができる）
+    if (s > kOnPlaneEpsilon) {
+      hasFront = true;
+    } else if (s <= -kOnPlaneEpsilon) {
+      hasBack = true;
+    }
+  }
+
+  // 表側に何もない → こちら側の破片はない
+  if (!hasFront) {
+    return {};
+  }
+
+  // 裏側に何もない → 何も切り落とさないので、元のまま
+  if (!hasBack) {
+    return src;
+  }
+
   Model::ModelData out;
   out.material = src.material;
   out.rootNode = src.rootNode;
