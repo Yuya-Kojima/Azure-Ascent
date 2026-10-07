@@ -15,6 +15,7 @@ public:
     transform.translate = translate;
   }
   void SetFovY(float fovY) { fov = fovY; }
+  float GetFovY() const { return fov; }
   void SetAspectRatio(float aspect) { aspectRatio = aspect; }
   void SetNearClip(float nearClipValue) { nearClip = nearClipValue; }
   void SetFarClip(float farClipValue) { farClip = farClipValue; }

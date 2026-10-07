@@ -175,6 +175,25 @@ public:
   }
 
   /// <summary>
+  /// 鏡面反射の鋭さ（大きいほどハイライトが小さくなり、実質消える）
+  /// </summary>
+  void SetShininess(float shininess) {
+    if (materialData) {
+      materialData->shininess = shininess;
+    }
+  }
+
+  /// <summary>
+  /// リムライト（縁の発光）の設定。intensity=0で無効
+  /// </summary>
+  void SetRimLight(const Vector3 &color, float intensity, float power = 3.0f) {
+    if (materialData) {
+      materialData->rimColor = {color.x, color.y, color.z, intensity};
+      materialData->rimPower = power;
+    }
+  }
+
+  /// <summary>
   /// ディゾルブエフェクトの有効/無効を切り替える
   /// </summary>
   /// <param name="enable">trueで有効、falseで無効</param>

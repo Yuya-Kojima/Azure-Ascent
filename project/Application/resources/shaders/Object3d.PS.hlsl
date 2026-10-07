@@ -108,6 +108,12 @@ GeometryShaderOutput input) {
 		output.color.rgb += edge * gMaterial.dissolveEdgeColor.rgb;
 	}
 
+	// Rim Light（縁の発光。強度0なら無効）
+	if (gMaterial.rimColor.w > 0.0f) {
+		float rim = pow(saturate(1.0f - saturate(dot(normal, toEye))), max(gMaterial.rimPower, 0.01f));
+		output.color.rgb += gMaterial.rimColor.rgb * gMaterial.rimColor.w * rim;
+	}
+
 	// Fog
 	if (gFog.enabled != 0.0f) {
 		float dist = length(gCamera.worldPosition - input.worldPosition);

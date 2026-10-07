@@ -28,16 +28,73 @@ private: // メンバ変数(ゲーム用)
   Vector3 baseDragonPos_ = {0.0f, 0.0f, 0.0f};
   Vector3 baseDragonRot_ = {0.0f, 0.0f, 0.0f};
   float motionTimer_ = 0.0f;
+  float openingTimer_ = 0.0f; // 起動時オープニング演出用タイマー
+  const float kOpeningDuration_ = 3.0f; // オープニングのカメラ演出秒数（終了時にカット1へ完全一致）
+  const float kLogoLeadTime_ = 0.7f;    // オープニング終了の何秒前からタイトルUIを出し始めるか
+  const float kTitleIntroDuration_ = 0.95f;    // タイトルロゴがズドンと決まるまでの時間(秒)
+  const float kStartTextFadeDuration_ = 0.60f; // PRESS ENTER テキストが出現完了するまでの時間(秒)
+  const float kRearWideDriftY_ = 0.18f; // カット1のカメラYドリフト振幅（オープニング終端の初期値と共通）
+
+  // 連続飛行の調整用パラメータ
+  const float kWeaveStartTime_ = 1.6f;  // 蛇行（8の字）が育ち始める時刻(秒)。それまでは真っ直ぐ頭上通過
+  const float kWeaveRampTime_ = 2.4f;   // 蛇行が完全に育ち切るまでの時間(秒)
+
+  // 自機の動きに変化をつけるパラメータ（単調に見せないため）
+  const float kTempoPeriod_ = 17.0f;    // 蛇行の速さが緩急する周期(秒)
+  const float kTempoVariation_ = 0.15f; // 蛇行の速さの変化幅（0.15で±15%）
+  const float kAmpPeriod_ = 14.0f;      // 蛇行の振幅が大小する周期(秒)
+  const float kAmpVariation_ = 0.35f;   // 蛇行の振幅の変化幅（0.35で±35%）
+  const float kEventFirstTime_ = 10.0f; // 最初の見せ場の時刻(秒)
+  const float kEventInterval_ = 22.0f;  // 見せ場の間隔(秒)
+  const float kEventDuration_ = 5.0f;   // 見せ場1回の長さ(秒)
+  const float kEventRise_ = 0.8f;       // 見せ場で上がる高さ
+  const float kEventBank_ = 0.5f;       // 見せ場のバンク角(rad)
+
+  // 自機の登場（後方の画面外 → 頭上通過）とカメラの予備動作
+  const float kEntryStartZ_ = -9.0f;       // 自機の開始Z（後方の画面外）
+  const float kEntryDuration_ = 1.8f;      // 開始Zから定位置へ減速しながら入る時間(秒)
+  const float kCamTiltStartTime_ = 0.5f;   // カメラが引き（傾き）を始める時刻(秒)。通過の少し前
+  const float kCamFollowStartTime_ = 0.7f; // 自機の頭上通過の時刻。ここからカメラのZ追従を始める
+  const float kCamFollowBlendTime_ = 0.9f; // カメラのZ追従が効き切るまでの時間(秒)
+  const float kLookTrackStartTime_ = 0.5f; // 注視点が自機へ寄り始める時刻(秒)
+  const float kLookTrackBlendTime_ = 0.6f; // 注視点の寄せが効き切るまでの時間(秒)
+  const float kLookTrackMax_ = 0.6f;       // 注視点を自機へ寄せる最大割合(0〜1)
+  // カメラの追従の遅れ(秒)。大きいほど慣性が強い。
+  // オープニング中は自機が画面外に出ないよう小さく、終了後に大きくして慣性を効かせる。
+  const float kCamPosSmoothOpening_ = 0.12f;
+  const float kCamLookSmoothOpening_ = 0.10f;
+  const float kCamPosSmoothCruise_ = 0.30f;
+  const float kCamLookSmoothCruise_ = 0.35f;
+  const float kCamSmoothRampTime_ = 1.5f; // オープニング終了後、遅れが大きくなり切るまでの時間(秒)
+
+  // カット1/オープニング共通の慣性カメラ状態
+  Vector3 camSmoothPos_{};
+  Vector3 camSmoothLook_{};
+  Vector3 camSmoothPosVel_{};
+  Vector3 camSmoothLookVel_{};
+  bool camSmoothValid_ = false;
+  float uiIntroTimer_ = 0.0f;  // タイトルUIの登場演出用タイマー
+  bool isBgmStarted_ = false;  // タイトルBGM再生開始フラグ
+  float loopFadeAlpha_ = 0.0f; // 放置120秒ループ時の暗転フェード用アルファ
+  bool isStartWindPlayed_ = false; // 発進風切りSE再生済みフラグ
 
   // 雲海スクロール
   float cloudsScrollZ_ = 0.0f;
 
+  // 時間帯（昼→午後→夕焼け を循環）
+  float skyTimer_ = 0.0f;
+  // ImGuiからの露出・ブルーム強度の微調整（UpdateSkyが毎フレーム値を計算するためオフセットで指定）
+  float exposureOffset_ = 0.0f;
+  float bloomIntensityOffset_ = 0.0f;
+
   // シネマティックカメラ管理
 public:
   enum class TitleCameraCut {
-    RearWide,      // カット1: 後方ワイド追従
-    FrontTracking, // カット2: 斜め前方並走
-    OverTheWing,   // カット3: 翼越し（コックピット視点）
+    RearWide,        // カット1: 後方ワイド追従
+    FrontTracking,   // カット2: 斜め前方並走
+    LowAngle,        // カット3: 下からのあおり
+    DistantOverlook, // カット4: 遠景の俯瞰（ロングショット）
+    WingtipCloseUp,  // カット5: 翼端トレイルクローズアップ
   };
 
 private:
@@ -180,4 +237,9 @@ private: // 更新サブ処理（パイプライン用プライベート関数�
   /// 気流・風ストリークの更新と描画登録
   /// </summary>
   void UpdateWindStreaks(const ICamera *activeCamera);
+
+  /// <summary>
+  /// 時間帯（空・太陽・フォグ・ライト色・雲海色）の更新
+  /// </summary>
+  void UpdateSky(const ICamera *activeCamera);
 };

@@ -1,104 +1,72 @@
 {
-    "anchorPoint": [
-        0.0,
-        0.0
-    ],
+    "anchorPoint": [0.0, 0.0],
     "children": [
         {
-            "anchorPoint": [
-                0.0,
-                0.0
-            ],
-            "children": [],
-            "color": [
-                1.0,
-                1.0,
-                1.0,
-                0.95
-            ],
-            "fontName": "MPLUS1p-Black",
-            "name": "TitleText",
-            "position": [
-                460.0,
-                70.0
-            ],
-            "scale": [
-                1.1,
-                1.1
-            ],
-            "textString": "Azure Ascent",
-            "textureName": "",
-            "type": 1
+            "anchorPoint": [0.5, 0.5], "children": [],
+            "color": [0.01, 0.03, 0.08, 0.95], "fontName": "MPLUS1p-Black",
+            "name": "TitleTextShadow_TL", "position": [636.5, 141.5], "scale": [1.8, 1.8],
+            "textString": "AZURE ASCENT", "textureName": "", "type": 1
         },
         {
-            "anchorPoint": [
-                0.5,
-                0.5
-            ],
-            "children": [],
-            "color": [
-                0.0,
-                0.0,
-                0.0,
-                0.85
-            ],
-            "fontName": "MPLUS1p-Black",
-            "name": "StartTextShadow",
-            "position": [
-                642.0,
-                657.0
-            ],
-            "scale": [
-                0.75,
-                0.75
-            ],
-            "textString": "PRESS ENTER TO START",
-            "textureName": "",
-            "type": 1
+            "anchorPoint": [0.5, 0.5], "children": [],
+            "color": [0.01, 0.03, 0.08, 0.95], "fontName": "MPLUS1p-Black",
+            "name": "TitleTextShadow_TR", "position": [643.5, 141.5], "scale": [1.8, 1.8],
+            "textString": "AZURE ASCENT", "textureName": "", "type": 1
         },
         {
-            "anchorPoint": [
-                0.5,
-                0.5
-            ],
-            "children": [],
-            "color": [
-                0.05,
-                0.45,
-                0.95,
-                1.0
-            ],
-            "fontName": "MPLUS1p-Black",
-            "name": "StartText",
-            "position": [
-                640.0,
-                655.0
-            ],
-            "scale": [
-                0.75,
-                0.75
-            ],
-            "textString": "PRESS ENTER TO START",
-            "textureName": "",
-            "type": 1
+            "anchorPoint": [0.5, 0.5], "children": [],
+            "color": [0.01, 0.03, 0.08, 0.95], "fontName": "MPLUS1p-Black",
+            "name": "TitleTextShadow_BL", "position": [636.5, 148.5], "scale": [1.8, 1.8],
+            "textString": "AZURE ASCENT", "textureName": "", "type": 1
+        },
+        {
+            "anchorPoint": [0.5, 0.5], "children": [],
+            "color": [0.01, 0.03, 0.08, 0.95], "fontName": "MPLUS1p-Black",
+            "name": "TitleTextShadow_BR", "position": [643.5, 148.5], "scale": [1.8, 1.8],
+            "textString": "AZURE ASCENT", "textureName": "", "type": 1
+        },
+        {
+            "anchorPoint": [0.5, 0.5], "children": [],
+            "color": [1.0, 1.0, 1.0, 1.0], "fontName": "MPLUS1p-Black",
+            "name": "TitleText", "position": [640.0, 145.0], "scale": [1.8, 1.8],
+            "textString": "AZURE ASCENT", "textureName": "", "type": 1
+        },
+        {
+            "anchorPoint": [0.5, 0.5], "children": [],
+            "color": [0.01, 0.03, 0.08, 0.92], "fontName": "MPLUS1p-Black",
+            "name": "StartTextShadow_TL", "position": [638.0, 618.0], "scale": [0.8, 0.8],
+            "textString": "PRESS ENTER", "textureName": "", "type": 1
+        },
+        {
+            "anchorPoint": [0.5, 0.5], "children": [],
+            "color": [0.01, 0.03, 0.08, 0.92], "fontName": "MPLUS1p-Black",
+            "name": "StartTextShadow_TR", "position": [642.0, 618.0], "scale": [0.8, 0.8],
+            "textString": "PRESS ENTER", "textureName": "", "type": 1
+        },
+        {
+            "anchorPoint": [0.5, 0.5], "children": [],
+            "color": [0.01, 0.03, 0.08, 0.92], "fontName": "MPLUS1p-Black",
+            "name": "StartTextShadow_BL", "position": [638.0, 622.0], "scale": [0.8, 0.8],
+            "textString": "PRESS ENTER", "textureName": "", "type": 1
+        },
+        {
+            "anchorPoint": [0.5, 0.5], "children": [],
+            "color": [0.01, 0.03, 0.08, 0.92], "fontName": "MPLUS1p-Black",
+            "name": "StartTextShadow_BR", "position": [642.0, 622.0], "scale": [0.8, 0.8],
+            "textString": "PRESS ENTER", "textureName": "", "type": 1
+        },
+        {
+            "anchorPoint": [0.5, 0.5], "children": [],
+            "color": [1.0, 1.0, 1.0, 1.0], "fontName": "MPLUS1p-Black",
+            "name": "StartText", "position": [640.0, 620.0], "scale": [0.8, 0.8],
+            "textString": "PRESS ENTER", "textureName": "", "type": 1
         }
     ],
-    "color": [
-        1.0,
-        1.0,
-        1.0,
-        1.0
-    ],
+    "color": [1.0, 1.0, 1.0, 1.0],
     "fontName": "Roboto",
     "name": "Canvas",
-    "position": [
-        0.0,
-        0.0
-    ],
-    "scale": [
-        1.0,
-        1.0
-    ],
+    "position": [0.0, 0.0],
+    "scale": [1.0, 1.0],
     "textString": "",
     "textureName": "",
     "type": 0
