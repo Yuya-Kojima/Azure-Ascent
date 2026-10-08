@@ -1,12 +1,12 @@
 #pragma once
 #include "Core/EngineBase.h"
 #include "Math/Vector3.h"
+#include "Model/Model.h" // 引数で Model::ModelData（入れ子の型）を使うため、前方宣言では足りない
 #include "Scene/BaseScene.h"
-#include <array>
 #include <memory>
+#include <vector>
 
 class Object3d;
-class Model;
 class DebugCamera;
 
 /// <summary>
@@ -16,7 +16,7 @@ class DebugCamera;
 class FractureTestScene : public BaseScene {
 
 public: // メンバ関数
-  // unique_ptr<Model> を前方宣言のまま持つため、デストラクタは .cpp で定義する
+  // unique_ptr<Object3d> などを前方宣言のまま持つため、デストラクタは .cpp で定義する
   ~FractureTestScene() override;
 
   /// <summary>
@@ -51,30 +51,51 @@ public: // メンバ関数
 
 private: // メンバ関数
   /// <summary>
-  /// 今の切断平面で元メッシュを切り直し、破片を作り直す
-  /// GPU バッファを確保し直すので、平面が変わったときだけ呼ぶ
+  /// 今のモードと設定で元メッシュを切り直し、破片を作り直す
+  /// GPU バッファを確保し直すので、設定が変わったときだけ呼ぶ
   /// </summary>
   void RebuildFragments();
 
   /// <summary>
-  /// 切断平面の操作と体積の検証表示
+  /// 平面1枚で表側・裏側の2つに切る（ステップA）
   /// </summary>
-  /// <returns>平面が変わったら true</returns>
+  void BuildPlaneFragments(const Model::ModelData &source);
+
+  /// <summary>
+  /// ボロノイ分割で複数の破片に切る（ステップB）
+  /// </summary>
+  void BuildVoronoiFragments(const Model::ModelData &source);
+
+  /// <summary>
+  /// 破片のメッシュから GPU 用のモデルと表示用オブジェクトを作って追加する
+  /// </summary>
+  /// <param name="data">破片のメッシュ（空なら何もしない）</param>
+  /// <param name="separationDirection">離す向き</param>
+  void AddFragment(const Model::ModelData &data,
+                   const Vector3 &separationDirection);
+
+  /// <summary>
+  /// 切り方の操作と体積の検証表示
+  /// </summary>
+  /// <returns>破片を作り直す必要があれば true</returns>
   bool DrawDebugUI();
 
 private: // 型
+  // 切り方
+  enum class Mode {
+    kPlane,   // 平面1枚で2分割
+    kVoronoi, // ボロノイ分割
+  };
+
   // 破片1つ分（GPU 側のモデルと、その表示用オブジェクトの組）
   struct Fragment {
     std::unique_ptr<Model> model = nullptr;
     std::unique_ptr<Object3d> object = nullptr;
-    // 切り口から離す向き（この破片を作った平面の法線）
+    // 離す向き（平面: その破片を作った平面の法線、ボロノイ: 中心から破片への向き）
     Vector3 separationDirection = {0.0f, 0.0f, 0.0f};
     // 検証用の体積
     float volume = 0.0f;
   };
-
-  // 平面1枚で切るので、表側と裏側の2つ
-  static constexpr size_t kFragmentCount_ = 2;
 
 private: // メンバ変数
   // 観察用カメラ（右ドラッグで回転、WASDで移動）
@@ -89,12 +110,21 @@ private: // メンバ変数
   // 切断前の元メッシュの体積（破片の合計と比べる）
   float sourceVolume_ = 0.0f;
 
-  // 破片
-  std::array<Fragment, kFragmentCount_> fragments_;
+  // 破片（数はモードと設定で変わる）
+  std::vector<Fragment> fragments_;
+
+  // 今の切り方
+  Mode mode_ = Mode::kVoronoi;
 
   // 切断平面（法線と、平面が通る点）
   Vector3 planeNormal_ = {0.0f, 1.0f, 0.0f};
   Vector3 planePoint_ = {0.0f, 0.0f, 0.0f};
+
+  // ボロノイの種の数（ImGui のスライダーで扱うため int）
+  int seedCount_ = 0;
+
+  // ボロノイの種を置く乱数のシード（同じ値なら同じ割れ方になる）
+  int randomSeed_ = 0;
 
   // 破片を切り口から離す距離（切り口を見やすくするため）
   float separation_ = 0.0f;

@@ -2,6 +2,7 @@
 #include "Math/MathUtil.h"
 #include <algorithm>
 #include <cmath>
+#include <random>
 
 namespace MeshFracture {
 
@@ -94,6 +95,10 @@ Plane MakePlane(const Vector3 &normal, const Vector3 &point) {
 }
 
 Plane FlipPlane(const Plane &plane) { return {-plane.normal, -plane.d}; }
+
+Plane MakeBisectorPlane(const Vector3 &pi, const Vector3 &pj) {
+  return MakePlane(pi - pj, (pi + pj) * 0.5f);
+}
 
 float SignedDistance(const Plane &plane, const Vector3 &point) {
   return Dot(plane.normal, point) + plane.d;
@@ -215,6 +220,35 @@ Model::ModelData ClipMesh(const Model::ModelData &src, const Plane &plane) {
   return out;
 }
 
+std::vector<Model::ModelData>
+VoronoiFracture(const Model::ModelData &src,
+                const std::vector<Vector3> &seeds) {
+  std::vector<Model::ModelData> pieces;
+
+  // 外側: 誰の破片を作るか
+  for (size_t i = 0; i < seeds.size(); ++i) {
+    // 元のメッシュからスタートする
+    Model::ModelData cell = src;
+
+    // 内側: 誰との境目で切るか
+    for (size_t j = 0; j < seeds.size(); ++j) {
+      // 自分自身とは比べない
+      if (i == j) {
+        continue;
+      }
+
+      // 二等分面で切り、i 側だけ残す（cell を上書きする）
+      cell = ClipMesh(cell, MakeBisectorPlane(seeds[i], seeds[j]));
+    }
+
+    // cell が空でなければ pieces に追加する
+    if (!cell.vertices.empty()) {
+      pieces.push_back(cell);
+    }
+  }
+  return pieces;
+}
+
 float ComputeVolume(const Model::ModelData &mesh) {
   // 原点と各三角形で作る四面体の符号付き体積を足し合わせる
   // （外側の四面体と内側の四面体が打ち消し合い、閉じたメッシュの体積だけが残る）
@@ -226,6 +260,41 @@ float ComputeVolume(const Model::ModelData &mesh) {
     volume += Dot(a, Cross(b, c)) / 6.0f;
   }
   return volume;
+}
+
+void ComputeBounds(const Model::ModelData &mesh, Vector3 &outMin,
+                   Vector3 &outMax) {
+  if (mesh.vertices.empty()) {
+    outMin = {0.0f, 0.0f, 0.0f};
+    outMax = {0.0f, 0.0f, 0.0f};
+    return;
+  }
+  outMin = ToVector3(mesh.vertices[0].position);
+  outMax = outMin;
+  for (const Model::VertexData &vertex : mesh.vertices) {
+    Vector3 p = ToVector3(vertex.position);
+    outMin = {(std::min)(outMin.x, p.x), (std::min)(outMin.y, p.y),
+              (std::min)(outMin.z, p.z)};
+    outMax = {(std::max)(outMax.x, p.x), (std::max)(outMax.y, p.y),
+              (std::max)(outMax.z, p.z)};
+  }
+}
+
+std::vector<Vector3> GenerateSeeds(const Vector3 &min, const Vector3 &max,
+                                   uint32_t count, uint32_t randomSeed) {
+  // std::mt19937 は同じシードなら同じ乱数列を返す（rand()
+  // と違い、環境で結果が変わらない）
+  std::mt19937 engine(randomSeed);
+  std::uniform_real_distribution<float> distX(min.x, max.x);
+  std::uniform_real_distribution<float> distY(min.y, max.y);
+  std::uniform_real_distribution<float> distZ(min.z, max.z);
+
+  std::vector<Vector3> seeds;
+  seeds.reserve(count);
+  for (uint32_t i = 0; i < count; ++i) {
+    seeds.push_back({distX(engine), distY(engine), distZ(engine)});
+  }
+  return seeds;
 }
 
 } // namespace MeshFracture

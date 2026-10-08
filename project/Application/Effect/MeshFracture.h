@@ -21,6 +21,10 @@ Plane MakePlane(const Vector3 &normal, const Vector3 &point);
 // 平面を裏返す（反対側の破片を作るとき用）
 Plane FlipPlane(const Plane &plane);
 
+// 2つの種 pi, pj の垂直二等分面（中点を通り、pj→pi 向きの法線）
+// pi に近い側が表になるので、ClipMesh に渡すと pi 側が残る
+Plane MakeBisectorPlane(const Vector3 &pi, const Vector3 &pj);
+
 // 符号付き距離 s = n・p + d（s > 0 で表側、s < 0 で裏側）
 float SignedDistance(const Plane &plane, const Vector3 &point);
 
@@ -40,7 +44,22 @@ ClipPolygon(const std::vector<Model::VertexData> &polygon, const Plane &plane,
 // 元のメッシュは凸で閉じていること
 Model::ModelData ClipMesh(const Model::ModelData &src, const Plane &plane);
 
+// ボロノイ分割で src を破片に分ける（種1つにつき破片1つ）
+// 各破片は、他のすべての種との二等分面で src を切って作る
+// 種がメッシュから遠く、何も残らなかった破片は含まない
+std::vector<Model::ModelData>
+VoronoiFracture(const Model::ModelData &src, const std::vector<Vector3> &seeds);
+
 // 閉じたメッシュの体積（検証用: 破片の体積の合計 = 元の体積 になるか確認する）
 float ComputeVolume(const Model::ModelData &mesh);
+
+// メッシュを囲む箱（AABB）の最小点・最大点を求める（種をばらまく範囲に使う）
+void ComputeBounds(const Model::ModelData &mesh, Vector3 &outMin,
+                   Vector3 &outMax);
+
+// 箱 [min, max] の中にランダムに種を count 個置く
+// randomSeed が同じなら毎回同じ配置になる（見た目の再現・デバッグのため）
+std::vector<Vector3> GenerateSeeds(const Vector3 &min, const Vector3 &max,
+                                   uint32_t count, uint32_t randomSeed);
 
 } // namespace MeshFracture
