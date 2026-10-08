@@ -12,6 +12,9 @@ namespace {
 const float kOnPlaneEpsilon = 1e-5f;
 // キャップの点を同一点とみなす距離（の2乗）
 const float kMergeDistanceSq = 1e-8f;
+// 体積がほぼ 0（潰れたメッシュ）とみなす値
+// 体積は長さの3乗なので、距離用の kOnPlaneEpsilon とは別に持つ
+const float kMinVolume = 1e-9f;
 
 Vector3 ToVector3(const Vector4 &v) { return {v.x, v.y, v.z}; }
 
@@ -260,6 +263,53 @@ float ComputeVolume(const Model::ModelData &mesh) {
     volume += Dot(a, Cross(b, c)) / 6.0f;
   }
   return volume;
+}
+
+Vector3 ComputeCentroid(const Model::ModelData &mesh) {
+  float totalVolume = 0.0f;
+  Vector3 weightedSum = {0.0f, 0.0f, 0.0f};
+
+  for (size_t i = 0; i + 2 < mesh.indices.size(); i += 3) {
+    Vector3 a = ToVector3(mesh.vertices[mesh.indices[i + 0]].position);
+    Vector3 b = ToVector3(mesh.vertices[mesh.indices[i + 1]].position);
+    Vector3 c = ToVector3(mesh.vertices[mesh.indices[i + 2]].position);
+
+    // 四面体（原点, a, b, c）の符号付き体積
+    float volume = Dot(a, Cross(b, c)) / 6.0f;
+
+    // 四面体の重心（4つの頂点の平均。原点 (0,0,0) も4つのうちの1つ）
+    Vector3 tetraCenter = (a + b + c) * 0.25f;
+
+    // 数直線の例の「長さの合計」と「中心 × 長さ の合計」にあたる
+    totalVolume += volume;
+    weightedSum += tetraCenter * volume;
+  }
+
+  // 体積がほぼ 0 のとき（潰れたメッシュ）は割り算できない
+  if (std::abs(totalVolume) < kMinVolume) {
+    if (mesh.vertices.empty()) {
+      return {0.0f, 0.0f, 0.0f};
+    }
+
+    Vector3 average = {0.0f, 0.0f, 0.0f};
+    for (const Model::VertexData &vertex : mesh.vertices) {
+      average += ToVector3(vertex.position);
+    }
+    return average * (1.0f / mesh.vertices.size());
+  }
+
+  return weightedSum * (1.0f / totalVolume);
+}
+
+Vector3 CenterMesh(Model::ModelData &mesh) {
+  const Vector3 centroid = ComputeCentroid(mesh);
+  // 平行移動するだけなので、法線と UV はそのままでよい
+  for (Model::VertexData &vertex : mesh.vertices) {
+    vertex.position.x -= centroid.x;
+    vertex.position.y -= centroid.y;
+    vertex.position.z -= centroid.z;
+  }
+  return centroid;
 }
 
 void ComputeBounds(const Model::ModelData &mesh, Vector3 &outMin,

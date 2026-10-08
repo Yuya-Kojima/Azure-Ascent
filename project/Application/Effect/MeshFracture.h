@@ -53,6 +53,14 @@ VoronoiFracture(const Model::ModelData &src, const std::vector<Vector3> &seeds);
 // 閉じたメッシュの体積（検証用: 破片の体積の合計 = 元の体積 になるか確認する）
 float ComputeVolume(const Model::ModelData &mesh);
 
+// 閉じたメッシュの重心（体積で重み付けするので、頂点の数や偏りに左右されない）
+Vector3 ComputeCentroid(const Model::ModelData &mesh);
+
+// メッシュの原点を重心に移す（全頂点から重心を引く）
+// 戻り値は移す前の重心。表示するときはこの位置に置けば元と同じ見た目になる
+// （原点が重心にあると、回転させたときに破片がその場で回る）
+Vector3 CenterMesh(Model::ModelData &mesh);
+
 // メッシュを囲む箱（AABB）の最小点・最大点を求める（種をばらまく範囲に使う）
 void ComputeBounds(const Model::ModelData &mesh, Vector3 &outMin,
                    Vector3 &outMax);

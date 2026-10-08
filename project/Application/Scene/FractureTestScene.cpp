@@ -45,6 +45,17 @@ const int kDefaultRandomSeed = 1;
 
 // 体積の誤差の許容値（float の丸め誤差程度なら一致とみなす）
 const float kVolumeTolerance = 1e-4f;
+
+// 1フレームの時間（秒）。EnemyDebris と同じく 60fps 固定で考える
+const float kDeltaTime = 1.0f / 60.0f;
+
+// 破片を飛ばす調整値の初期値（一辺 1 の Cube が見やすく散る程度）
+const float kDefaultExplosionSpeed = 3.0f;           // 外向きの速さ
+const Vector3 kDefaultGravity = {0.0f, -9.8f, 0.0f}; // 重力加速度
+const float kDefaultMaxAngularSpeed = 6.0f;          // 角速度の最大値（約1回転/秒）
+
+// 角速度の乱数のシード
+const uint32_t kExplosionRandomSeed = 1;
 } // namespace
 
 FractureTestScene::~FractureTestScene() = default;
@@ -93,6 +104,9 @@ void FractureTestScene::Initialize(EngineBase *engine) {
   separation_ = kDefaultSeparation;
   seedCount_ = kDefaultSeedCount;
   randomSeed_ = kDefaultRandomSeed;
+  explosionSpeed_ = kDefaultExplosionSpeed;
+  gravity_ = kDefaultGravity;
+  maxAngularSpeed_ = kDefaultMaxAngularSpeed;
   RebuildFragments();
 }
 
@@ -110,16 +124,31 @@ void FractureTestScene::Update() {
   }
 #endif // USE_IMGUI
 
-  // 破片を切り口から離して置く
-  for (Fragment &fragment : fragments_) {
-    fragment.object->SetTranslation(fragment.separationDirection * separation_);
-    fragment.object->Update();
+  if (isExploding_) {
+    // 飛ばしている最中は、物理で動かした位置と回転で置く
+    UpdateExplosion();
+    for (Fragment &fragment : fragments_) {
+      fragment.object->SetTranslation(fragment.position);
+      fragment.object->SetRotation(fragment.rotation);
+      fragment.object->Update();
+    }
+  } else {
+    // 止まっているときは、破片を切り口から離して置く
+    for (Fragment &fragment : fragments_) {
+      fragment.object->SetTranslation(fragment.basePosition +
+                                      fragment.separationDirection * separation_);
+      fragment.object->SetRotation(fragmentRotation_);
+      fragment.object->Update();
+    }
   }
 
   sourceObject_->Update();
 }
 
 void FractureTestScene::RebuildFragments() {
+
+  // 作り直した破片は止まった状態から始める
+  isExploding_ = false;
 
   // 古い GPU バッファはここで解放される
   // このエンジンは毎フレームの最後に Fence で GPU の完了を待つので、
@@ -161,14 +190,11 @@ void FractureTestScene::BuildVoronoiFragments(const Model::ModelData &source) {
       sourceMin, sourceMax, static_cast<uint32_t>(seedCount_),
       static_cast<uint32_t>(randomSeed_));
 
-  // 破片は「元メッシュの中心 → 破片の中心」の向きに離す（爆発したように見える）
-  // 中心は箱の真ん中で近似する（向きが分かれば十分なので、正確な重心は不要）
-  const Vector3 sourceCenter = (sourceMin + sourceMax) * 0.5f;
+  // 破片は「元メッシュの重心 → 破片の重心」の向きに離す（爆発したように見える）
+  const Vector3 sourceCenter = MeshFracture::ComputeCentroid(source);
   for (const Model::ModelData &piece :
        MeshFracture::VoronoiFracture(source, seeds)) {
-    Vector3 pieceMin, pieceMax;
-    MeshFracture::ComputeBounds(piece, pieceMin, pieceMax);
-    const Vector3 pieceCenter = (pieceMin + pieceMax) * 0.5f;
+    const Vector3 pieceCenter = MeshFracture::ComputeCentroid(piece);
     AddFragment(piece, SafeNormalize(pieceCenter - sourceCenter));
   }
 }
@@ -185,15 +211,63 @@ void FractureTestScene::AddFragment(const Model::ModelData &data,
   fragment.volume = MeshFracture::ComputeVolume(data);
   fragment.separationDirection = separationDirection;
 
+  // 原点を重心に移す。ずらした分は basePosition に置いて見た目を元に戻す
+  Model::ModelData meshData = data;
+  if (centerPivot_) {
+    fragment.basePosition = MeshFracture::CenterMesh(meshData);
+  }
+
   fragment.model = std::make_unique<Model>();
   fragment.model->InitializeFromModelData(
-      ModelManager::GetInstance()->GetModelRenderer(), data);
+      ModelManager::GetInstance()->GetModelRenderer(), meshData);
 
   fragment.object = std::make_unique<Object3d>();
   fragment.object->Initialize(engine_->GetObject3dRenderer());
   fragment.object->SetModel(fragment.model.get());
 
   fragments_.push_back(std::move(fragment));
+}
+
+void FractureTestScene::Explode() {
+
+  // 毎回同じ回り方になるよう、乱数を最初からやり直す
+  randomEngine_.seed(kExplosionRandomSeed);
+  std::uniform_real_distribution<float> angularDist(-maxAngularSpeed_,
+                                                    maxAngularSpeed_);
+
+  for (Fragment &fragment : fragments_) {
+    // 今見えている位置・向きから飛ばし始める
+    fragment.position =
+        fragment.basePosition + fragment.separationDirection * separation_;
+    fragment.rotation = fragmentRotation_;
+
+    // TODO 爆発した瞬間の速度
+    //      外向き（separationDirection）に explosionSpeed_ の速さで飛ばし、
+    //      さらに引き継ぐ速度（inheritedVelocity_）を足す
+    fragment.velocity = {0.0f, 0.0f, 0.0f};
+
+    // 角速度は各軸ランダム（破片ごとに違う回り方にする）
+    fragment.angularVelocity = {angularDist(randomEngine_),
+                                angularDist(randomEngine_),
+                                angularDist(randomEngine_)};
+  }
+  isExploding_ = true;
+}
+
+void FractureTestScene::ResetExplosion() {
+  isExploding_ = false;
+  fragmentRotation_ = {0.0f, 0.0f, 0.0f};
+}
+
+void FractureTestScene::UpdateExplosion() {
+  for (Fragment &fragment : fragments_) {
+    // TODO 1フレーム（kDeltaTime 秒）分だけ動かす
+    //      ① 速度に重力を足す（だんだん落ちる）
+    //      ② 位置に速度を足す（飛ぶ）
+    //      ③ 回転に角速度を足す（回る）
+    //      どれも「1秒あたりの量」なので、kDeltaTime を掛けてから足す
+    (void)fragment;
+  }
 }
 
 bool FractureTestScene::DrawDebugUI() {
@@ -222,6 +296,26 @@ bool FractureTestScene::DrawDebugUI() {
   ImGui::SeparatorText("表示");
   ImGui::SliderFloat("離す距離", &separation_, 0.0f, 1.0f);
   ImGui::Checkbox("元メッシュを表示", &showSource_);
+
+  ImGui::SeparatorText("回転の中心");
+  needsRebuild |= ImGui::Checkbox("原点を重心に移す", &centerPivot_);
+  ImGui::DragFloat3("破片の回転", &fragmentRotation_.x, 0.01f);
+  if (ImGui::Button("回転を戻す")) {
+    fragmentRotation_ = {0.0f, 0.0f, 0.0f};
+  }
+
+  ImGui::SeparatorText("飛ばす");
+  if (ImGui::Button("爆発")) {
+    Explode();
+  }
+  ImGui::SameLine();
+  if (ImGui::Button("リセット")) {
+    ResetExplosion();
+  }
+  ImGui::DragFloat("外向きの速さ", &explosionSpeed_, 0.05f, 0.0f, 20.0f);
+  ImGui::DragFloat3("引き継ぐ速度", &inheritedVelocity_.x, 0.05f);
+  ImGui::DragFloat3("重力", &gravity_.x, 0.05f);
+  ImGui::DragFloat("角速度の最大", &maxAngularSpeed_, 0.05f, 0.0f, 30.0f);
 
   ImGui::SeparatorText("体積の検証");
   float fragmentTotal = 0.0f;
