@@ -1,10 +1,10 @@
 #include "FractureTestScene.h"
 #include "Debug/DebugCamera.h"
 #include "Effect/MeshFracture.h"
+#include "Math/MathUtil.h"
 #include "Model/Model.h"
 #include "Model/ModelManager.h"
 #include "Object3d/Object3d.h"
-#include "Math/MathUtil.h"
 #include "Renderer/Object3dRenderer.h"
 #include <cmath>
 
@@ -35,7 +35,8 @@ const Vector3 kDefaultPlaneNormal = {0.3f, 1.0f, 0.2f};
 const float kDefaultSeparation = 0.3f;
 
 // ボロノイの種の数（初期値と、スライダーの範囲）
-// 上限は計算量 O(種の数^2 x 三角形数) と見やすさから、実際の演出で使う程度に抑える
+// 上限は計算量 O(種の数^2 x 三角形数)
+// と見やすさから、実際の演出で使う程度に抑える
 const int kDefaultSeedCount = 8;
 const int kMinSeedCount = 1;
 const int kMaxSeedCount = 32;
@@ -52,7 +53,7 @@ const float kDeltaTime = 1.0f / 60.0f;
 // 破片を飛ばす調整値の初期値（一辺 1 の Cube が見やすく散る程度）
 const float kDefaultExplosionSpeed = 3.0f;           // 外向きの速さ
 const Vector3 kDefaultGravity = {0.0f, -9.8f, 0.0f}; // 重力加速度
-const float kDefaultMaxAngularSpeed = 6.0f;          // 角速度の最大値（約1回転/秒）
+const float kDefaultMaxAngularSpeed = 6.0f; // 角速度の最大値（約1回転/秒）
 
 // 角速度の乱数のシード
 const uint32_t kExplosionRandomSeed = 1;
@@ -83,7 +84,8 @@ void FractureTestScene::Initialize(EngineBase *engine) {
   fog.enabled = 0.0f;
   engine_->GetObject3dRenderer()->SetFog(fog);
 
-  // 元メッシュ（ModelManager の共有データはそのまま残し、コピーのテクスチャだけ変える）
+  // 元メッシュ（ModelManager
+  // の共有データはそのまま残し、コピーのテクスチャだけ変える）
   ModelManager *modelManager = ModelManager::GetInstance();
   modelManager->LoadModel(kSourceModelPath);
   Model::ModelData sourceData =
@@ -135,8 +137,8 @@ void FractureTestScene::Update() {
   } else {
     // 止まっているときは、破片を切り口から離して置く
     for (Fragment &fragment : fragments_) {
-      fragment.object->SetTranslation(fragment.basePosition +
-                                      fragment.separationDirection * separation_);
+      fragment.object->SetTranslation(
+          fragment.basePosition + fragment.separationDirection * separation_);
       fragment.object->SetRotation(fragmentRotation_);
       fragment.object->Update();
     }
@@ -241,10 +243,10 @@ void FractureTestScene::Explode() {
         fragment.basePosition + fragment.separationDirection * separation_;
     fragment.rotation = fragmentRotation_;
 
-    // TODO 爆発した瞬間の速度
-    //      外向き（separationDirection）に explosionSpeed_ の速さで飛ばし、
-    //      さらに引き継ぐ速度（inheritedVelocity_）を足す
-    fragment.velocity = {0.0f, 0.0f, 0.0f};
+    // 外向きに飛ばす速度に、引き継ぐ速度を足す
+    // （ゲームではカメラが進み続けるので、引き継がないと破片が後ろへ流れて見える）
+    fragment.velocity =
+        fragment.separationDirection * explosionSpeed_ + inheritedVelocity_;
 
     // 角速度は各軸ランダム（破片ごとに違う回り方にする）
     fragment.angularVelocity = {angularDist(randomEngine_),
@@ -261,12 +263,17 @@ void FractureTestScene::ResetExplosion() {
 
 void FractureTestScene::UpdateExplosion() {
   for (Fragment &fragment : fragments_) {
-    // TODO 1フレーム（kDeltaTime 秒）分だけ動かす
-    //      ① 速度に重力を足す（だんだん落ちる）
-    //      ② 位置に速度を足す（飛ぶ）
-    //      ③ 回転に角速度を足す（回る）
-    //      どれも「1秒あたりの量」なので、kDeltaTime を掛けてから足す
-    (void)fragment;
+    // どれも「1秒あたりの量」なので、1フレームの時間を掛けてから足す
+    // 速度を先に更新し、新しい速度で位置を動かす（半陰的オイラー法。陽的オイラー法より安定する）
+
+    // 重力で速度を変える（だんだん落ちる）
+    fragment.velocity += gravity_ * kDeltaTime;
+
+    // 速度で位置を動かす（飛ぶ）
+    fragment.position += fragment.velocity * kDeltaTime;
+
+    // 角速度で回転を進める（回る）
+    fragment.rotation += fragment.angularVelocity * kDeltaTime;
   }
 }
 
@@ -278,7 +285,8 @@ bool FractureTestScene::DrawDebugUI() {
 
   ImGui::SeparatorText("切り方");
   int mode = static_cast<int>(mode_);
-  needsRebuild |= ImGui::RadioButton("平面", &mode, static_cast<int>(Mode::kPlane));
+  needsRebuild |=
+      ImGui::RadioButton("平面", &mode, static_cast<int>(Mode::kPlane));
   ImGui::SameLine();
   needsRebuild |=
       ImGui::RadioButton("ボロノイ", &mode, static_cast<int>(Mode::kVoronoi));
