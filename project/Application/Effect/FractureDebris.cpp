@@ -1,4 +1,5 @@
 #include "FractureDebris.h"
+#include "Core/GameTime.h"
 #include "Effect/FracturePieceSet.h"
 #include "Render/Object3d/Object3d.h"
 #include "Render/Renderer/Object3dRenderer.h"
@@ -6,9 +7,6 @@
 #include <random>
 
 namespace {
-// 1フレームの時間（秒）。EnemyDebris と同じく 60fps 固定で考える
-const float kDeltaTime = 1.0f / 60.0f;
-
 // 角速度の乱数のシード（実行ごとの再現性のため固定。爆発ごとには違う値が続けて出る）
 const uint32_t kRandomSeed = 1;
 
@@ -74,7 +72,7 @@ void FractureDebris::Update() {
 
   // 寿命を減らしてから判定する（先に判定すると1フレーム余計に生きる）
   // 消えると決めたフレームでは、もう動かさない
-  lifeTimer_ -= kDeltaTime;
+  lifeTimer_ -= kFixedDeltaTime;
   if (lifeTimer_ <= 0.0f) {
     Destroy();
     return;
@@ -83,9 +81,9 @@ void FractureDebris::Update() {
   for (Piece &piece : pieces_) {
     // 半陰的オイラー法: 速度を先に更新し、新しい速度で位置を動かす
     // どれも「1秒あたりの量」なので、1フレームの時間を掛けてから足す
-    piece.velocity += gravity_ * kDeltaTime;
-    piece.position += piece.velocity * kDeltaTime;
-    piece.rotation += piece.angularVelocity * kDeltaTime;
+    piece.velocity += gravity_ * kFixedDeltaTime;
+    piece.position += piece.velocity * kFixedDeltaTime;
+    piece.rotation += piece.angularVelocity * kFixedDeltaTime;
 
     ApplyTransform(piece);
   }

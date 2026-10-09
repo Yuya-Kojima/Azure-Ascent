@@ -6,6 +6,7 @@
 #include "Camera/RailCamera.h"
 #include "Collision/CollisionManager.h"
 #include "Collision/SphereCollider.h"
+#include "Core/GameTime.h"
 #include "Debug/Logger.h"
 #include "Effect/EffectManager.h"
 #include "Effect/EnemyDebris.h"
@@ -104,9 +105,11 @@ void Enemy::Update() {
   // モデルの更新
   UpdateTransform();
 
-  // 連続衝突判定用に速度を計算してコライダーに渡す
+  // 直前の1フレームで動いた量を求める
+  // コライダーと、撃破時に破片へ勢いを引き継ぐのに使う
+  frameMovement_ = CalculateVelocityForCollision();
   if (collider_) {
-    collider_->SetVelocity(CalculateVelocityForCollision());
+    collider_->SetVelocity(frameMovement_);
   }
 }
 
@@ -180,7 +183,8 @@ void Enemy::TakeDamage(int damage, bool isSelfDestruct) {
           // 割った形セットがあれば、ボロノイの破片を飛ばす
           auto debris = std::make_unique<FractureDebris>(
               renderer, *pieceSet, transform_.translate, transform_.scale,
-              baseColor_, Vector3{0.0f, 0.0f, 0.0f}, FractureDebris::Params{});
+              baseColor_, frameMovement_ * (1.0f / kFixedDeltaTime),
+              FractureDebris::Params{});
           ActorManager::GetInstance()->AddActor(std::move(debris));
         } else {
           // なければ旧演出の箱破片にフォールバック
