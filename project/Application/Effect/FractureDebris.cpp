@@ -24,6 +24,7 @@ FractureDebris::FractureDebris(Object3dRenderer *renderer,
                                const Vector3 &inheritedVelocity,
                                const Params &params) {
   gravity_ = params.gravity;
+  drag_ = params.drag;
   lifeTimer_ = params.lifetime;
 
   if (!renderer) {
@@ -82,6 +83,9 @@ void FractureDebris::Update() {
     // 半陰的オイラー法: 速度を先に更新し、新しい速度で位置を動かす
     // どれも「1秒あたりの量」なので、1フレームの時間を掛けてから足す
     piece.velocity += gravity_ * kFixedDeltaTime;
+
+    // 空気抵抗で速度を減らす
+    piece.velocity = piece.velocity * (1.0f - drag_ * kFixedDeltaTime);
     piece.position += piece.velocity * kFixedDeltaTime;
     piece.rotation += piece.angularVelocity * kFixedDeltaTime;
 

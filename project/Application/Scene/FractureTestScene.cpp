@@ -287,6 +287,7 @@ bool FractureTestScene::DrawDebugUI() {
   ImGui::DragFloat("角速度の最大", &debrisParams_.maxAngularSpeed, 0.05f, 0.0f,
                    30.0f);
   ImGui::DragFloat("寿命（秒）", &debrisParams_.lifetime, 0.05f, 0.1f, 10.0f);
+  ImGui::DragFloat("空気抵抗", &debrisParams_.drag, 0.05f, 0.0f, 30.0f);
   ImGui::SliderFloat("敵の大きさ", &debrisScale_, kMinDebrisScale,
                      kMaxDebrisScale);
 

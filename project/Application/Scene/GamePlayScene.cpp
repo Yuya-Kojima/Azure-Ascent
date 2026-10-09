@@ -973,6 +973,7 @@ void GamePlayScene::Update() {
     }
   } else if (currentSelectType_ == EditorSelectType::Effect) {
     EffectManager::GetInstance()->DrawEditorUI(railCamera_.get());
+    FractureCache::GetInstance()->DrawEditorUI();
   } else if (currentSelectType_ == EditorSelectType::RailCamera) {
     ImGui::Text("Rail Camera Waypoints");
     ImGui::Separator();

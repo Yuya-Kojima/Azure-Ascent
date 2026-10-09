@@ -23,6 +23,9 @@ public: // 型
     Vector3 gravity = {0.0f, -9.8f, 0.0f};   // 重力加速度
     float maxAngularSpeed = 6.0f;            // 角速度の最大値（ラジアン/秒）
     float lifetime = 1.5f;                   // 寿命（秒）
+    // 空気抵抗（1秒あたりに速度が減る割合）
+    // 2.4 で旧演出 EnemyDebris の「毎フレーム速度を 96% にする」とほぼ同じ減り方になる（(1 - 0.96) x 60）
+    float drag = 2.4f;
   };
 
 public: // メンバ関数
@@ -75,6 +78,9 @@ private: // メンバ変数
 
   // 重力加速度
   Vector3 gravity_ = {0.0f, 0.0f, 0.0f};
+
+  // 空気抵抗（1秒あたりに速度が減る割合）
+  float drag_ = 0.0f;
 
   // 残り寿命（秒）
   float lifeTimer_ = 0.0f;

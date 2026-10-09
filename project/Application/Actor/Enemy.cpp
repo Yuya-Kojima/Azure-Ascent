@@ -184,7 +184,7 @@ void Enemy::TakeDamage(int damage, bool isSelfDestruct) {
           auto debris = std::make_unique<FractureDebris>(
               renderer, *pieceSet, transform_.translate, transform_.scale,
               baseColor_, frameMovement_ * (1.0f / kFixedDeltaTime),
-              FractureDebris::Params{});
+              FractureCache::GetInstance()->GetDebrisParams());
           ActorManager::GetInstance()->AddActor(std::move(debris));
         } else {
           // なければ旧演出の箱破片にフォールバック

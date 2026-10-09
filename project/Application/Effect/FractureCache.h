@@ -1,4 +1,6 @@
 #pragma once
+#include "Effect/FractureDebris.h" // 調整値 FractureDebris::Params（入れ子の型）をメンバに持つため
+#include <cstdint>
 #include <memory>
 #include <unordered_map>
 
@@ -33,14 +35,45 @@ public: // メンバ関数
   /// </summary>
   void Clear();
 
+  /// <summary>
+  /// 撃破時の爆発の調整値
+  /// </summary>
+  const FractureDebris::Params &GetDebrisParams() const { return debrisParams_; }
+
+  /// <summary>
+  /// 調整値の編集 UI（エディタの Inspector から呼ぶ）
+  /// </summary>
+  void DrawEditorUI();
+
 private: // メンバ関数
-  FractureCache() = default;
+  // 最初に使われたとき（ロード時の Prebuild より前）に、調整値を JSON から読む
+  FractureCache();
   // unique_ptr<FracturePieceSet> を前方宣言のまま持つため、デストラクタは .cpp で定義する
   ~FractureCache();
   FractureCache(const FractureCache &) = delete;
   FractureCache &operator=(const FractureCache &) = delete;
 
+  /// <summary>
+  /// 調整値を JSON から読む（ファイルがなければ初期値のまま）
+  /// </summary>
+  void LoadConfig();
+
+  /// <summary>
+  /// 調整値を JSON に保存する
+  /// </summary>
+  void SaveConfig();
+
 private: // メンバ変数
   // モデル → そのモデルを割った形セット
   std::unordered_map<const Model *, std::unique_ptr<FracturePieceSet>> sets_;
+
+  // 撃破時の爆発の調整値
+  FractureDebris::Params debrisParams_;
+
+  // 種の数（≒ 1体あたりの破片の数）
+  // 形セットを作るときにだけ使うので、変えても反映されるのは次の起動から
+  int seedCount_ = 0;
+
+  // 調整値を変えたが、まだ保存していないか
+  bool isConfigDirty_ = false;
 };
