@@ -25,6 +25,12 @@ public:
     /// </summary>
     std::unique_ptr<Enemy> InstantiateEnemy(const std::string& prefabName, const Transform& transform);
 
+    /// <summary>
+    /// プレハブが使うモデルのパスを返す（敵を生成せずに、モデルだけ先に準備したいとき用）
+    /// InstantiateEnemy が使うパスと同じものを返す
+    /// </summary>
+    std::string GetModelPath(const std::string& prefabName) const;
+
 private:
     PrefabManager() = default;
     ~PrefabManager() = default;

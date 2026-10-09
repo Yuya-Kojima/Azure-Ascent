@@ -176,6 +176,7 @@ copy "$(WindowsSdkDir)bin\$(TargetPlatformVersion)\x64\dxil.dll" "$(TargetDir)dx
     <ClCompile Include="Effect\MeshFracture.cpp" />
     <ClCompile Include="Effect\FracturePieceSet.cpp" />
     <ClCompile Include="Effect\FractureDebris.cpp" />
+    <ClCompile Include="Effect\FractureCache.cpp" />
     <ClCompile Include="Actor\HomingBullet.cpp" />
     <ClCompile Include="Actor\LockOn.cpp" />
     <ClCompile Include="Actor\NormalBullet.cpp" />
@@ -272,6 +273,7 @@ copy "$(WindowsSdkDir)bin\$(TargetPlatformVersion)\x64\dxil.dll" "$(TargetDir)dx
     <ClInclude Include="Effect\MeshFracture.h" />
     <ClInclude Include="Effect\FracturePieceSet.h" />
     <ClInclude Include="Effect\FractureDebris.h" />
+    <ClInclude Include="Effect\FractureCache.h" />
     <ClInclude Include="Actor\HomingBullet.h" />
     <ClInclude Include="Actor\LockOn.h" />
     <ClInclude Include="Actor\NormalBullet.h" />

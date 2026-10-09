@@ -5,6 +5,7 @@
 #include "Collision/CollisionManager.h"
 #include "Core/ResourceObject.h"
 #include "Core/SrvManager.h"
+#include "Effect/FractureCache.h"
 #include "Framework/ActorManager.h"
 #include "Framework/UIManager.h"
 #include "Model/Model.h"
@@ -200,6 +201,10 @@ void Game::Finalize() {
   // マネージャーのメモリ解放
   ActorManager::GetInstance()->Clear();
   CollisionManager::GetInstance()->Clear();
+
+  // 破片の形セットは GPU バッファを持つので、デバイスを消す EngineBase::Finalize より前に解放する
+  // （形セットを借りている爆発は、上の ActorManager::Clear で先に消えている）
+  FractureCache::GetInstance()->Clear();
 
   renderPipeline_.reset();
   imGuiManager_.reset();
