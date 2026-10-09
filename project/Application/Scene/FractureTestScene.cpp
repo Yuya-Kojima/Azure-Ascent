@@ -230,8 +230,9 @@ void FractureTestScene::Explode() {
   // テストシーンは原点に置いた Cube を、指定した大きさの敵とみなして爆発させる
   const Vector3 position = {0.0f, 0.0f, 0.0f};
   const Vector3 scale = {debrisScale_, debrisScale_, debrisScale_};
+  const Vector4 color = {1.0f, 1.0f, 1.0f, 1.0f}; // テクスチャの色のまま
   debris_ = std::make_unique<FractureDebris>(
-      engine_->GetObject3dRenderer(), *pieceSet_, position, scale,
+      engine_->GetObject3dRenderer(), *pieceSet_, position, scale, color,
       inheritedVelocity_, debrisParams_);
 }
 

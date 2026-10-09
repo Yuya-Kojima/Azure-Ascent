@@ -22,6 +22,7 @@ std::mt19937 &GetRandomEngine() {
 FractureDebris::FractureDebris(Object3dRenderer *renderer,
                                const FracturePieceSet &pieceSet,
                                const Vector3 &position, const Vector3 &scale,
+                               const Vector4 &color,
                                const Vector3 &inheritedVelocity,
                                const Params &params) {
   gravity_ = params.gravity;
@@ -44,6 +45,7 @@ FractureDebris::FractureDebris(Object3dRenderer *renderer,
     piece.object->Initialize(renderer);
     piece.object->SetModel(shape.model.get());
     piece.object->SetScale(scale);
+    piece.object->SetColor(color);
 
     // 重心は元のモデルの大きさでの位置なので、敵の大きさを掛けてから置く
     piece.position = position + Vector3{shape.centroid.x * scale.x,

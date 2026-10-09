@@ -1,6 +1,7 @@
 #pragma once
 #include "Framework/BaseActor.h"
 #include "Math/Vector3.h"
+#include "Math/Vector4.h"
 #include <memory>
 #include <vector>
 
@@ -32,11 +33,13 @@ public: // メンバ関数
   /// <param name="pieceSet">破片の形（借りるだけ。この爆発より長生きすること）</param>
   /// <param name="position">爆発の中心（敵の位置）</param>
   /// <param name="scale">敵の大きさ（形セットは元のモデルの大きさで作ってある）</param>
+  /// <param name="color">破片の色（敵の色を引き継ぐ）</param>
   /// <param name="inheritedVelocity">引き継ぐ速度（レールの進む速度）</param>
   /// <param name="params">調整値</param>
   FractureDebris(Object3dRenderer *renderer, const FracturePieceSet &pieceSet,
                  const Vector3 &position, const Vector3 &scale,
-                 const Vector3 &inheritedVelocity, const Params &params);
+                 const Vector4 &color, const Vector3 &inheritedVelocity,
+                 const Params &params);
   // unique_ptr<Object3d> を前方宣言のまま持つため、デストラクタは .cpp で定義する
   ~FractureDebris() override;
 
