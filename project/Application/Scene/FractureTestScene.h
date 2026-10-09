@@ -1,10 +1,11 @@
 #pragma once
 #include "Core/EngineBase.h"
+#include "Effect/FractureDebris.h" // 調整値 FractureDebris::Params（入れ子の型）をメンバに持つため
+#include "Effect/FracturePieceSet.h" // シーンを作る側（SceneFactory）で unique_ptr の破棄に完全な型が要るため
 #include "Math/Vector3.h"
 #include "Model/Model.h" // 引数で Model::ModelData（入れ子の型）を使うため、前方宣言では足りない
 #include "Scene/BaseScene.h"
 #include <memory>
-#include <random>
 #include <vector>
 
 class Object3d;
@@ -76,19 +77,9 @@ private: // メンバ関数
                    const Vector3 &separationDirection);
 
   /// <summary>
-  /// 破片を飛ばし始める（爆発した瞬間の速度・角速度を決める）
+  /// ゲームと同じ部品（FracturePieceSet と FractureDebris）で爆発させる
   /// </summary>
   void Explode();
-
-  /// <summary>
-  /// 飛ばした破片を元の位置に戻す
-  /// </summary>
-  void ResetExplosion();
-
-  /// <summary>
-  /// 飛んでいる破片を1フレーム分動かす（重力・移動・回転）
-  /// </summary>
-  void UpdateExplosion();
 
   /// <summary>
   /// 切り方の操作と体積の検証表示
@@ -113,12 +104,6 @@ private: // 型
     Vector3 basePosition = {0.0f, 0.0f, 0.0f};
     // 検証用の体積
     float volume = 0.0f;
-
-    // 飛ばしているときの状態（ステップC-2）
-    Vector3 position = {0.0f, 0.0f, 0.0f};        // 今の位置
-    Vector3 velocity = {0.0f, 0.0f, 0.0f};        // 1秒あたりに進む量
-    Vector3 rotation = {0.0f, 0.0f, 0.0f};        // 今の回転角（ラジアン）
-    Vector3 angularVelocity = {0.0f, 0.0f, 0.0f}; // 1秒あたりに回る量（ラジアン）
   };
 
 private: // メンバ変数
@@ -162,23 +147,22 @@ private: // メンバ変数
   // 全破片に同じ回転をかける（原点がどこにあるかを目で確かめるため）
   Vector3 fragmentRotation_ = {0.0f, 0.0f, 0.0f};
 
-  // 破片を飛ばしている最中か
-  bool isExploding_ = false;
+  // 爆発に使う破片の形（ゲームではロード時に1回作るもの）
+  // 爆発（debris_）が借りて使うので、debris_ より先に消してはいけない
+  // メンバは宣言と逆の順に破棄されるため、debris_ より上に宣言しておく
+  std::unique_ptr<FracturePieceSet> pieceSet_ = nullptr;
 
-  // 外向きに飛ばす速さ（1秒あたりの距離）
-  float explosionSpeed_ = 0.0f;
+  // 爆発中の演出（寿命が来たら消して、止まった破片の表示に戻る）
+  std::unique_ptr<FractureDebris> debris_ = nullptr;
+
+  // 爆発の調整値
+  FractureDebris::Params debrisParams_;
 
   // 引き継ぐ速度（ゲームではレールの進む速度。ここでは手で入力して代わりにする）
   Vector3 inheritedVelocity_ = {0.0f, 0.0f, 0.0f};
 
-  // 重力加速度（1秒あたりに速度が変わる量）
-  Vector3 gravity_ = {0.0f, 0.0f, 0.0f};
-
-  // 角速度の最大値（各軸を -最大〜+最大 のランダムにする）
-  float maxAngularSpeed_ = 0.0f;
-
-  // 角速度を決める乱数（シード固定で、毎回同じ回り方になる）
-  std::mt19937 randomEngine_;
+  // 爆発させる敵の大きさ（形セットを拡大して使えるかの確認用）
+  float debrisScale_ = 1.0f;
 
 private:
   /*ポインタ参照

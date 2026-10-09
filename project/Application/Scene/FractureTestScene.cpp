@@ -1,5 +1,6 @@
 #include "FractureTestScene.h"
 #include "Debug/DebugCamera.h"
+#include "Effect/FracturePieceSet.h"
 #include "Effect/MeshFracture.h"
 #include "Math/MathUtil.h"
 #include "Model/Model.h"
@@ -47,16 +48,9 @@ const int kDefaultRandomSeed = 1;
 // 体積の誤差の許容値（float の丸め誤差程度なら一致とみなす）
 const float kVolumeTolerance = 1e-4f;
 
-// 1フレームの時間（秒）。EnemyDebris と同じく 60fps 固定で考える
-const float kDeltaTime = 1.0f / 60.0f;
-
-// 破片を飛ばす調整値の初期値（一辺 1 の Cube が見やすく散る程度）
-const float kDefaultExplosionSpeed = 3.0f;           // 外向きの速さ
-const Vector3 kDefaultGravity = {0.0f, -9.8f, 0.0f}; // 重力加速度
-const float kDefaultMaxAngularSpeed = 6.0f; // 角速度の最大値（約1回転/秒）
-
-// 角速度の乱数のシード
-const uint32_t kExplosionRandomSeed = 1;
+// 爆発させる敵の大きさの範囲（スライダー用）
+const float kMinDebrisScale = 0.1f;
+const float kMaxDebrisScale = 5.0f;
 } // namespace
 
 FractureTestScene::~FractureTestScene() = default;
@@ -106,9 +100,7 @@ void FractureTestScene::Initialize(EngineBase *engine) {
   separation_ = kDefaultSeparation;
   seedCount_ = kDefaultSeedCount;
   randomSeed_ = kDefaultRandomSeed;
-  explosionSpeed_ = kDefaultExplosionSpeed;
-  gravity_ = kDefaultGravity;
-  maxAngularSpeed_ = kDefaultMaxAngularSpeed;
+  pieceSet_ = std::make_unique<FracturePieceSet>();
   RebuildFragments();
 }
 
@@ -126,13 +118,11 @@ void FractureTestScene::Update() {
   }
 #endif // USE_IMGUI
 
-  if (isExploding_) {
-    // 飛ばしている最中は、物理で動かした位置と回転で置く
-    UpdateExplosion();
-    for (Fragment &fragment : fragments_) {
-      fragment.object->SetTranslation(fragment.position);
-      fragment.object->SetRotation(fragment.rotation);
-      fragment.object->Update();
+  if (debris_) {
+    // 爆発中（ゲームでは ActorManager がやる Update と、死んだら消す処理）
+    debris_->Update();
+    if (debris_->IsDead()) {
+      debris_.reset();
     }
   } else {
     // 止まっているときは、破片を切り口から離して置く
@@ -149,8 +139,8 @@ void FractureTestScene::Update() {
 
 void FractureTestScene::RebuildFragments() {
 
-  // 作り直した破片は止まった状態から始める
-  isExploding_ = false;
+  // 形セットを作り直す前に、それを借りている爆発を先に消す
+  debris_.reset();
 
   // 古い GPU バッファはここで解放される
   // このエンジンは毎フレームの最後に Fence で GPU の完了を待つので、
@@ -166,6 +156,10 @@ void FractureTestScene::RebuildFragments() {
     BuildVoronoiFragments(source);
     break;
   }
+
+  // 爆発用の形セット（平面モードでも、今のボロノイの設定で作る）
+  pieceSet_->Create(source, static_cast<uint32_t>(seedCount_),
+                    static_cast<uint32_t>(randomSeed_));
 }
 
 void FractureTestScene::BuildPlaneFragments(const Model::ModelData &source) {
@@ -232,49 +226,13 @@ void FractureTestScene::AddFragment(const Model::ModelData &data,
 
 void FractureTestScene::Explode() {
 
-  // 毎回同じ回り方になるよう、乱数を最初からやり直す
-  randomEngine_.seed(kExplosionRandomSeed);
-  std::uniform_real_distribution<float> angularDist(-maxAngularSpeed_,
-                                                    maxAngularSpeed_);
-
-  for (Fragment &fragment : fragments_) {
-    // 今見えている位置・向きから飛ばし始める
-    fragment.position =
-        fragment.basePosition + fragment.separationDirection * separation_;
-    fragment.rotation = fragmentRotation_;
-
-    // 外向きに飛ばす速度に、引き継ぐ速度を足す
-    // （ゲームではカメラが進み続けるので、引き継がないと破片が後ろへ流れて見える）
-    fragment.velocity =
-        fragment.separationDirection * explosionSpeed_ + inheritedVelocity_;
-
-    // 角速度は各軸ランダム（破片ごとに違う回り方にする）
-    fragment.angularVelocity = {angularDist(randomEngine_),
-                                angularDist(randomEngine_),
-                                angularDist(randomEngine_)};
-  }
-  isExploding_ = true;
-}
-
-void FractureTestScene::ResetExplosion() {
-  isExploding_ = false;
-  fragmentRotation_ = {0.0f, 0.0f, 0.0f};
-}
-
-void FractureTestScene::UpdateExplosion() {
-  for (Fragment &fragment : fragments_) {
-    // どれも「1秒あたりの量」なので、1フレームの時間を掛けてから足す
-    // 速度を先に更新し、新しい速度で位置を動かす（半陰的オイラー法。陽的オイラー法より安定する）
-
-    // 重力で速度を変える（だんだん落ちる）
-    fragment.velocity += gravity_ * kDeltaTime;
-
-    // 速度で位置を動かす（飛ぶ）
-    fragment.position += fragment.velocity * kDeltaTime;
-
-    // 角速度で回転を進める（回る）
-    fragment.rotation += fragment.angularVelocity * kDeltaTime;
-  }
+  // 前の爆発が残っていれば、新しい爆発で置き換える
+  // テストシーンは原点に置いた Cube を、指定した大きさの敵とみなして爆発させる
+  const Vector3 position = {0.0f, 0.0f, 0.0f};
+  const Vector3 scale = {debrisScale_, debrisScale_, debrisScale_};
+  debris_ = std::make_unique<FractureDebris>(
+      engine_->GetObject3dRenderer(), *pieceSet_, position, scale,
+      inheritedVelocity_, debrisParams_);
 }
 
 bool FractureTestScene::DrawDebugUI() {
@@ -312,18 +270,24 @@ bool FractureTestScene::DrawDebugUI() {
     fragmentRotation_ = {0.0f, 0.0f, 0.0f};
   }
 
-  ImGui::SeparatorText("飛ばす");
+  ImGui::SeparatorText("飛ばす（FractureDebris）");
   if (ImGui::Button("爆発")) {
     Explode();
   }
   ImGui::SameLine();
   if (ImGui::Button("リセット")) {
-    ResetExplosion();
+    debris_.reset();
   }
-  ImGui::DragFloat("外向きの速さ", &explosionSpeed_, 0.05f, 0.0f, 20.0f);
+  ImGui::Text(debris_ ? "爆発中" : "停止中");
+  ImGui::DragFloat("外向きの速さ", &debrisParams_.explosionSpeed, 0.05f, 0.0f,
+                   20.0f);
   ImGui::DragFloat3("引き継ぐ速度", &inheritedVelocity_.x, 0.05f);
-  ImGui::DragFloat3("重力", &gravity_.x, 0.05f);
-  ImGui::DragFloat("角速度の最大", &maxAngularSpeed_, 0.05f, 0.0f, 30.0f);
+  ImGui::DragFloat3("重力", &debrisParams_.gravity.x, 0.05f);
+  ImGui::DragFloat("角速度の最大", &debrisParams_.maxAngularSpeed, 0.05f, 0.0f,
+                   30.0f);
+  ImGui::DragFloat("寿命（秒）", &debrisParams_.lifetime, 0.05f, 0.1f, 10.0f);
+  ImGui::SliderFloat("敵の大きさ", &debrisScale_, kMinDebrisScale,
+                     kMaxDebrisScale);
 
   ImGui::SeparatorText("体積の検証");
   float fragmentTotal = 0.0f;
@@ -361,8 +325,13 @@ void FractureTestScene::Draw3D() {
   if (showSource_) {
     sourceObject_->Draw();
   }
-  for (Fragment &fragment : fragments_) {
-    fragment.object->Draw();
+  if (debris_) {
+    // 爆発中は、止まった破片の代わりに爆発を描く
+    debris_->Draw3D();
+  } else {
+    for (Fragment &fragment : fragments_) {
+      fragment.object->Draw();
+    }
   }
 }
 
