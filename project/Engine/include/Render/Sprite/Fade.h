@@ -78,16 +78,17 @@ private:
   SpriteRenderer *spriteRenderer_ = nullptr;
   std::unique_ptr<Sprite> sprite_ = nullptr;
 
-  // 雲遷移用の全画面スプライト（ノイズテクスチャを UIEffect で描く）
+  // 雲遷移用の全画面スプライト（UIEffect のシェーダー内で雲を生成して描く）
   std::unique_ptr<Sprite> cloudSprite_ = nullptr;
-  // 雲の形を決めるノイズテクスチャ
-  static inline const std::string kCloudTexturePath_ = "resources/noise0.png";
+  // 雲のノイズはシェーダー内で計算するのでテクスチャは使わない。Sprite がテクスチャを
+  // 必要とするため、最小の白テクスチャを渡しておく
+  static inline const std::string kCloudTexturePath_ = "resources/white1x1.png";
   // UIEffect.PS.hlsl の effectType（2 = 雲ディゾルブ）
   static constexpr int kCloudEffectType_ = 2;
-  // 縁を光らせる幅（しきい値と比べる値 0〜1 のうち、雲の内側のどれだけを縁とするか）
+  // 覆いきる直前に縁の光を消していく幅（進行度 1 - この値 から 1 にかけて弱める）
   float cloudEdgeWidth_ = 0.1f;
-  // 縁の光の強さ。雲に突っ込むときは控えめ、雲の上に抜けるときは強く
-  float cloudGlowCovering_ = 0.4f;
+  // 縁の光の強さ（覆うとき / 晴れるとき）
+  float cloudGlowCovering_ = 1.0f;
   float cloudGlowClearing_ = 1.0f;
   // 雲を流すための経過時間（秒）。雲が見えている間だけ進める
   float cloudTime_ = 0.0f;

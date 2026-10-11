@@ -23,7 +23,7 @@ void Fade::Initialize(SpriteRenderer *spriteRenderer,
   sprite_->SetSize(
       {float(WindowSystem::kClientWidth), float(WindowSystem::kClientHeight)});
 
-  // 雲遷移用の全画面スプライト。ノイズの読み方（拡大・流れ）はシェーダー側で決める
+  // 雲遷移用の全画面スプライト。雲の形・流れはすべてシェーダー側で作る
   cloudSprite_ = std::make_unique<Sprite>();
   cloudSprite_->Initialize(spriteRenderer_, kCloudTexturePath_);
   cloudSprite_->SetAnchorPoint({0.0f, 0.0f});
@@ -238,7 +238,7 @@ void Fade::ApplyWipeDown_(float eased) {
 }
 
 void Fade::ApplyCloud_(float eased) {
-  // 雲の色（color_ の rgb）。透明度はシェーダー側でしきい値から決める
+  // 雲の色（color_ の rgb）。透明度はシェーダー側で進行度と雲の濃さから決める
   Vector4 c = color_;
   c.w = 1.0f;
   cloudSprite_->SetColor(c);

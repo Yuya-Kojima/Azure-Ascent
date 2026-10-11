@@ -40,7 +40,7 @@ class Sprite {
     float blurWidth;    // 波エフェクトの横方向ブラー幅
     float boundaryAmp;  // 波エフェクトの境界線の波打ち幅
     float progress;     // ディゾルブの進行度（しきい値）0〜1
-    float edgeWidth;    // ディゾルブの縁を光らせる幅（しきい値と比べる値の範囲）
+    float edgeWidth;    // ディゾルブの縁の光を、覆いきる直前に消していく進行度の幅
     float dissolveFlip; // ディゾルブの縦方向を反転するか（0 = しない、1 = する）
     float glowStrength; // ディゾルブの縁の光の強さ 0〜1
   };
