@@ -12,6 +12,13 @@
 #include <filesystem>
 #include "../../externals/nlohmann/json.hpp"
 
+namespace {
+// プレハブにモデルの指定がないときに使うモデル
+std::string GetDefaultModelPath(const std::string& prefabName) {
+    return (prefabName == "Boss") ? "__builtin_crystal" : "resources/suzanne.obj";
+}
+} // namespace
+
 PrefabManager* PrefabManager::GetInstance() {
     static PrefabManager instance;
     return &instance;
@@ -56,6 +63,19 @@ bool PrefabManager::SavePrefab(const std::string& prefabName, Enemy* enemy) {
     return false;
 }
 
+std::string PrefabManager::GetModelPath(const std::string& prefabName) const {
+    std::ifstream file("resources/prefabs/" + prefabName + ".prefab");
+    if (!file.is_open()) {
+        return GetDefaultModelPath(prefabName);
+    }
+    nlohmann::json root;
+    file >> root;
+    if (root.contains("modelPath")) {
+        return root["modelPath"];
+    }
+    return GetDefaultModelPath(prefabName);
+}
+
 std::unique_ptr<Enemy> PrefabManager::InstantiateEnemy(const std::string& prefabName, const Transform& transform) {
     std::string filepath = "resources/prefabs/" + prefabName + ".prefab";
     std::ifstream file(filepath);
@@ -69,7 +89,7 @@ std::unique_ptr<Enemy> PrefabManager::InstantiateEnemy(const std::string& prefab
     }
     newEnemy->Initialize();
 
-    std::string modelPath = (prefabName == "Boss") ? "__builtin_crystal" : "resources/suzanne.obj"; // デフォルト
+    std::string modelPath = GetDefaultModelPath(prefabName);
 
     if (file.is_open()) {
         nlohmann::json root;

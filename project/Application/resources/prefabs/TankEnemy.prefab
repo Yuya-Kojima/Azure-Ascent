@@ -7,11 +7,11 @@
     ],
     "moveType": 0,
     "scale": [
-        5.0,
-        5.0,
-        5.0
+        10.0,
+        10.0,
+        10.0
     ],
     "speed": 0.1,
     "tag": "Enemy",
-    "modelPath": "resources/models/enemy.obj"
+    "modelPath": "__builtin_box"
 }

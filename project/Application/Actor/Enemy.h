@@ -121,6 +121,10 @@ protected:
   Vector3 spawnOffset_ = {0.0f, 0.0f, 0.0f};
   float aliveTime_ = 0.0f;
 
+  // 直前の1フレームで動いた量（撃破時に、破片へ勢いを引き継ぐために保存しておく）
+  // CalculateVelocityForCollision は呼ぶたびに前の位置を上書きするので、撃破時に呼び直すと 0 になる
+  Vector3 frameMovement_ = {0.0f, 0.0f, 0.0f};
+
   // 毎フレーム更新される基準座標群
   Vector3 basePos_ = {0.0f, 0.0f, 0.0f};
   Vector3 baseForward_ = {0.0f, 0.0f, 1.0f};

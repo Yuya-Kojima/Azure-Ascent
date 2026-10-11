@@ -1,5 +1,6 @@
 #include "SceneFactory.h"
 #include "DebugScene.h"
+#include "FractureTestScene.h"
 #include "GamePlayScene.h"
 #include "TitleScene.h"
 #include "StageSelectScene.h"
@@ -18,6 +19,8 @@ SceneFactory::CreateScene(const std::string &sceneName) {
     return std::make_unique<StageSelectScene>();
   } else if (sceneName == "DEBUG") {
     return std::make_unique<DebugScene>();
+  } else if (sceneName == "FRACTURE_TEST") {
+    return std::make_unique<FractureTestScene>();
   }
 
   assert(false && "Unknown sceneName");

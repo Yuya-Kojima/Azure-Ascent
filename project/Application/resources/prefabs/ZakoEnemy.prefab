@@ -1,6 +1,6 @@
 {
     "hp": 3,
-    "modelPath": "resources/models/enemy.obj",
+    "modelPath": "__builtin_box",
     "moveDirection": [
         0.0,
         0.0,
@@ -8,9 +8,9 @@
     ],
     "moveType": 5,
     "scale": [
-        3.0,
-        3.0,
-        3.0
+        6.0,
+        6.0,
+        6.0
     ],
     "speed": 0.5,
     "tag": "Enemy"

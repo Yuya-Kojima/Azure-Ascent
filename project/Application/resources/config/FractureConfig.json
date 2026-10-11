@@ -1,0 +1,12 @@
+{
+    "drag": 1.7000000476837158,
+    "explosionSpeed": 45.0,
+    "gravity": [
+        0.0,
+        -120.0,
+        0.0
+    ],
+    "lifetime": 1.0,
+    "maxAngularSpeed": 6.0,
+    "seedCount": 16
+}

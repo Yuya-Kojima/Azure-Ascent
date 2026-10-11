@@ -15,11 +15,11 @@ EnemyDebris::EnemyDebris(Object3dRenderer *renderer, const Vector3 &centerPos,
   const int kPieceCount = 6;
   pieces_.reserve(kPieceCount);
 
-  // 破片の基本サイズ（敵のスケールの約35%）
+  // 破片の基本サイズ
   Vector3 pieceBaseScale = {
-      enemyScale.x * 0.35f,
-      enemyScale.y * 0.35f,
-      enemyScale.z * 0.35f
+      enemyScale.x * 0.175f,
+      enemyScale.y * 0.175f,
+      enemyScale.z * 0.175f
   };
 
   for (int i = 0; i < kPieceCount; ++i) {

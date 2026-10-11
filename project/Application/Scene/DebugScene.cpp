@@ -661,7 +661,8 @@ void DebugScene::Update() {
 
   // === Playerにロックオン用の情報を渡す ===
   if (playerPtr_) {
-    playerPtr_->SetCamera(activeCamera);
+    // DebugCamera 中もプレイヤーはレール上に残す
+    playerPtr_->SetCamera(railCamera_.get());
 
     // 敵のポインタリストを作成して渡す
     // std::vector<Object3d*> enemyPointers;

@@ -1,19 +1,20 @@
 #include "GamePlayScene.h"
 #include "../../externals/nlohmann/json.hpp"
 #include "../Effect/EffectManager.h"
-#include "Actor/Behavior/BehaviorSpline.h"
-#include "Actor/Behavior/BehaviorStraight.h"
-#include "Actor/Behavior/BehaviorStationary.h"
-#include "Actor/Behavior/BehaviorSineWave.h"
 #include "Actor/Behavior/BehaviorFighter.h"
 #include "Actor/Behavior/BehaviorMeteor.h"
+#include "Actor/Behavior/BehaviorSineWave.h"
+#include "Actor/Behavior/BehaviorSpline.h"
+#include "Actor/Behavior/BehaviorStationary.h"
 #include "Actor/Behavior/BehaviorStrafe.h"
+#include "Actor/Behavior/BehaviorStraight.h"
 #include "Actor/Behavior/BehaviorTurret.h"
 #include "Audio/SoundManager.h"
 #include "Camera/GameCamera.h"
 #include "Debug/DebugCamera.h"
 #include "Debug/ImGuiManager.h"
 #include "Debug/Logger.h"
+#include "Effect/FractureCache.h"
 #include "Framework/UIManager.h"
 #include "Input/InputKeyState.h"
 #include "Math/MathUtil.h"
@@ -26,9 +27,9 @@
 #include "Render/Particle/BillboardParticleEmitter.h"
 #include "Render/Particle/MeshParticleEmitter.h"
 #include "Render/Renderer/LineRenderer.h"
-#include "Renderer/TrailRenderer.h"
 #include "Renderer/Object3dRenderer.h"
 #include "Renderer/SpriteRenderer.h"
+#include "Renderer/TrailRenderer.h"
 #include "Scene/SceneManager.h"
 #include "Sprite/Sprite.h"
 #include "Texture/TextureManager.h"
@@ -139,6 +140,19 @@ void GamePlayScene::Initialize(EngineBase *engine) {
       ->Clear(); // コライダーの残留（ダングリングポインタ）を防ぐ
   PrefabManager::GetInstance()->Initialize(engine->GetObject3dRenderer());
 
+  // ロード時に事前にモデルを割る
+  // 撃破時に割ると、その瞬間に計算とGPUバッファの作成が集中してカクつくため
+  for (const char *prefabName : {"ZakoEnemy", "FastEnemy", "TankEnemy"}) {
+    // プレハブからモデルのパスを読む
+    std::string modelPath =
+        PrefabManager::GetInstance()->GetModelPath(prefabName);
+    // そのモデルを読み込む（読み込み済みなら何もしない）
+    ModelManager::GetInstance()->LoadModel(modelPath);
+    // 読み込んだモデルを探して、割っておく
+    FractureCache::GetInstance()->Prebuild(
+        ModelManager::GetInstance()->FindModel(modelPath));
+  }
+
   // 参照をコピー
   engine_ = engine;
 
@@ -168,8 +182,7 @@ void GamePlayScene::Initialize(EngineBase *engine) {
                                     "resources/Sounds/explosion.mp3");
   SoundManager::GetInstance()->Load("laser_shot",
                                     "resources/Sounds/laser_shot.wav");
-  SoundManager::GetInstance()->Load("lockon",
-                                    "resources/Sounds/lockon.wav");
+  SoundManager::GetInstance()->Load("lockon", "resources/Sounds/lockon.wav");
   SoundManager::GetInstance()->Load("lockon_fire",
                                     "resources/Sounds/lockon_fire.wav");
   SoundManager::GetInstance()->Load("enemy_hit",
@@ -279,7 +292,6 @@ void GamePlayScene::Initialize(EngineBase *engine) {
   playerModel->SetColor({1.0f, 1.0f, 1.0f, 1.0f});
   player_->SetModel(std::move(playerModel));
 
-
   cameraTransform_ = {
       {1.0f, 1.0f, 1.0f},
       {0.3f, 0.0f, 0.0f},
@@ -306,9 +318,7 @@ void GamePlayScene::Initialize(EngineBase *engine) {
   TextureManager::GetInstance()->LoadTexture("resources/gradationLine.png");
 }
 
-void GamePlayScene::Finalize() {
-  SoundManager::GetInstance()->StopBGM();
-}
+void GamePlayScene::Finalize() { SoundManager::GetInstance()->StopBGM(); }
 
 void GamePlayScene::Update() {
 
@@ -545,14 +555,30 @@ void GamePlayScene::Update() {
 
         std::unique_ptr<IEnemyBehavior> behavior;
         switch (static_cast<int>(ev.moveType)) {
-        case 0: behavior = std::make_unique<BehaviorStraight>(); break;
-        case 2: behavior = std::make_unique<BehaviorSineWave>(); break;
-        case 3: behavior = std::make_unique<BehaviorStationary>(); break;
-        case 4: behavior = std::make_unique<BehaviorFighter>(); break;
-        case 5: behavior = std::make_unique<BehaviorMeteor>(); break;
-        case 6: behavior = std::make_unique<BehaviorStrafe>(); break;
-        case 7: behavior = std::make_unique<BehaviorTurret>(); break;
-        default: behavior = std::make_unique<BehaviorStraight>(); break;
+        case 0:
+          behavior = std::make_unique<BehaviorStraight>();
+          break;
+        case 2:
+          behavior = std::make_unique<BehaviorSineWave>();
+          break;
+        case 3:
+          behavior = std::make_unique<BehaviorStationary>();
+          break;
+        case 4:
+          behavior = std::make_unique<BehaviorFighter>();
+          break;
+        case 5:
+          behavior = std::make_unique<BehaviorMeteor>();
+          break;
+        case 6:
+          behavior = std::make_unique<BehaviorStrafe>();
+          break;
+        case 7:
+          behavior = std::make_unique<BehaviorTurret>();
+          break;
+        default:
+          behavior = std::make_unique<BehaviorStraight>();
+          break;
         }
         enemyPtr->SetMoveType(ev.moveType);
         enemyPtr->SetMoveDirection(ev.moveDirection);
@@ -694,7 +720,6 @@ void GamePlayScene::Update() {
     skybox_->Update();
   }
 
-
   //===========================================
   // プレイヤーの更新
   //===========================================
@@ -706,8 +731,6 @@ void GamePlayScene::Update() {
     } else {
       player_->UpdateTransform();
     }
-
-
   }
 
   // アクター群の更新
@@ -929,8 +952,9 @@ void GamePlayScene::Update() {
                                   &config.muzzleOffsetX, 0.05f, -10.0f, 10.0f);
       changed |= ImGui::DragFloat((const char *)u8"口元の上方オフセット (Y)",
                                   &config.muzzleOffsetY, 0.05f, -10.0f, 10.0f);
-      changed |= ImGui::DragFloat((const char *)u8"口元の前方オフセット (Z)",
-                                  &config.muzzleOffsetForward, 0.05f, -10.0f, 10.0f);
+      changed |=
+          ImGui::DragFloat((const char *)u8"口元の前方オフセット (Z)",
+                           &config.muzzleOffsetForward, 0.05f, -10.0f, 10.0f);
 
       if (changed) {
         player_->SetActionConfigDirty(true);
@@ -949,6 +973,7 @@ void GamePlayScene::Update() {
     }
   } else if (currentSelectType_ == EditorSelectType::Effect) {
     EffectManager::GetInstance()->DrawEditorUI(railCamera_.get());
+    FractureCache::GetInstance()->DrawEditorUI();
   } else if (currentSelectType_ == EditorSelectType::RailCamera) {
     ImGui::Text("Rail Camera Waypoints");
     ImGui::Separator();
@@ -1064,7 +1089,8 @@ void GamePlayScene::Update() {
                                "Fighter (戦闘機)",  "Meteor (メテオ突撃)",
                                "Strafe (画面横断)", "Turret (固定砲台)"};
     int currentMoveType = static_cast<int>(ev.moveType);
-    if (ImGui::Combo("Move Type", &currentMoveType, moveTypes, IM_ARRAYSIZE(moveTypes))) {
+    if (ImGui::Combo("Move Type", &currentMoveType, moveTypes,
+                     IM_ARRAYSIZE(moveTypes))) {
       ev.moveType = static_cast<MoveType>(currentMoveType);
       editFinished = true;
     }
@@ -1119,10 +1145,11 @@ void GamePlayScene::Update() {
       if (ImGui::Checkbox("World Space Spline", &ev.isWorldSpaceSpline)) {
         editFinished = true;
       }
-      
+
       if (ImGui::InputInt("Fire Interval (frames)", &ev.fireInterval)) {
-          if (ev.fireInterval < -1) ev.fireInterval = -1; // -1を最小値とする
-          editFinished = true;
+        if (ev.fireInterval < -1)
+          ev.fireInterval = -1; // -1を最小値とする
+        editFinished = true;
       }
     }
 
@@ -1155,8 +1182,8 @@ void GamePlayScene::Update() {
     }
 
     ImGui::Spacing();
-    ImGui::TextDisabled("World Pos: (%.1f, %.1f, %.1f)", worldPos.x,
-                        worldPos.y, worldPos.z);
+    ImGui::TextDisabled("World Pos: (%.1f, %.1f, %.1f)", worldPos.x, worldPos.y,
+                        worldPos.z);
 
     // MoveType はプレハブ側の設定に移動したため、ここには表示しない
 
@@ -1546,11 +1573,11 @@ void GamePlayScene::DrawEditorUI() {
       Vector3 rawCamPos = railCamera_->CalcPosition(ev.spawnTime);
       Vector3 tangent = railCamera_->CalcTangent(ev.spawnTime);
       Vector3 worldUp = {0.0f, 1.0f, 0.0f};
-      
+
       Vector3 forward = tangent;
       Vector3 right = SafeNormalize(Cross(worldUp, forward));
       Vector3 up = SafeNormalize(Cross(forward, right));
-      
+
       Vector3 camPos = rawCamPos;
       camPos.y += 2.5f;
 
@@ -1644,7 +1671,6 @@ void GamePlayScene::Draw3D() {
   if (isPreviewHovering_ && previewObject_) {
     previewObject_->Draw();
   }
-
 
   if (player_) {
     player_->Draw3D();
@@ -1747,8 +1773,10 @@ void GamePlayScene::Draw3D() {
 
   // リボントレイル（弾やミサイルの光の軌跡）の一括描画
   if (activeCamera) {
-    auto srvHandle = TextureManager::GetInstance()->GetSrvHandleGPU("resources/gradationLine.png");
-    TrailRenderer::GetInstance()->Render(activeCamera->GetViewProjectionMatrix(), srvHandle);
+    auto srvHandle = TextureManager::GetInstance()->GetSrvHandleGPU(
+        "resources/gradationLine.png");
+    TrailRenderer::GetInstance()->Render(
+        activeCamera->GetViewProjectionMatrix(), srvHandle);
   }
 
   engine_->End3D();

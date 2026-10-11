@@ -1,14 +1,17 @@
 #include "Actor/Enemy.h"
-#include "Audio/SoundManager.h"
 #include "Actor/Player.h"
+#include "Audio/SoundManager.h"
 #include "Behavior/IEnemyBehavior.h"
 #include "Camera/ICamera.h"
 #include "Camera/RailCamera.h"
 #include "Collision/CollisionManager.h"
 #include "Collision/SphereCollider.h"
+#include "Core/GameTime.h"
 #include "Debug/Logger.h"
 #include "Effect/EffectManager.h"
 #include "Effect/EnemyDebris.h"
+#include "Effect/FractureCache.h"
+#include "Effect/FractureDebris.h"
 #include "Framework/ActorManager.h"
 #include "Framework/PrefabManager.h"
 #include "Math/MathUtil.h"
@@ -102,9 +105,11 @@ void Enemy::Update() {
   // モデルの更新
   UpdateTransform();
 
-  // 連続衝突判定用に速度を計算してコライダーに渡す
+  // 直前の1フレームで動いた量を求める
+  // コライダーと、撃破時に破片へ勢いを引き継ぐのに使う
+  frameMovement_ = CalculateVelocityForCollision();
   if (collider_) {
-    collider_->SetVelocity(CalculateVelocityForCollision());
+    collider_->SetVelocity(frameMovement_);
   }
 }
 
@@ -170,9 +175,23 @@ void Enemy::TakeDamage(int damage, bool isSelfDestruct) {
       // 敵のカラーとサイズを引き継いだ破片（デブリ）を発生させて四方に弾け飛ばす
       auto renderer = PrefabManager::GetInstance()->GetObject3dRenderer();
       if (renderer) {
-        auto debris = std::make_unique<EnemyDebris>(
-            renderer, transform_.translate, transform_.scale, baseColor_);
-        ActorManager::GetInstance()->AddActor(std::move(debris));
+        // 自分のモデルの形セットを探す
+        const FracturePieceSet *pieceSet =
+            FractureCache::GetInstance()->Find(GetModel()->GetModel());
+
+        if (pieceSet) {
+          // 割った形セットがあれば、ボロノイの破片を飛ばす
+          auto debris = std::make_unique<FractureDebris>(
+              renderer, *pieceSet, transform_.translate, transform_.scale,
+              baseColor_, frameMovement_ * (1.0f / kFixedDeltaTime),
+              FractureCache::GetInstance()->GetDebrisParams());
+          ActorManager::GetInstance()->AddActor(std::move(debris));
+        } else {
+          // なければ旧演出の箱破片にフォールバック
+          auto debris = std::make_unique<EnemyDebris>(
+              renderer, transform_.translate, transform_.scale, baseColor_);
+          ActorManager::GetInstance()->AddActor(std::move(debris));
+        }
       }
     }
 
@@ -189,8 +208,9 @@ bool Enemy::IsInScreen(float margin) const {
   if (!camera_) {
     return false;
   }
-  Vector2 screenPos = WorldToScreen(
-      transform_.translate, camera_->GetViewProjectionMatrix(), 1280.0f, 720.0f);
+  Vector2 screenPos =
+      WorldToScreen(transform_.translate, camera_->GetViewProjectionMatrix(),
+                    1280.0f, 720.0f);
   // カメラの後方にいる場合（透視投影除算のw <= 0）は画面外
   if (screenPos.x < -5000.0f || screenPos.y < -5000.0f) {
     return false;
