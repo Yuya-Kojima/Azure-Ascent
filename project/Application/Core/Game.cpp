@@ -1,4 +1,5 @@
 #include "Core/Game.h"
+#include "Audio/SoundManager.h"
 #include "Debug/Logger.h"
 #include <filesystem>
 #include "Math/Vector2.h"
@@ -31,6 +32,17 @@ void Game::Initialize() {
 
   // 基底クラスの初期化処理
   EngineBase::Initialize();
+
+  // 重い BGM は起動時に先読みして常駐させる。
+  // mp3 を丸ごと PCM に変換するため 1 秒ほどかかり、
+  // シーン切り替え（遷移の途中）で読むと画面が止まってしまうため。
+  // 各シーンの Load は読み込み済みならすぐ戻るので、そのまま残してよい
+  SoundManager::GetInstance()->Load("stage_bgm",
+                                    "resources/Sounds/stage_bgm.mp3");
+  SoundManager::GetInstance()->Load("boss_bgm",
+                                    "resources/Sounds/boss_bgm.mp3");
+  SoundManager::GetInstance()->Load("victory_jingle",
+                                    "resources/Sounds/victory_jingle.mp3");
 
   SceneManager::GetInstance()->Initialize(this);
 

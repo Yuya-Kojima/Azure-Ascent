@@ -37,8 +37,12 @@ class Sprite {
     float amplitude;
     float frequency;
     float speed;
-    float padding1;
-    float padding2;
+    float blurWidth;    // 波エフェクトの横方向ブラー幅
+    float boundaryAmp;  // 波エフェクトの境界線の波打ち幅
+    float progress;     // ディゾルブの進行度（しきい値）0〜1
+    float edgeWidth;    // ディゾルブの縁を光らせる幅（しきい値と比べる値の範囲）
+    float dissolveFlip; // ディゾルブの縦方向を反転するか（0 = しない、1 = する）
+    float glowStrength; // ディゾルブの縁の光の強さ 0〜1
   };
 
 public:
@@ -67,6 +71,12 @@ public:
   /// UIEffectのパラメータを設定する
   /// </summary>
   void SetUIEffectParams(float time, int effectType, float splitY = 0.5f, float amplitude = 0.05f, float frequency = 20.0f, float speed = 5.0f);
+
+  /// <summary>
+  /// ディゾルブ（ノイズ＋しきい値）エフェクトのパラメータを設定する
+  /// </summary>
+  void SetDissolveParams(float progress, float edgeWidth, bool flip = false,
+                         float glowStrength = 1.0f);
 
 private:
   SpriteRenderer *spriteRenderer_ = nullptr;

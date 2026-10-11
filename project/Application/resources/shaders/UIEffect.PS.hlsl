@@ -12,13 +12,17 @@ ConstantBuffer<Material> gMaterial : register(b0);
 // 新しく追加するUIエフェクト用の定数バッファ
 struct UIEffectParams {
 	float time; // 経過時間
-	int effectType; // 0: Normal, 1: Wave (波打ち)
+	int effectType; // 0: Normal, 1: Wave (波打ち), 2: CloudDissolve (雲の画面遷移)
 	float splitY; // エフェクトの基準Y座標
 	float amplitude; // 揺れ幅
 	float frequency; // 波の細かさ
 	float speed; // 波のスピード
-	float blurWidth; // (padding1) 横方向のブラー幅
-	float boundaryAmp; // (padding2) 境界線の波打ち幅
+	float blurWidth; // 横方向のブラー幅
+	float boundaryAmp; // 境界線の波打ち幅
+	float progress; // ディゾルブの進行度（しきい値）0〜1
+	float edgeWidth; // ディゾルブの縁を光らせる幅
+	float dissolveFlip; // ディゾルブの縦方向を反転するか（0 or 1）
+	float glowStrength; // ディゾルブの縁の光の強さ 0〜1
 };
 ConstantBuffer<UIEffectParams> gUIEffect : register(b1);
 
@@ -104,6 +108,79 @@ PixelShaderOutput main(VertexShaderOutput input) {
 
 		PixelShaderOutput output;
 		output.color = saturate(finalColor);
+		return output;
+	}
+
+	if (gUIEffect.effectType == 2) {
+		// --- 雲ディゾルブ（画面遷移） ---
+		// 雲は大きさと流れる速さの違う 2 層を重ねる。
+		// 手前ほど大きく速く流れる（視差）ことで、雲の中を上昇している奥行きを出す
+		// 画面の縦横比（1280x720）。ノイズが横に引き伸ばされないよう x を広げて読む
+		const float kScreenAspect = 16.0f / 9.0f;
+		float2 baseUV = uv * float2(kScreenAspect, 1.0f);
+		// 雲の大きさ（ノイズを何倍に拡大して読むか。小さいほど大きな雲）
+		const float kNearCloudScale = 0.45f;
+		const float kFarCloudScale = 0.9f;
+		// 1秒あたりに流れる量（テクスチャ比）。サンプル位置を上へずらすと模様は下へ動いて見える
+		const float kNearScrollSpeed = 0.22f;
+		const float kFarScrollSpeed = 0.08f;
+		float2 nearUV = baseUV * kNearCloudScale;
+		nearUV.y -= gUIEffect.time * kNearScrollSpeed;
+		// 奥の層は x もずらして、手前と模様が重ならないようにする
+		float2 farUV = baseUV * kFarCloudScale + float2(0.37f, 0.0f);
+		farUV.y -= gUIEffect.time * kFarScrollSpeed;
+
+		// テクスチャはグレースケールのノイズ。r だけ使えば十分
+		float nearNoise = gTexture.Sample(gSampler, nearUV).r;
+		float farNoise = gTexture.Sample(gSampler, farUV).r;
+		// 手前の層を主役にして混ぜる
+		const float kNearLayerWeight = 0.6f;
+		float noise = lerp(farNoise, nearNoise, kNearLayerWeight);
+		// noise0.png の値は 0.36〜0.64 に 9 割が入る（実測）。2 層を混ぜると平均化で
+		// 幅がさらに約 0.7 倍に縮むので、中央 0.5 の前後 0.145 を 0〜1 に引き伸ばす
+		const float kNoiseMin = 0.355f;
+		const float kNoiseRange = 0.29f;
+		noise = saturate((noise - kNoiseMin) / kNoiseRange);
+
+		float p = gUIEffect.progress;
+		float edge = gUIEffect.edgeWidth;
+
+		// 縦位置：画面の上ほど 0。晴れるときは反転して、上から晴れるようにする
+		float height = lerp(uv.y, 1.0f - uv.y, gUIEffect.dissolveFlip);
+		// しきい値と比べる値。ノイズに縦位置を混ぜて、上から順に覆われるようにする
+		const float kVerticalWeight = 0.75f; // 0 でまだら、1 でまっすぐなカーテン
+		float v = lerp(noise, height, kVerticalWeight);
+
+		// 覆うかどうか：v <= p で不透明。境目は kCloudSoftness の幅でなめらかに透ける
+		const float kCloudSoftness = 0.03f;
+		float cover = 1.0f - smoothstep(p, p + kCloudSoftness, v);
+
+		// 縁の光：雲の内側の輪郭（p - edge 〜 p）を明るくする（日に照らされた雲の縁）。
+		// 透明な側に半透明の白を描くと、背景と混ざって灰色にくすむため内側に描く
+		float rim = smoothstep(p - edge, p, v) * cover;
+		// 完全に覆った状態（p = 1）では縁を出さない。そこに近づくほど弱める
+		rim *= saturate((1.0f - p) / edge);
+		rim *= gUIEffect.glowStrength;
+
+		// 色は画面で見える値（sRGB）で書き、出力先が sRGB なので線形に直して使う
+		const float kGamma = 2.2f;
+		// 縁の光の色：日差しを受けた温かい白
+		const float3 kGlowColorSRGB = float3(1.0f, 0.97f, 0.88f);
+		// 雲本体の明るさ。縁がいちばん明るく見えるよう、少し落としておく
+		const float kCloudBodyBrightness = 0.9f;
+		// 影の色：青空を映した青灰色
+		const float3 kCloudShadowColorSRGB = float3(0.74f, 0.80f, 0.91f);
+
+		// ノイズの濃淡を雲の陰影に使う（暗い所は影、明るい所は白）
+		float3 cloudColorSRGB = lerp(kCloudShadowColorSRGB,
+			gMaterial.color.rgb * kCloudBodyBrightness, noise);
+		// 縁は光の色へ寄せる
+		float3 colorSRGB = lerp(cloudColorSRGB, kGlowColorSRGB, rim);
+		float3 color = pow(colorSRGB, kGamma);
+		float alpha = cover;
+
+		PixelShaderOutput output;
+		output.color = float4(color, alpha);
 		return output;
 	}
 

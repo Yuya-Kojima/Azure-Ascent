@@ -74,14 +74,23 @@ void StageSelectScene::Update() {
       SoundManager::GetInstance()->PlaySE("ui_decide");
       std::string selectedName = UIManager::GetInstance()->GetFocusedNodeName();
 
+      // ステージへ出撃するときの遷移：雲を突き抜けて雲の上へ出る演出
+      // 雲の量の増え方はノイズの分布で緩急が付くので、イージングは Linear にする
+      const float kCloudTransitionSec = 1.0f;
+      const Vector4 kCloudColor = {1.0f, 1.0f, 1.0f, 1.0f};
+
       if (selectedName == "Stage1Text") {
         GameManager::GetInstance()->SetCurrentLevel("level_editor.json");
-        SceneManager::GetInstance()->SetNextTransitionFade(0.5f);
+        SceneManager::GetInstance()->SetNextTransitionFade(
+            kCloudTransitionSec, Fade::FadeType::Cloud, kCloudColor,
+            Fade::EasingType::Linear);
         SceneManager::GetInstance()->ChangeScene("GAMEPLAY");
       } else if (selectedName == "Stage2Text") {
         GameManager::GetInstance()->SetCurrentLevel(
             "level_editor.json"); // とりあえず同じ
-        SceneManager::GetInstance()->SetNextTransitionFade(0.5f);
+        SceneManager::GetInstance()->SetNextTransitionFade(
+            kCloudTransitionSec, Fade::FadeType::Cloud, kCloudColor,
+            Fade::EasingType::Linear);
         SceneManager::GetInstance()->ChangeScene("GAMEPLAY");
       } else if (selectedName == "BackText") {
         SceneManager::GetInstance()->SetNextTransitionFade(0.5f);
