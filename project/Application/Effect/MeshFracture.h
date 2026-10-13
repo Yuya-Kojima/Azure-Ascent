@@ -65,9 +65,32 @@ Vector3 CenterMesh(Model::ModelData &mesh);
 void ComputeBounds(const Model::ModelData &mesh, Vector3 &outMin,
                    Vector3 &outMax);
 
+// 種の偏らせ方
+// 種が密集した所は細かい破片、まばらな所は大きな破片になる
+// 箱の表面の1点を「衝撃点」とし、そこへ種を寄せて
+// 「撃たれた所が粉々、離れるほど大きな塊」にする
+struct SeedBias {
+  // false なら偏らせず、箱全体に均等に置く
+  bool enabled = false;
+  // 種が衝撃点の近くに置かれる確率（0〜1）
+  // 残りは箱全体に均等に置き、大きな塊を担当する
+  float ratio = 0.5f;
+  // 衝撃点からの範囲（箱の対角線の長さに対する割合）
+  float radius = 0.4f;
+  // 集中度。距離を「範囲 x 乱数^集中度」で決めるので、
+  // 大きいほど衝撃点に吸い寄せられる
+  float falloff = 2.0f;
+  // 種同士の最小の間隔（箱の対角線の長さに対する割合）
+  // 種が近すぎると、その間に目に見えないほど薄い破片ができるのを防ぐ
+  float minSpacing = 0.05f;
+};
+
 // 箱 [min, max] の中にランダムに種を count 個置く
 // randomSeed が同じなら毎回同じ配置になる（見た目の再現・デバッグのため）
+// outImpactPoint を渡すと、偏らせたときの衝撃点を受け取れる（確認表示用）
 std::vector<Vector3> GenerateSeeds(const Vector3 &min, const Vector3 &max,
-                                   uint32_t count, uint32_t randomSeed);
+                                   uint32_t count, uint32_t randomSeed,
+                                   const SeedBias &bias = {},
+                                   Vector3 *outImpactPoint = nullptr);
 
 } // namespace MeshFracture

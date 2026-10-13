@@ -90,6 +90,62 @@ void BuildCap(std::vector<Vector3> points, const Plane &plane,
   }
 }
 
+// 長さ 1 のランダムな向き（どの向きも同じ確率）
+// 立方体 [-1,1]^3 の点をそのまま正規化すると角の方向に偏るので、
+// 球の内側に入った点だけを採用してから正規化する（棄却法）
+Vector3 RandomDirection(std::mt19937 &engine) {
+  // 0 に近い点は正規化で誤差が大きくなるので捨てる
+  const float kMinLengthSq = 1e-6f;
+  std::uniform_real_distribution<float> dist(-1.0f, 1.0f);
+  while (true) {
+    const Vector3 v = {dist(engine), dist(engine), dist(engine)};
+    const float lengthSq = LengthSq(v);
+    if (kMinLengthSq < lengthSq && lengthSq <= 1.0f) {
+      return v * (1.0f / std::sqrt(lengthSq));
+    }
+  }
+}
+
+// 箱の表面のランダムな1点（衝撃点）
+// 面は面積に比例した確率で選ぶ（細長い箱でも、表面のどこも同じ確率になる）
+Vector3 RandomPointOnBoxSurface(const Vector3 &min, const Vector3 &max,
+                                std::mt19937 &engine) {
+  const Vector3 size = max - min;
+  // 軸ごとの「その軸に垂直な面」の面積（例: X 軸に垂直な面は Y x Z）
+  const float areas[3] = {size.y * size.z, size.x * size.z,
+                          size.x * size.y};
+  if (areas[0] + areas[1] + areas[2] <= 0.0f) {
+    // 潰れた箱は表面を選べないので中心にする
+    return (min + max) * 0.5f;
+  }
+
+  // まず箱の中の点を選び、選んだ軸だけ min か max の面に貼り付ける
+  std::uniform_real_distribution<float> dist01(0.0f, 1.0f);
+  Vector3 point = {min.x + size.x * dist01(engine),
+                   min.y + size.y * dist01(engine),
+                   min.z + size.z * dist01(engine)};
+  std::discrete_distribution<int> pickAxis({areas[0], areas[1], areas[2]});
+  const int axis = pickAxis(engine);
+  const bool onMaxSide = dist01(engine) < 0.5f;
+  float *components[3] = {&point.x, &point.y, &point.z};
+  const float faceValue[2][3] = {{min.x, min.y, min.z}, {max.x, max.y, max.z}};
+  *components[axis] = faceValue[onMaxSide ? 1 : 0][axis];
+  return point;
+}
+
+// 箱からはみ出た値を、面で鏡のように折り返して中に戻す
+// 単に面へ押し付けると種が面上に重なって薄い破片が増えるが、
+// 折り返しなら密集の形を保てる
+float ReflectIntoRange(float value, float min, float max) {
+  if (value < min) {
+    value = min + (min - value);
+  } else if (value > max) {
+    value = max - (value - max);
+  }
+  // 範囲より大きくはみ出した場合は、折り返しても外なので端に寄せる
+  return std::clamp(value, min, max);
+}
+
 } // namespace
 
 Plane MakePlane(const Vector3 &normal, const Vector3 &point) {
@@ -331,7 +387,9 @@ void ComputeBounds(const Model::ModelData &mesh, Vector3 &outMin,
 }
 
 std::vector<Vector3> GenerateSeeds(const Vector3 &min, const Vector3 &max,
-                                   uint32_t count, uint32_t randomSeed) {
+                                   uint32_t count, uint32_t randomSeed,
+                                   const SeedBias &bias,
+                                   Vector3 *outImpactPoint) {
   // std::mt19937 は同じシードなら同じ乱数列を返す（rand()
   // と違い、環境で結果が変わらない）
   std::mt19937 engine(randomSeed);
@@ -341,8 +399,66 @@ std::vector<Vector3> GenerateSeeds(const Vector3 &min, const Vector3 &max,
 
   std::vector<Vector3> seeds;
   seeds.reserve(count);
+
+  if (!bias.enabled) {
+    for (uint32_t i = 0; i < count; ++i) {
+      seeds.push_back({distX(engine), distY(engine), distZ(engine)});
+    }
+    return seeds;
+  }
+
+  const Vector3 impactPoint = RandomPointOnBoxSurface(min, max, engine);
+  if (outImpactPoint) {
+    *outImpactPoint = impactPoint;
+  }
+  const float diagonal = Length(max - min);
+  const float radius = bias.radius * diagonal;
+  const float minSpacingSq =
+      (bias.minSpacing * diagonal) * (bias.minSpacing * diagonal);
+
+  // 0 以下だと乱数 0 のとき 0 の負の乗で無限大になるので、下限を設ける
+  const float kMinFalloff = 0.01f;
+  const float falloff = (std::max)(bias.falloff, kMinFalloff);
+
+  // 近すぎる種を引き直す回数の上限
+  // （狭い範囲に種を詰め込みすぎた場合に、無限ループしないため）
+  const int kMaxAttempts = 16;
+
+  std::uniform_real_distribution<float> dist01(0.0f, 1.0f);
   for (uint32_t i = 0; i < count; ++i) {
-    seeds.push_back({distX(engine), distY(engine), distZ(engine)});
+    // くじ: 当たりなら衝撃点の近く、
+    // はずれなら箱全体に均等に置く（大きな塊になる）
+    const bool nearImpact = dist01(engine) < bias.ratio;
+
+    Vector3 seed;
+    for (int attempt = 0; attempt < kMaxAttempts; ++attempt) {
+      if (nearImpact) {
+        // 乱数 u (0〜1) を falloff 乗すると 0 側に寄る
+        // （u=0.5 なら 2乗で 0.25, 3乗で 0.125）
+        // そのため衝撃点ほど種が密集し、離れるほどまばらになる
+        // ＝破片が近くは細かく、遠くは大きくなる
+        const float distance = radius * std::pow(dist01(engine), falloff);
+        const Vector3 p = impactPoint + RandomDirection(engine) * distance;
+
+        // 衝撃点は表面にあるので、半分ほどは箱の外に出る。折り返して中に戻す
+        seed = {ReflectIntoRange(p.x, min.x, max.x),
+                ReflectIntoRange(p.y, min.y, max.y),
+                ReflectIntoRange(p.z, min.z, max.z)};
+      } else {
+        seed = {distX(engine), distY(engine), distZ(engine)};
+      }
+
+      // 既にある種と十分離れていれば採用する
+      // （上限まで引き直したら、近くてもそのまま使う）
+      const bool isFarEnough = std::all_of(
+          seeds.begin(), seeds.end(), [&](const Vector3 &other) {
+            return LengthSq(seed - other) >= minSpacingSq;
+          });
+      if (isFarEnough) {
+        break;
+      }
+    }
+    seeds.push_back(seed);
   }
   return seeds;
 }

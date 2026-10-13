@@ -22,6 +22,22 @@ const int kMaxSeedCount = 32;
 
 // 種を置く乱数のシード（同じモデルは毎回同じ割れ方になる）
 const uint32_t kRandomSeed = 1;
+
+// 種の偏らせ方の初期値（ゲームでは偏らせるのを標準にする）
+const MeshFracture::SeedBias kDefaultSeedBias = {
+    .enabled = true,
+    .ratio = 0.5f,
+    .radius = 0.4f,
+    .falloff = 2.0f,
+    .minSpacing = 0.05f};
+
+// 種の偏らせ方のスライダーの範囲
+// 集中度 1/3 が球の中に均等（3次元では半径 r の殻の広さが r^2 に比例するため）
+const float kMinSeedBiasRadius = 0.05f;
+const float kMaxSeedBiasRadius = 1.0f;
+const float kMinSeedBiasFalloff = 1.0f / 3.0f;
+const float kMaxSeedBiasFalloff = 4.0f;
+const float kMaxSeedBiasMinSpacing = 0.2f;
 } // namespace
 
 FractureCache *FractureCache::GetInstance() {
@@ -31,6 +47,7 @@ FractureCache *FractureCache::GetInstance() {
 
 FractureCache::FractureCache() {
   seedCount_ = kDefaultSeedCount;
+  seedBias_ = kDefaultSeedBias;
   LoadConfig();
 }
 
@@ -43,7 +60,7 @@ void FractureCache::Prebuild(const Model *model) {
 
   auto pieceSet = std::make_unique<FracturePieceSet>();
   pieceSet->Create(model->GetModelData(), static_cast<uint32_t>(seedCount_),
-                   kRandomSeed);
+                   kRandomSeed, seedBias_);
   sets_.emplace(model, std::move(pieceSet));
 }
 
@@ -71,7 +88,17 @@ void FractureCache::DrawEditorUI() {
   isConfigDirty_ |= ImGui::DragFloat("空気抵抗", &p.drag, 0.05f, 0.0f, 30.0f);
 
   isConfigDirty_ |= ImGui::SliderInt("種の数", &seedCount_, kMinSeedCount, kMaxSeedCount);
-  ImGui::TextDisabled("種の数は保存して再起動すると反映されます");
+  isConfigDirty_ |= ImGui::Checkbox("種を衝撃点に偏らせる", &seedBias_.enabled);
+  if (seedBias_.enabled) {
+    isConfigDirty_ |= ImGui::SliderFloat("衝撃点に寄せる割合", &seedBias_.ratio, 0.0f, 1.0f);
+    isConfigDirty_ |= ImGui::SliderFloat("衝撃点からの範囲", &seedBias_.radius,
+                                         kMinSeedBiasRadius, kMaxSeedBiasRadius);
+    isConfigDirty_ |= ImGui::SliderFloat("集中度", &seedBias_.falloff,
+                                         kMinSeedBiasFalloff, kMaxSeedBiasFalloff);
+    isConfigDirty_ |= ImGui::SliderFloat("種同士の最小の間隔", &seedBias_.minSpacing,
+                                         0.0f, kMaxSeedBiasMinSpacing);
+  }
+  ImGui::TextDisabled("種の数・偏りは保存して再起動すると反映されます");
 
   const char *saveLabel = isConfigDirty_ ? "[* 未保存] Save Fracture Config"
                                          : "Save Fracture Config";
@@ -106,6 +133,14 @@ void FractureCache::LoadConfig() {
       if (root.contains("seedCount")) {
         seedCount_ = root["seedCount"];
       }
+      if (root.contains("seedBias")) {
+        const nlohmann::json &bias = root["seedBias"];
+        seedBias_.enabled = bias.value("enabled", seedBias_.enabled);
+        seedBias_.ratio = bias.value("ratio", seedBias_.ratio);
+        seedBias_.radius = bias.value("radius", seedBias_.radius);
+        seedBias_.falloff = bias.value("falloff", seedBias_.falloff);
+        seedBias_.minSpacing = bias.value("minSpacing", seedBias_.minSpacing);
+      }
     } catch (...) {
       // 読めなかった項目は初期値のまま使う
     }
@@ -122,6 +157,11 @@ void FractureCache::SaveConfig() {
   root["lifetime"] = p.lifetime;
   root["drag"] = p.drag;
   root["seedCount"] = seedCount_;
+  root["seedBias"] = {{"enabled", seedBias_.enabled},
+                      {"ratio", seedBias_.ratio},
+                      {"radius", seedBias_.radius},
+                      {"falloff", seedBias_.falloff},
+                      {"minSpacing", seedBias_.minSpacing}};
 
   if (!std::filesystem::exists(kConfigDirectory)) {
     std::filesystem::create_directories(kConfigDirectory);

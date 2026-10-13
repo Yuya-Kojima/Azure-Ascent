@@ -135,6 +135,13 @@ private: // メンバ変数
   // ボロノイの種を置く乱数のシード（同じ値なら同じ割れ方になる）
   int randomSeed_ = 0;
 
+  // ボロノイの種の偏らせ方（オン/オフで破片の大小の差を比べる）
+  MeshFracture::SeedBias seedBias_;
+
+  // 偏らせたときの衝撃点（元メッシュの座標）と、その位置に置く目印
+  Vector3 impactPoint_ = {0.0f, 0.0f, 0.0f};
+  std::unique_ptr<Object3d> impactMarker_ = nullptr;
+
   // 破片を切り口から離す距離（切り口を見やすくするため）
   float separation_ = 0.0f;
 

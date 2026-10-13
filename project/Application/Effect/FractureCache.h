@@ -1,5 +1,6 @@
 #pragma once
 #include "Effect/FractureDebris.h" // 調整値 FractureDebris::Params（入れ子の型）をメンバに持つため
+#include "Effect/MeshFracture.h" // 調整値 MeshFracture::SeedBias をメンバに持つため
 #include <cstdint>
 #include <memory>
 #include <unordered_map>
@@ -73,6 +74,9 @@ private: // メンバ変数
   // 種の数（≒ 1体あたりの破片の数）
   // 形セットを作るときにだけ使うので、変えても反映されるのは次の起動から
   int seedCount_ = 0;
+
+  // 種の偏らせ方（破片の大小の差）。種の数と同じく、反映されるのは次の起動から
+  MeshFracture::SeedBias seedBias_;
 
   // 調整値を変えたが、まだ保存していないか
   bool isConfigDirty_ = false;

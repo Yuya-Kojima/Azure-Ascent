@@ -7,6 +7,7 @@
 #include "Model/ModelManager.h"
 #include "Object3d/Object3d.h"
 #include "Renderer/Object3dRenderer.h"
+#include <algorithm>
 #include <cmath>
 
 #ifdef USE_IMGUI
@@ -44,6 +45,20 @@ const int kMaxSeedCount = 32;
 
 // ボロノイの種を置く乱数のシードの初期値
 const int kDefaultRandomSeed = 1;
+
+// 種の偏らせ方のスライダーの範囲
+// 集中度 1/3 が球の中に均等（3次元では半径 r の殻の広さが r^2 に比例するため）
+const float kMinSeedBiasRadius = 0.05f;
+const float kMaxSeedBiasRadius = 1.0f;
+const float kMinSeedBiasFalloff = 1.0f / 3.0f;
+const float kMaxSeedBiasFalloff = 4.0f;
+const float kMaxSeedBiasMinSpacing = 0.2f;
+
+// 平均に対してこれより小さい破片は、画面ではほぼ見えないとみなす
+const float kTinyPieceRatio = 0.01f;
+
+// 衝撃点の目印の大きさ（元メッシュの一辺 1 に対して小さく）
+const float kImpactMarkerScale = 0.05f;
 
 // 体積の誤差の許容値（float の丸め誤差程度なら一致とみなす）
 const float kVolumeTolerance = 1e-4f;
@@ -95,6 +110,13 @@ void FractureTestScene::Initialize(EngineBase *engine) {
   sourceObject_->SetModel(sourceModel_.get());
   sourceVolume_ = MeshFracture::ComputeVolume(sourceData);
 
+  // 衝撃点の目印（元メッシュを小さくして使う）
+  impactMarker_ = std::make_unique<Object3d>();
+  impactMarker_->Initialize(engine_->GetObject3dRenderer());
+  impactMarker_->SetModel(sourceModel_.get());
+  impactMarker_->SetScale(
+      {kImpactMarkerScale, kImpactMarkerScale, kImpactMarkerScale});
+
   // 破片
   planeNormal_ = kDefaultPlaneNormal;
   separation_ = kDefaultSeparation;
@@ -135,6 +157,8 @@ void FractureTestScene::Update() {
   }
 
   sourceObject_->Update();
+  impactMarker_->SetTranslation(impactPoint_);
+  impactMarker_->Update();
 }
 
 void FractureTestScene::RebuildFragments() {
@@ -159,7 +183,7 @@ void FractureTestScene::RebuildFragments() {
 
   // 爆発用の形セット（平面モードでも、今のボロノイの設定で作る）
   pieceSet_->Create(source, static_cast<uint32_t>(seedCount_),
-                    static_cast<uint32_t>(randomSeed_));
+                    static_cast<uint32_t>(randomSeed_), seedBias_);
 }
 
 void FractureTestScene::BuildPlaneFragments(const Model::ModelData &source) {
@@ -184,7 +208,7 @@ void FractureTestScene::BuildVoronoiFragments(const Model::ModelData &source) {
   MeshFracture::ComputeBounds(source, sourceMin, sourceMax);
   const std::vector<Vector3> seeds = MeshFracture::GenerateSeeds(
       sourceMin, sourceMax, static_cast<uint32_t>(seedCount_),
-      static_cast<uint32_t>(randomSeed_));
+      static_cast<uint32_t>(randomSeed_), seedBias_, &impactPoint_);
 
   // 破片は「元メッシュの重心 → 破片の重心」の向きに離す（爆発したように見える）
   const Vector3 sourceCenter = MeshFracture::ComputeCentroid(source);
@@ -258,6 +282,20 @@ bool FractureTestScene::DrawDebugUI() {
     needsRebuild |=
         ImGui::SliderInt("種の数", &seedCount_, kMinSeedCount, kMaxSeedCount);
     needsRebuild |= ImGui::InputInt("乱数シード", &randomSeed_);
+    needsRebuild |= ImGui::Checkbox("種を衝撃点に偏らせる", &seedBias_.enabled);
+    if (seedBias_.enabled) {
+      needsRebuild |=
+          ImGui::SliderFloat("衝撃点に寄せる割合", &seedBias_.ratio, 0.0f, 1.0f);
+      needsRebuild |= ImGui::SliderFloat("衝撃点からの範囲", &seedBias_.radius,
+                                         kMinSeedBiasRadius, kMaxSeedBiasRadius);
+      needsRebuild |= ImGui::SliderFloat("集中度", &seedBias_.falloff,
+                                         kMinSeedBiasFalloff, kMaxSeedBiasFalloff);
+      needsRebuild |=
+          ImGui::SliderFloat("種同士の最小の間隔", &seedBias_.minSpacing, 0.0f,
+                             kMaxSeedBiasMinSpacing);
+      ImGui::Text("衝撃点 : (%.2f, %.2f, %.2f)", impactPoint_.x, impactPoint_.y,
+                  impactPoint_.z);
+    }
   }
 
   ImGui::SeparatorText("表示");
@@ -305,6 +343,29 @@ bool FractureTestScene::DrawDebugUI() {
   } else {
     ImGui::TextColored({1.0f, 0.4f, 0.4f, 1.0f}, "誤差 %.6f  NG", error);
   }
+
+  // 破片の大小の差（偏らせる前後で比べる）
+  if (!fragments_.empty()) {
+    float minVolume = fragments_[0].volume;
+    float maxVolume = fragments_[0].volume;
+    for (const Fragment &fragment : fragments_) {
+      minVolume = (std::min)(minVolume, fragment.volume);
+      maxVolume = (std::max)(maxVolume, fragment.volume);
+    }
+    ImGui::Text("最大の破片 : %.6f", maxVolume);
+    ImGui::Text("最小の破片 : %.6f", minVolume);
+    if (minVolume > 0.0f) {
+      ImGui::Text("大小の差   : %.1f 倍", maxVolume / minVolume);
+    }
+    const float tinyVolume =
+        sourceVolume_ / static_cast<float>(fragments_.size()) * kTinyPieceRatio;
+    const auto tinyCount = std::count_if(
+        fragments_.begin(), fragments_.end(),
+        [&](const Fragment &f) { return f.volume < tinyVolume; });
+    ImGui::Text("小さすぎる破片（平均の1%%未満）: %d 個",
+                static_cast<int>(tinyCount));
+  }
+
   if (ImGui::TreeNode("破片ごとの体積")) {
     for (size_t i = 0; i < fragments_.size(); ++i) {
       ImGui::Text("[%2zu] %.6f", i, fragments_[i].volume);
@@ -326,6 +387,10 @@ void FractureTestScene::Draw3D() {
   // ここから下で3DオブジェクトのDrawを呼ぶ
   if (showSource_) {
     sourceObject_->Draw();
+  }
+  // 目印は止まった破片の確認用なので、爆発中は消す
+  if (mode_ == Mode::kVoronoi && seedBias_.enabled && !debris_) {
+    impactMarker_->Draw();
   }
   if (debris_) {
     // 爆発中は、止まった破片の代わりに爆発を描く
