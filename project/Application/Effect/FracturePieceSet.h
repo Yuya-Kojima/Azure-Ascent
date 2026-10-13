@@ -1,4 +1,5 @@
 #pragma once
+#include "Effect/MeshFracture.h" // 引数で MeshFracture::SeedBias を使うため
 #include "Math/Vector3.h"
 #include "Render/Model/Model.h" // 引数で Model::ModelData（入れ子の型）を使うため、前方宣言では足りない
 #include <cstdint>
@@ -31,8 +32,10 @@ public: // メンバ関数
   /// <param name="source">元のモデル（凸で閉じていること）</param>
   /// <param name="seedCount">種の数（≒ 破片の数）</param>
   /// <param name="randomSeed">種を置く乱数のシード（同じなら同じ割れ方）</param>
+  /// <param name="seedBias">種の偏らせ方（破片の大小の差の付け方）</param>
   void Create(const Model::ModelData &source, uint32_t seedCount,
-              uint32_t randomSeed);
+              uint32_t randomSeed,
+              const MeshFracture::SeedBias &seedBias = {});
 
   /// <summary>
   /// 破片の一覧（使う側は読むだけ）

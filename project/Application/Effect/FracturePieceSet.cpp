@@ -4,14 +4,15 @@
 #include "Model/ModelManager.h"
 
 void FracturePieceSet::Create(const Model::ModelData &source,
-                              uint32_t seedCount, uint32_t randomSeed) {
+                              uint32_t seedCount, uint32_t randomSeed,
+                              const MeshFracture::SeedBias &seedBias) {
   pieces_.clear();
 
   // 元のモデルを囲む箱の中に種をばらまき、ボロノイ分割する
   Vector3 sourceMin, sourceMax;
   MeshFracture::ComputeBounds(source, sourceMin, sourceMax);
-  const std::vector<Vector3> seeds =
-      MeshFracture::GenerateSeeds(sourceMin, sourceMax, seedCount, randomSeed);
+  const std::vector<Vector3> seeds = MeshFracture::GenerateSeeds(
+      sourceMin, sourceMax, seedCount, randomSeed, seedBias);
   std::vector<Model::ModelData> meshes =
       MeshFracture::VoronoiFracture(source, seeds);
 
