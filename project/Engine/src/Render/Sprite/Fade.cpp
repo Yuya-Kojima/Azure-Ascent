@@ -116,7 +116,7 @@ void Fade::Update(float deltaTime) {
   cloudSprite_->Update(uv);
 
   // 雲が見えている間は時間を進めて流し続ける（覆いきって待機している間も含む）
-  if (type_ == FadeType::Cloud && alpha_ > 0.0f) {
+  if (IsCloudType_() && alpha_ > 0.0f) {
     cloudTime_ += deltaTime;
     cloudSprite_->SetUIEffectParams(cloudTime_, kCloudEffectType_);
   }
@@ -153,7 +153,7 @@ void Fade::Draw() {
     return;
   }
 
-  if (type_ == FadeType::Cloud) {
+  if (IsCloudType_()) {
     // 雲は UIEffect のパイプラインで描き、後続の 2D 描画のために通常設定へ戻す
     spriteRenderer_->BeginUIEffect();
     cloudSprite_->DrawUIEffect();
@@ -248,9 +248,16 @@ void Fade::ApplyCloud_(float eased) {
   const float glowStrength =
       isClearing ? cloudGlowClearing_ : cloudGlowCovering_;
 
+  // 降下は覆う・晴れるの向きと雲の流れる向きを上下逆にする
+  const bool isDescend = (type_ == FadeType::CloudDescend);
+
   // 進行度をそのまましきい値として渡す
   cloudSprite_->SetDissolveParams(eased, cloudEdgeWidth_, isClearing,
-                                  glowStrength);
+                                  glowStrength, isDescend);
+}
+
+bool Fade::IsCloudType_() const {
+  return type_ == FadeType::Cloud || type_ == FadeType::CloudDescend;
 }
 
 void Fade::ApplyToSprite_() {
@@ -302,6 +309,7 @@ void Fade::ApplyByType_(float eased) {
     break;
 
   case FadeType::Cloud:
+  case FadeType::CloudDescend:
     ApplyCloud_(eased);
     break;
   }

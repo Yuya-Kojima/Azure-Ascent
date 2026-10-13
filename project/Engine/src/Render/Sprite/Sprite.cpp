@@ -192,12 +192,13 @@ void Sprite::SetUIEffectParams(float time, int effectType, float splitY, float a
 }
 
 void Sprite::SetDissolveParams(float progress, float edgeWidth, bool flip,
-                               float glowStrength) {
+                               float glowStrength, bool descend) {
   if (uiEffectParamsData_) {
     uiEffectParamsData_->progress = progress;
     uiEffectParamsData_->edgeWidth = edgeWidth;
     uiEffectParamsData_->dissolveFlip = flip ? 1.0f : 0.0f;
     uiEffectParamsData_->glowStrength = glowStrength;
+    uiEffectParamsData_->dissolveDescend = descend ? 1.0f : 0.0f;
   }
 }
 
@@ -314,6 +315,7 @@ void Sprite::CreateUIEffectParamsData() {
   uiEffectParamsData_->edgeWidth = 0.05f;
   uiEffectParamsData_->dissolveFlip = 0.0f;
   uiEffectParamsData_->glowStrength = 1.0f;
+  uiEffectParamsData_->dissolveDescend = 0.0f;
 }
 
 void Sprite::ChangeTexture(const std::string &textureFilePath) {

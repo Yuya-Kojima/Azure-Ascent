@@ -23,6 +23,7 @@ struct UIEffectParams {
 	float edgeWidth; // ディゾルブの縁の光を、覆いきる直前に消していく進行度の幅
 	float dissolveFlip; // ディゾルブの縦方向を反転するか（0 or 1）
 	float glowStrength; // ディゾルブの縁の光の強さ 0〜1
+	float dissolveDescend; // ディゾルブの縦の動きを上下逆にするか（0 = 上から, 1 = 下から）
 };
 ConstantBuffer<UIEffectParams> gUIEffect : register(b1);
 
@@ -263,13 +264,17 @@ PixelShaderOutput main(VertexShaderOutput input) {
 		// --- 雲ディゾルブ（画面遷移） ---
 		// 雲は「奥の霧」と「手前のかたまり」の 2 層を別々に描いて重ねる。
 		// 覆う範囲（前線）は 2 層を混ぜた濃さで決め、しきい値を超えた量を密度にして縁を薄く透けさせる
+		// 上昇中は雲が下へ流れ、降下中は上へ流れる
+		float scrollTime = gUIEffect.time * (1.0f - 2.0f * gUIEffect.dissolveDescend);
 		const float kLightOffset = 0.025f; // 光の方向へずらす量（画面の高さ比）
-		float4 raw = CloudRawNoise(uv, gUIEffect.time);
-		float4 rawTowardLight = CloudRawNoise(uv - float2(0.0f, kLightOffset), gUIEffect.time);
+		float4 raw = CloudRawNoise(uv, scrollTime);
+		float4 rawTowardLight = CloudRawNoise(uv - float2(0.0f, kLightOffset), scrollTime);
 		float p = gUIEffect.progress;
 
-		// 縦位置：画面の上ほど 0。晴れるときは反転して、上から晴れるようにする
-		float height = lerp(uv.y, 1.0f - uv.y, gUIEffect.dissolveFlip);
+		// 縦位置：0 の所から先に覆われ、晴れるときは 0 の所が最後まで残る。
+		// 上昇は上から覆って上から晴れ、降下は下から覆って下から晴れるよう、0 になる側を切り替える
+		float invertHeight = abs(gUIEffect.dissolveFlip - gUIEffect.dissolveDescend);
+		float height = lerp(uv.y, 1.0f - uv.y, invertHeight);
 		// しきい値と比べる値。ノイズに縦位置を混ぜて、上から順に覆われるようにする。
 		// v が小さいほど先に覆われる。ふくらみの中心（noise が高い）から先に覆い、
 		// 最後まで残るようにするため 1 - noise を使う

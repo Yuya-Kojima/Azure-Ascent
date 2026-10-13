@@ -43,6 +43,8 @@ class Sprite {
     float edgeWidth;    // ディゾルブの縁の光を、覆いきる直前に消していく進行度の幅
     float dissolveFlip; // ディゾルブの縦方向を反転するか（0 = しない、1 = する）
     float glowStrength; // ディゾルブの縁の光の強さ 0〜1
+    float dissolveDescend; // ディゾルブの縦の動きを上下逆にするか（0 = 上から, 1 = 下から）
+    float padding[3];      // 定数バッファは 16 バイト単位で読まれるので、サイズをそろえる
   };
 
 public:
@@ -76,7 +78,7 @@ public:
   /// ディゾルブ（ノイズ＋しきい値）エフェクトのパラメータを設定する
   /// </summary>
   void SetDissolveParams(float progress, float edgeWidth, bool flip = false,
-                         float glowStrength = 1.0f);
+                         float glowStrength = 1.0f, bool descend = false);
 
 private:
   SpriteRenderer *spriteRenderer_ = nullptr;
