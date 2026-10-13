@@ -15,6 +15,7 @@ public:
     WipeRight,
     WipeUp,
     WipeDown,
+    Cloud, // ノイズ＋しきい値で雲が上から覆い、上から晴れる（雲を突き抜けて上昇する演出）
   };
 
   enum class EasingType {
@@ -69,12 +70,28 @@ private:
   void ApplyWipeRight_(float eased);
   void ApplyWipeUp_(float eased);
   void ApplyWipeDown_(float eased);
+  void ApplyCloud_(float eased);
   void ApplyToSprite_();
   static float ApplyEasing_(float t, EasingType easing);
   void ApplyByType_(float eased);
 
   SpriteRenderer *spriteRenderer_ = nullptr;
   std::unique_ptr<Sprite> sprite_ = nullptr;
+
+  // 雲遷移用の全画面スプライト（UIEffect のシェーダー内で雲を生成して描く）
+  std::unique_ptr<Sprite> cloudSprite_ = nullptr;
+  // 雲のノイズはシェーダー内で計算するのでテクスチャは使わない。Sprite がテクスチャを
+  // 必要とするため、最小の白テクスチャを渡しておく
+  static inline const std::string kCloudTexturePath_ = "resources/white1x1.png";
+  // UIEffect.PS.hlsl の effectType（2 = 雲ディゾルブ）
+  static constexpr int kCloudEffectType_ = 2;
+  // 覆いきる直前に縁の光を消していく幅（進行度 1 - この値 から 1 にかけて弱める）
+  float cloudEdgeWidth_ = 0.1f;
+  // 縁の光の強さ（覆うとき / 晴れるとき）
+  float cloudGlowCovering_ = 1.0f;
+  float cloudGlowClearing_ = 1.0f;
+  // 雲を流すための経過時間（秒）。雲が見えている間だけ進める
+  float cloudTime_ = 0.0f;
 
   std::string texturePath_;
 

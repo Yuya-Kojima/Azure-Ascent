@@ -191,6 +191,16 @@ void Sprite::SetUIEffectParams(float time, int effectType, float splitY, float a
   }
 }
 
+void Sprite::SetDissolveParams(float progress, float edgeWidth, bool flip,
+                               float glowStrength) {
+  if (uiEffectParamsData_) {
+    uiEffectParamsData_->progress = progress;
+    uiEffectParamsData_->edgeWidth = edgeWidth;
+    uiEffectParamsData_->dissolveFlip = flip ? 1.0f : 0.0f;
+    uiEffectParamsData_->glowStrength = glowStrength;
+  }
+}
+
 void Sprite::CreateVertexData() {
 
   // VertexResourceを作る
@@ -298,8 +308,12 @@ void Sprite::CreateUIEffectParamsData() {
   uiEffectParamsData_->amplitude = 0.05f;
   uiEffectParamsData_->frequency = 20.0f;
   uiEffectParamsData_->speed = 5.0f;
-  uiEffectParamsData_->padding1 = 0.05f; // blurWidth
-  uiEffectParamsData_->padding2 = 0.03f; // boundaryAmp
+  uiEffectParamsData_->blurWidth = 0.05f;
+  uiEffectParamsData_->boundaryAmp = 0.03f;
+  uiEffectParamsData_->progress = 0.0f;
+  uiEffectParamsData_->edgeWidth = 0.05f;
+  uiEffectParamsData_->dissolveFlip = 0.0f;
+  uiEffectParamsData_->glowStrength = 1.0f;
 }
 
 void Sprite::ChangeTexture(const std::string &textureFilePath) {

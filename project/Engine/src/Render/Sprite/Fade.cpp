@@ -23,6 +23,15 @@ void Fade::Initialize(SpriteRenderer *spriteRenderer,
   sprite_->SetSize(
       {float(WindowSystem::kClientWidth), float(WindowSystem::kClientHeight)});
 
+  // 雲遷移用の全画面スプライト。雲の形・流れはすべてシェーダー側で作る
+  cloudSprite_ = std::make_unique<Sprite>();
+  cloudSprite_->Initialize(spriteRenderer_, kCloudTexturePath_);
+  cloudSprite_->SetAnchorPoint({0.0f, 0.0f});
+  cloudSprite_->SetPosition({0.0f, 0.0f});
+  cloudSprite_->SetSize(
+      {float(WindowSystem::kClientWidth), float(WindowSystem::kClientHeight)});
+  cloudSprite_->SetUIEffectParams(0.0f, kCloudEffectType_);
+
   state_ = State::Idle;
   alpha_ = 1.0f;
   target_ = 1.0f;
@@ -35,6 +44,7 @@ void Fade::Initialize(SpriteRenderer *spriteRenderer,
 }
 
 void Fade::Finalize() {
+  cloudSprite_.reset();
   sprite_.reset();
   spriteRenderer_ = nullptr;
   texturePath_.clear();
@@ -103,6 +113,13 @@ void Fade::Update(float deltaTime) {
   uv.rotate = {0.0f, 0.0f, 0.0f};
   uv.translate = {0.0f, 0.0f, 0.0f};
   sprite_->Update(uv);
+  cloudSprite_->Update(uv);
+
+  // 雲が見えている間は時間を進めて流し続ける（覆いきって待機している間も含む）
+  if (type_ == FadeType::Cloud && alpha_ > 0.0f) {
+    cloudTime_ += deltaTime;
+    cloudSprite_->SetUIEffectParams(cloudTime_, kCloudEffectType_);
+  }
 
   if (state_ == State::Idle) {
     return;
@@ -133,6 +150,14 @@ void Fade::Draw() {
   }
 
   if (alpha_ <= 0.0f) {
+    return;
+  }
+
+  if (type_ == FadeType::Cloud) {
+    // 雲は UIEffect のパイプラインで描き、後続の 2D 描画のために通常設定へ戻す
+    spriteRenderer_->BeginUIEffect();
+    cloudSprite_->DrawUIEffect();
+    spriteRenderer_->Begin();
     return;
   }
 
@@ -212,6 +237,22 @@ void Fade::ApplyWipeDown_(float eased) {
   sprite_->SetSize({w, h});
 }
 
+void Fade::ApplyCloud_(float eased) {
+  // 雲の色（color_ の rgb）。透明度はシェーダー側で進行度と雲の濃さから決める
+  Vector4 c = color_;
+  c.w = 1.0f;
+  cloudSprite_->SetColor(c);
+
+  // 晴れるときは縦の向きを反転して、覆うときと同じく上から晴らす
+  const bool isClearing = (state_ == State::FadingIn);
+  const float glowStrength =
+      isClearing ? cloudGlowClearing_ : cloudGlowCovering_;
+
+  // 進行度をそのまましきい値として渡す
+  cloudSprite_->SetDissolveParams(eased, cloudEdgeWidth_, isClearing,
+                                  glowStrength);
+}
+
 void Fade::ApplyToSprite_() {
   if (!sprite_) {
     return;
@@ -258,6 +299,10 @@ void Fade::ApplyByType_(float eased) {
 
   case FadeType::WipeDown:
     ApplyWipeDown_(eased);
+    break;
+
+  case FadeType::Cloud:
+    ApplyCloud_(eased);
     break;
   }
 }
