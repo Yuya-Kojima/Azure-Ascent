@@ -116,9 +116,10 @@ float SoftFbm(float2 p) {
 	return sum / totalAmplitude;
 }
 
-// 雲の濃さ 0〜1 を返す。大きさと流れる速さの違う 2 層を重ね、
+// 雲の 2 層ぶんの生のノイズを返す。x = 奥の柔らかい濃淡, y = 奥のかたまり,
+// z = 手前の柔らかい濃淡, w = 手前のかたまり。
 // 手前ほど大きく速く流れる（視差）ことで、雲の中を上昇している奥行きを出す
-float CloudNoise(float2 uv, float time) {
+float4 CloudRawNoise(float2 uv, float time) {
 	// 画面の縦横比（1280x720）。ノイズが横に引き伸ばされないよう x を広げて読む
 	const float kScreenAspect = 16.0f / 9.0f;
 	float2 baseUV = uv * float2(kScreenAspect, 1.0f);
@@ -131,23 +132,50 @@ float CloudNoise(float2 uv, float time) {
 	float2 nearUV = (baseUV - float2(0.0f, time * kNearScrollSpeed)) * kNearCloudCount;
 	// 奥の層は読む位置をずらして、手前と模様が重ならないようにする
 	float2 farUV = (baseUV - float2(0.0f, time * kFarScrollSpeed)) * kFarCloudCount + float2(0.37f, 5.3f);
+	return float4(SoftFbm(farUV), PuffFbm(farUV), SoftFbm(nearUV), PuffFbm(nearUV));
+}
 
+// 柔らかい濃淡（勾配ノイズ）とかたまり（ウォーリー）を半々に混ぜる
+static const float kPuffWeight = 0.5f;
+
+// 2 層を混ぜた雲の濃さ 0〜1。画面のどこから覆うか（前線）を決めるのに使う
+float CombinedCloud(float4 raw) {
 	// 手前の層を主役にして混ぜる
 	const float kNearLayerWeight = 0.6f;
-	float soft = lerp(SoftFbm(farUV), SoftFbm(nearUV), kNearLayerWeight);
-	float puff = lerp(PuffFbm(farUV), PuffFbm(nearUV), kNearLayerWeight);
-
+	float soft = lerp(raw.x, raw.z, kNearLayerWeight);
+	float puff = lerp(raw.y, raw.w, kNearLayerWeight);
 	// 値の 9 割が入る範囲を 0〜1 に引き伸ばす。ウォーリーは頂上が広く谷が細いので高い側に偏る
-	const float kSoftMin = 0.443f;
-	const float kSoftRange = 0.122f;
-	const float kPuffMin = 0.639f;
-	const float kPuffRange = 0.263f;
+	const float kSoftMin = 0.43f;
+	const float kSoftRange = 0.131f;
+	const float kPuffMin = 0.636f;
+	const float kPuffRange = 0.269f;
 	soft = saturate((soft - kSoftMin) / kSoftRange);
 	puff = saturate((puff - kPuffMin) / kPuffRange);
-
-	// 柔らかい濃淡（勾配ノイズ）とかたまり（ウォーリー）を半々に混ぜる
-	const float kPuffWeight = 0.5f;
 	return lerp(soft, puff, kPuffWeight);
+}
+
+// 1 層だけの雲の濃さ 0〜1。混ぜていないぶん値の幅が広いので、引き伸ばす範囲も別に持つ
+float LayerCloud(float softRaw, float puffRaw) {
+	const float kSoftMin = 0.404f;
+	const float kSoftRange = 0.184f;
+	const float kPuffMin = 0.557f;
+	const float kPuffRange = 0.376f;
+	float soft = saturate((softRaw - kSoftMin) / kSoftRange);
+	float puff = saturate((puffRaw - kPuffMin) / kPuffRange);
+	return lerp(soft, puff, kPuffWeight);
+}
+
+// 不透明度：ベールの法則（光は通る物質の量に応じて指数関数的に弱まる）。
+// 縁の薄い所は透け、少し内側で急に不透明になる。density = 1 で必ず 1 になるよう割る
+float BeerAlpha(float density, float thickness) {
+	return (1.0f - exp(-thickness * density)) / (1.0f - exp(-thickness));
+}
+
+// 日の当たり具合 0〜1：光（画面の上）の方向に少しずらした所の濃さと比べる。
+// 光の側が薄ければ日が当たって明るく、濃ければ自分の影に入って暗い
+float SunLight(float noise, float noiseTowardLight) {
+	const float kLightContrast = 4.0f; // 濃さの差を明るさの差に何倍で効かせるか
+	return saturate(0.5f + (noise - noiseTowardLight) * kLightContrast);
 }
 
 PixelShaderOutput main(VertexShaderOutput input) {
@@ -233,8 +261,11 @@ PixelShaderOutput main(VertexShaderOutput input) {
 
 	if (gUIEffect.effectType == 2) {
 		// --- 雲ディゾルブ（画面遷移） ---
-		// 雲を「密度」として扱う。しきい値を超えた量を密度にし、縁は薄く透けさせる
-		float noise = CloudNoise(uv, gUIEffect.time);
+		// 雲は「奥の霧」と「手前のかたまり」の 2 層を別々に描いて重ねる。
+		// 覆う範囲（前線）は 2 層を混ぜた濃さで決め、しきい値を超えた量を密度にして縁を薄く透けさせる
+		const float kLightOffset = 0.025f; // 光の方向へずらす量（画面の高さ比）
+		float4 raw = CloudRawNoise(uv, gUIEffect.time);
+		float4 rawTowardLight = CloudRawNoise(uv - float2(0.0f, kLightOffset), gUIEffect.time);
 		float p = gUIEffect.progress;
 
 		// 縦位置：画面の上ほど 0。晴れるときは反転して、上から晴れるようにする
@@ -242,6 +273,7 @@ PixelShaderOutput main(VertexShaderOutput input) {
 		// しきい値と比べる値。ノイズに縦位置を混ぜて、上から順に覆われるようにする。
 		// v が小さいほど先に覆われる。ふくらみの中心（noise が高い）から先に覆い、
 		// 最後まで残るようにするため 1 - noise を使う
+		float noise = CombinedCloud(raw);
 		const float kVerticalWeight = 0.75f; // 0 でまだら、1 でまっすぐなカーテン
 		float v = lerp(1.0f - noise, height, kVerticalWeight);
 
@@ -250,27 +282,8 @@ PixelShaderOutput main(VertexShaderOutput input) {
 		const float kCloudSoftness = 0.2f;
 		float threshold = p * (1.0f + kCloudSoftness);
 		float density = saturate((threshold - v) / kCloudSoftness);
-
-		// 不透明度：ベールの法則（光は通る物質の量に応じて指数関数的に弱まる）。
-		// 縁の薄い所は透け、少し内側で急に不透明になる。density = 1 で必ず 1 になるよう割る
 		const float kCloudThickness = 5.0f; // 大きいほど縁のすぐ内側で不透明になる
-		float alpha = (1.0f - exp(-kCloudThickness * density)) / (1.0f - exp(-kCloudThickness));
-
-		// 陰影：光（画面の上）の方向に少しずらした所の濃さと比べる。
-		// 光の側が薄ければ日が当たって明るく、濃ければ自分の影に入って暗い
-		const float kLightOffset = 0.025f; // ずらす量（画面の高さ比）
-		const float kLightContrast = 4.0f; // 濃さの差を明るさの差に何倍で効かせるか
-		const float kDirectionalWeight = 0.7f; // 光の向きによる陰影をどれだけ使うか
-		float noiseTowardLight = CloudNoise(uv - float2(0.0f, kLightOffset), gUIEffect.time);
-		float sunLight = saturate(0.5f + (noise - noiseTowardLight) * kLightContrast);
-		float light = lerp(noise, sunLight, kDirectionalWeight);
-
-		// 縁の光：密度の薄い所（日に透ける縁）を光らせる。光るのは日の当たる側だけ
-		float rim = (1.0f - density) * step(0.0001f, density);
-		rim *= smoothstep(0.4f, 0.8f, sunLight);
-		// 完全に覆った状態（p = 1）では縁を出さない。そこに近づくほど弱める
-		rim *= saturate((1.0f - p) / gUIEffect.edgeWidth);
-		rim *= gUIEffect.glowStrength;
+		float alpha = BeerAlpha(density, kCloudThickness);
 
 		// 色は画面で見える値（sRGB）で書き、出力先が sRGB なので線形に直して使う
 		const float kGamma = 2.2f;
@@ -278,12 +291,53 @@ PixelShaderOutput main(VertexShaderOutput input) {
 		const float3 kGlowColorSRGB = float3(1.0f, 0.97f, 0.88f);
 		// 雲本体の明るさ。縁がいちばん明るく見えるよう、少し落としておく
 		const float kCloudBodyBrightness = 0.9f;
+		float3 bodyColorSRGB = gMaterial.color.rgb * kCloudBodyBrightness;
 		// 影の色：青空を映した青灰色
 		const float3 kCloudShadowColorSRGB = float3(0.74f, 0.80f, 0.91f);
+		// 光の向きによる陰影をどれだけ使うか（残りはノイズの濃淡をそのまま明るさにする）
+		const float kDirectionalWeight = 0.85f;
 
-		float3 cloudColorSRGB = lerp(kCloudShadowColorSRGB,
-			gMaterial.color.rgb * kCloudBodyBrightness, light);
-		// 縁は光の色へ寄せる
+		// 奥の霧：空気遠近法。遠くの雲ほど陰影が薄れてかすんで見える
+		float farNoise = LayerCloud(raw.x, raw.y);
+		float farNoiseTowardLight = LayerCloud(rawTowardLight.x, rawTowardLight.y);
+		float farLight = lerp(farNoise, SunLight(farNoise, farNoiseTowardLight), kDirectionalWeight);
+		const float kFarHaze = 0.4f; // 陰影をかすみの明るさへ寄せる割合
+		const float kHazeLight = 0.6f; // かすみの明るさ
+		farLight = lerp(farLight, kHazeLight, kFarHaze);
+		float3 farColorSRGB = lerp(kCloudShadowColorSRGB, bodyColorSRGB, farLight);
+
+		// 手前のかたまり：自分の透け・陰影・縁の光を持つ
+		const float kClumpThreshold = 0.55f; // 大きいほどかたまりが少ない
+		const float kClumpSoftness = 0.15f; // かたまりの縁が透ける幅
+		float nearNoise = LayerCloud(raw.z, raw.w);
+		float nearNoiseTowardLight = LayerCloud(rawTowardLight.z, rawTowardLight.w);
+		float clumpDensity = saturate((nearNoise - kClumpThreshold) / kClumpSoftness);
+		float clumpAlpha = BeerAlpha(clumpDensity, kCloudThickness);
+		float nearSun = SunLight(nearNoise, nearNoiseTowardLight);
+		float3 nearColorSRGB = lerp(kCloudShadowColorSRGB, bodyColorSRGB,
+			lerp(nearNoise, nearSun, kDirectionalWeight));
+		// かたまりの縁の光：日の当たる側の薄い所を光らせる
+		const float kClumpRimStrength = 0.8f;
+		float clumpRim = (1.0f - clumpDensity) * step(0.0001f, clumpDensity);
+		clumpRim *= smoothstep(0.4f, 0.8f, nearSun) * kClumpRimStrength;
+		nearColorSRGB = lerp(nearColorSRGB, kGlowColorSRGB, clumpRim);
+
+		// 手前のかたまりが奥に落とす影：光の側にかたまりがあれば、その下の霧を暗くする
+		const float kCastShadowStrength = 0.35f;
+		float clumpDensityTowardLight = saturate((nearNoiseTowardLight - kClumpThreshold) / kClumpSoftness);
+		float castShadow = BeerAlpha(clumpDensityTowardLight, kCloudThickness) * kCastShadowStrength;
+		farColorSRGB = lerp(farColorSRGB, kCloudShadowColorSRGB, castShadow);
+
+		float3 cloudColorSRGB = lerp(farColorSRGB, nearColorSRGB, clumpAlpha);
+
+		// 前線の縁の光：密度の薄い所（日に透ける縁）を光らせる。光るのは日の当たる側だけ
+		float frontSun = SunLight(noise, CombinedCloud(rawTowardLight));
+		float rim = (1.0f - density) * step(0.0001f, density);
+		rim *= smoothstep(0.4f, 0.8f, frontSun);
+		// 完全に覆った状態（p = 1）では縁を出さない。そこに近づくほど弱める
+		rim *= saturate((1.0f - p) / gUIEffect.edgeWidth);
+		rim *= gUIEffect.glowStrength;
+
 		float3 colorSRGB = lerp(cloudColorSRGB, kGlowColorSRGB, rim);
 		float3 color = pow(colorSRGB, kGamma);
 
