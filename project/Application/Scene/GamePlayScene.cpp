@@ -465,9 +465,18 @@ void GamePlayScene::Update() {
              gameState_ == GameState::GameOver) {
     // リザルト画面でEnterキーを押したらステージセレクト（またはタイトル）へ戻る
     if (engine_->GetInputManager()->IsTriggerKey(DIK_RETURN)) {
-      SceneManager::GetInstance()->SetNextTransitionFade(0.5f);
-      SceneManager::GetInstance()->ChangeScene(
-          gameState_ == GameState::Clear ? "STAGE_SELECT" : "TITLE");
+      if (gameState_ == GameState::Clear) {
+        // ステージセレクト（雲の下の拠点）へ戻るので、雲を抜けて降下する
+        const float kCloudTransitionSec = 1.0f;
+        const Vector4 kCloudColor = {1.0f, 1.0f, 1.0f, 1.0f};
+        SceneManager::GetInstance()->SetNextTransitionFade(
+            kCloudTransitionSec, Fade::FadeType::CloudDescend, kCloudColor,
+            Fade::EasingType::Linear);
+        SceneManager::GetInstance()->ChangeScene("STAGE_SELECT");
+      } else {
+        SceneManager::GetInstance()->SetNextTransitionFade(0.5f);
+        SceneManager::GetInstance()->ChangeScene("TITLE");
+      }
     }
   }
 
@@ -1801,24 +1810,6 @@ void GamePlayScene::Draw2D() {
 
   // スプライト（UI）の描画
   UIManager::GetInstance()->Draw();
-
-#ifdef USE_IMGUI
-  if (gameState_ == GameState::Clear) {
-
-    // EnterでStageSelectSceneへ帰還
-    if (engine_->GetInputManager()->IsTriggerKey(DIK_RETURN)) {
-      SceneManager::GetInstance()->SetNextTransitionFade(0.5f);
-      SceneManager::GetInstance()->ChangeScene("STAGE_SELECT");
-    }
-  } else if (gameState_ == GameState::GameOver) {
-
-    // EnterでStageSelectSceneへ帰還
-    if (engine_->GetInputManager()->IsTriggerKey(DIK_RETURN)) {
-      SceneManager::GetInstance()->SetNextTransitionFade(0.5f);
-      SceneManager::GetInstance()->ChangeScene("STAGE_SELECT");
-    }
-  }
-#endif
 }
 
 void GamePlayScene::SaveLevel(const std::string &filename) {

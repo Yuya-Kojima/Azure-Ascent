@@ -93,7 +93,10 @@ void StageSelectScene::Update() {
             Fade::EasingType::Linear);
         SceneManager::GetInstance()->ChangeScene("GAMEPLAY");
       } else if (selectedName == "BackText") {
-        SceneManager::GetInstance()->SetNextTransitionFade(0.5f);
+        // タイトルも雲の上にあるので、出撃と同じく雲を突き抜けて上昇する
+        SceneManager::GetInstance()->SetNextTransitionFade(
+            kCloudTransitionSec, Fade::FadeType::Cloud, kCloudColor,
+            Fade::EasingType::Linear);
         SceneManager::GetInstance()->ChangeScene("TITLE");
       }
     }

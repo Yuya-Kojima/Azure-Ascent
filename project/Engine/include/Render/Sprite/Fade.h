@@ -16,6 +16,7 @@ public:
     WipeUp,
     WipeDown,
     Cloud, // ノイズ＋しきい値で雲が上から覆い、上から晴れる（雲を突き抜けて上昇する演出）
+    CloudDescend, // Cloud の上下逆。雲が下から覆い、下から晴れる（雲を抜けて降下する演出）
   };
 
   enum class EasingType {
@@ -71,6 +72,7 @@ private:
   void ApplyWipeUp_(float eased);
   void ApplyWipeDown_(float eased);
   void ApplyCloud_(float eased);
+  bool IsCloudType_() const;
   void ApplyToSprite_();
   static float ApplyEasing_(float t, EasingType easing);
   void ApplyByType_(float eased);
