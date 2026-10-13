@@ -154,6 +154,13 @@ public:
     }
   }
 
+  /// テクスチャ座標の変換（拡大すると、テクスチャを繰り返し貼る）
+  void SetUVTransform(const Matrix4x4 &uvTransform) {
+    if (materialData) {
+      materialData->uvTransform = uvTransform;
+    }
+  }
+
   bool GetEnableLighting() const {
     return materialData ? (materialData->enableLighting != 0) : true;
   }
