@@ -5,13 +5,15 @@
 #include "Render/Sprite/Sprite.h"
 #include <memory>
 #include <array>
+#include <numbers>
 
 class SpriteRenderer;
 class ICamera;
 class Input;
 
 /// <summary>
-/// パンツァードラグーン風 3D視線トンネル照準（三重矩形）クラス
+/// パンツァードラグーン風 3D視線トンネル照準クラス
+/// 手前の角かぎ・中の四角・奥の四角と中心点を、角どうしの接続線で筒状につなぐ
 /// </summary>
 class ReticleTunnel {
 public:
@@ -22,15 +24,15 @@ public:
     // 3D視線トンネルパラメータ（奥行き・サイズ）
     float nearDistance = 35.0f;        // 手前枠の3D奥行き距離
     float midDistance = 70.0f;         // 中間枠の3D奥行き距離
-    float farDistance = 120.0f;        // 奥枠の3D奥行き距離
+    float farDistance = 120.0f;        // 奥枠の3D奥行き距離（カメラから照準方向へ。手前・中の枠はこれに対する割合で並ぶ）
 
     float nearSize = 3.5f;             // 手前枠の3D基本サイズ（ロックオン範囲に合わせて拡大）
-    float midSize = 2.6f;              // 中間枠の3D基本サイズ
-    float farSize = 2.0f;              // 奥枠の3D基本サイズ
+    float midSize = 3.0f;              // 中間枠の3D基本サイズ
+    float farSize = 3.2f;              // 奥枠の3D基本サイズ
 
-    float nearRotSpeed = 0.4f;         // 手前枠の回転スピード（ラジアン/秒）
-    float midRotSpeed = -0.25f;        // 中間枠の回転スピード
-    float farRotSpeed = 0.6f;          // 奥枠の回転スピード
+    float originCameraBlend = 0.35f;   // トンネルの起点（0=自機、1=カメラ）。カメラ寄りほど枠が同じ中心に並ぶ
+
+    float lockOnSpinSpeed = 6.0f;      // ロックオン中にトンネル全体が回る速さ（ラジアン/秒）
 
     float lineThickness = 2.5f;        // 枠線の太さ（ピクセル）
     float targetDistance = 1000.0f;    // 射撃目標までの基本距離
@@ -77,16 +79,23 @@ private:
   Vector3 target3DPos_ = { 0.0f, 0.0f, 0.0f };  // 3D空間上の射撃目標地点
   Vector3 rayDirection_ = { 0.0f, 0.0f, 1.0f }; // 3D視線の単位方向ベクトル
 
-  float nearRot_ = 0.0f; // 手前枠の累積回転角
-  float midRot_ = 0.0f;  // 中間枠の累積回転角
-  float farRot_ = 0.0f;  // 奥枠の累積回転角
+  float spinRot_ = 0.0f; // トンネル全体（3つの枠共通）の累積回転角
 
-  // トンネル構造を描画するための直線スプライト群
-  // 手前(4本) + 中(4本) + 奥(4本) ＝ 12本
-  // 手前-中-奥の角を結ぶトンネル接続線 ＝ 8本 (Near->Mid 4本 + Mid->Far 4本)
-  // 合計 20本
-  // 枠線(手前・中・奥) × 4本 × 2重(アウトライン+本体) = 24本
-  static constexpr size_t kMaxLineSprites = 24;
+  static constexpr float kSpinReturnRate_ = 0.2f;  // ロックオン解除後、枠が正位置へ戻る速さ（毎フレームの補間率）
+  static constexpr float kQuarterTurn_ = std::numbers::pi_v<float> * 0.5f; // 正方形は90度ごとに同じ形になる
+
+  static constexpr float kBracketRatio_ = 0.3f;        // 手前枠の角かぎの長さ（辺の長さに対する割合）
+  static constexpr float kConnectorNearAlpha_ = 0.7f;  // 手前→中の接続線の不透明度
+  static constexpr float kConnectorFarAlpha_ = 0.45f;  // 中→奥の接続線の不透明度
+  static constexpr float kConnectorThickness_ = 2.0f;  // 接続線の太さ（ピクセル）
+  static constexpr float kCenterDotSize_ = 4.0f;       // 奥枠の中心点の大きさ（ピクセル）
+
+  // トンネル構造を描画するための直線スプライト群（アウトライン+本体の2重で描く線は2本ずつ）
+  // 接続線：手前→中 4本 + 中→奥 4本 = 8本（アウトラインなし）
+  // 手前の角かぎ：4角 × 2辺 × 2重 = 16本
+  // 中・奥の四角：4辺 × 2重 × 2枠 = 16本
+  // 奥の中心点：2重 = 2本
+  static constexpr size_t kMaxLineSprites = 42;
   std::array<std::unique_ptr<Sprite>, kMaxLineSprites> lineSprites_;
 
   // スプライトの更新ヘルパー

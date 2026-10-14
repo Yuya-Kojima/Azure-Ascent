@@ -137,6 +137,10 @@ private:
   // 3D視線トンネル照準
   std::unique_ptr<ReticleTunnel> reticleTunnel_;
 
+  // 通常弾の狙い：レティクルに重なる敵がいればその敵、いなければこの距離の点を狙う
+  static constexpr float kAimAssistScreenRadius_ = 40.0f;   // レティクルに重なっているとみなす画面上の半径（ピクセル、1280x720基準）
+  static constexpr float kAimConvergenceDistance_ = 150.0f; // 敵がいないときに弾がレティクルと重なる距離（カメラから）
+
   float flashIntensity_ = 0.0f;             // 画面フラッシュ強度
   Vector3 flashColor_ = {1.0f, 0.0f, 0.0f}; // 画面フラッシュカラー
 

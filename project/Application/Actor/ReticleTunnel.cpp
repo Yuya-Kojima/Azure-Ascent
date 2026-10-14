@@ -6,6 +6,7 @@
 #include "Debug/Logger.h"
 #include <string>
 #include <algorithm>
+#include <cmath>
 #include <fstream>
 
 void ReticleTunnel::Initialize(SpriteRenderer* spriteRenderer) {
@@ -26,9 +27,7 @@ void ReticleTunnel::Initialize(SpriteRenderer* spriteRenderer) {
 
 void ReticleTunnel::ResetPosition() {
   position_ = { 640.0f, 360.0f };
-  nearRot_ = 0.0f;
-  midRot_ = 0.0f;
-  farRot_ = 0.0f;
+  spinRot_ = 0.0f;
 }
 
 void ReticleTunnel::Update(Input* input, const ICamera* camera, const Vector3& playerPos, bool isLockOn) {
@@ -96,20 +95,34 @@ void ReticleTunnel::Update(Input* input, const ICamera* camera, const Vector3& p
   // -------------------------------------------------------------
   // 3. 手前・中・奥の 3D 矩形頂点計算
   // -------------------------------------------------------------
-  // ロックオン中は回転速度を最大5倍に加速して「チャージ感」を出す
-  float rotScale = 1.0f + (lockOnLerp_ * 4.0f);
-  nearRot_ += (config_.nearRotSpeed * rotScale) * (1.0f / 60.0f);
-  midRot_ += (config_.midRotSpeed * rotScale) * (1.0f / 60.0f);
-  farRot_ += (config_.farRotSpeed * rotScale) * (1.0f / 60.0f);
+  // ロックオン中だけトンネル全体を回し、解除後は最寄りの正位置（90度刻み）へ戻す
+  if (isLockOn) {
+    spinRot_ += config_.lockOnSpinSpeed * lockOnLerp_ * (1.0f / 60.0f);
+  } else {
+    float uprightRot = std::round(spinRot_ / kQuarterTurn_) * kQuarterTurn_;
+    spinRot_ = Lerp(spinRot_, uprightRot, kSpinReturnRate_);
+  }
+
+  // トンネルの起点：自機とカメラの間
+  Vector3 tunnelOrigin = Lerp(playerPos, cameraPos, config_.originCameraBlend);
+
+  // トンネルの奥の端：カメラからレティクルへ伸ばした線（弾とロックオンが使う照準）の上
+  // 奥枠の中心点が画面上で照準と重なる
+  Vector3 aimRayDirection = SafeNormalize(target3DPos_ - cameraPos);
+  Vector3 tunnelEnd = cameraPos + aimRayDirection * config_.farDistance;
+  Vector3 toTunnelEnd = tunnelEnd - tunnelOrigin;
+  Vector3 tunnelDirection = SafeNormalize(toTunnelEnd);
+  // 各枠は奥枠の距離に対する割合で並べ、奥枠がちょうど端に来るようにする
+  float distanceScale = Length(toTunnelEnd) / config_.farDistance;
 
   auto CalculateSquareVertices = [&](float distance, float size, float rotation, Vector2 outScreen[4]) {
-    Vector3 center = playerPos + rayDirection_ * distance;
+    Vector3 center = tunnelOrigin + tunnelDirection * (distance * distanceScale);
 
-    // 視線レイ(rayDirection_)に直交するローカルの右・上軸を外積で計算
-    // cameraUpとrayDirectionの外積で「新しい右軸」を作成
-    Vector3 rayRight = SafeNormalize(Cross(cameraUp, rayDirection_));
-    // rayDirectionとrayRightの外積で「新しい上軸」を作成
-    Vector3 rayUp = Cross(rayDirection_, rayRight);
+    // トンネルの向きに直交するローカルの右・上軸を外積で計算
+    // cameraUpとtunnelDirectionの外積で「新しい右軸」を作成
+    Vector3 rayRight = SafeNormalize(Cross(cameraUp, tunnelDirection));
+    // tunnelDirectionとrayRightの外積で「新しい上軸」を作成
+    Vector3 rayUp = Cross(tunnelDirection, rayRight);
 
     // 新しいローカル軸を元に回転を適用
     float cosR = std::cos(rotation);
@@ -137,39 +150,72 @@ void ReticleTunnel::Update(Input* input, const ICamera* camera, const Vector3& p
   // ロックオン中は枠のサイズを広げる（最大1.3倍）
   float sizeScale = 1.0f + (lockOnLerp_ * 0.3f);
 
-  CalculateSquareVertices(config_.nearDistance, config_.nearSize * sizeScale, nearRot_, nearScreen);
-  CalculateSquareVertices(config_.midDistance, config_.midSize * sizeScale, midRot_, midScreen);
-  CalculateSquareVertices(config_.farDistance, config_.farSize * sizeScale, farRot_, farScreen);
+  CalculateSquareVertices(config_.nearDistance, config_.nearSize * sizeScale, spinRot_, nearScreen);
+  CalculateSquareVertices(config_.midDistance, config_.midSize * sizeScale, spinRot_, midScreen);
+  CalculateSquareVertices(config_.farDistance, config_.farSize * sizeScale, spinRot_, farScreen);
 
   // -------------------------------------------------------------
   // 4. 2D 透視投影座標を直線スプライトへ適用
   // -------------------------------------------------------------
   size_t spriteIdx = 0;
 
-  // A. 各正方形の枠線
-  auto ApplySquareLines = [&](const Vector2 screen[4], float thickness) {
-    // ロックオン時のメイン色計算 (通常は水色、ロックオンで赤色へLerp)
-    Vector4 mainColor = {
-      0.0f + lockOnLerp_ * 1.0f, // R: 0.0 -> 1.0
-      1.0f - lockOnLerp_ * 0.8f, // G: 1.0 -> 0.2
-      1.0f - lockOnLerp_ * 0.8f, // B: 1.0 -> 0.2
-      1.0f
-    };
+  // ロックオン時のメイン色計算 (通常は水色、ロックオンで赤色へLerp)
+  Vector4 mainColor = {
+    0.0f + lockOnLerp_ * 1.0f, // R: 0.0 -> 1.0
+    1.0f - lockOnLerp_ * 0.8f, // G: 1.0 -> 0.2
+    1.0f - lockOnLerp_ * 0.8f, // B: 1.0 -> 0.2
+    1.0f
+  };
+  const Vector4 outlineColor = { 0.0f, 0.0f, 0.0f, 0.7f }; // 縁取りの色（半透明の黒）
 
+  // 縁取り（少し太い半透明の黒）とメインの線を重ねて1本の線を描く
+  auto ApplyOutlinedLine = [&](const Vector2& p1, const Vector2& p2, float thickness) {
+    UpdateLineSprite(spriteIdx++, p1, p2, thickness + 2.0f, outlineColor);
+    UpdateLineSprite(spriteIdx++, p1, p2, thickness, mainColor);
+  };
+
+  // A. 接続線：各枠の同じ角どうしを結んで筒状にする
+  // 枠線より先に描き、枠線の下に重ねる
+  auto ApplyConnectors = [&](const Vector2 from[4], const Vector2 to[4], float alpha) {
+    Vector4 color = mainColor;
+    color.w = alpha;
     for (int i = 0; i < 4; ++i) {
-      if (spriteIdx + 1 < kMaxLineSprites) {
-        // 1. 黒い縁取り（アウトライン）少し太く、半透明の黒
-        UpdateLineSprite(spriteIdx++, screen[i], screen[(i + 1) % 4], thickness + 2.0f, {0.0f, 0.0f, 0.0f, 0.7f});
-        // 2. メインの線
-        UpdateLineSprite(spriteIdx++, screen[i], screen[(i + 1) % 4], thickness, mainColor);
-      }
+      UpdateLineSprite(spriteIdx++, from[i], to[i], kConnectorThickness_, color);
+    }
+  };
+  ApplyConnectors(nearScreen, midScreen, kConnectorNearAlpha_);
+  ApplyConnectors(midScreen, farScreen, kConnectorFarAlpha_);
+
+  // B. 手前枠：角だけのかぎ括弧
+  auto PointAlong = [](const Vector2& from, const Vector2& to, float t) {
+    return Vector2{ from.x + (to.x - from.x) * t, from.y + (to.y - from.y) * t };
+  };
+  auto ApplyCornerBrackets = [&](const Vector2 screen[4], float thickness) {
+    for (int i = 0; i < 4; ++i) {
+      const Vector2& corner = screen[i];
+      const Vector2& next = screen[(i + 1) % 4];
+      const Vector2& prev = screen[(i + 3) % 4];
+      ApplyOutlinedLine(corner, PointAlong(corner, next, kBracketRatio_), thickness);
+      ApplyOutlinedLine(corner, PointAlong(corner, prev, kBracketRatio_), thickness);
+    }
+  };
+
+  // C. 中・奥枠：四角の枠線
+  auto ApplySquareLines = [&](const Vector2 screen[4], float thickness) {
+    for (int i = 0; i < 4; ++i) {
+      ApplyOutlinedLine(screen[i], screen[(i + 1) % 4], thickness);
     }
   };
 
   // 空気遠近法：奥に行くほど線を細くして立体感を強調
-  ApplySquareLines(nearScreen, config_.lineThickness);
+  ApplyCornerBrackets(nearScreen, config_.lineThickness);
   ApplySquareLines(midScreen, config_.lineThickness * 0.6f);
   ApplySquareLines(farScreen, config_.lineThickness * 0.3f);
+
+  // D. 奥枠の中心点：弾が飛んでいく一点を示す
+  Vector2 farCenter = PointAlong(farScreen[0], farScreen[2], 0.5f);
+  float dotHalf = kCenterDotSize_ * 0.5f;
+  ApplyOutlinedLine({ farCenter.x - dotHalf, farCenter.y }, { farCenter.x + dotHalf, farCenter.y }, kCenterDotSize_);
 }
 
 void ReticleTunnel::UpdateLineSprite(size_t index, const Vector2& p1, const Vector2& p2, float thickness, const Vector4& color) {
