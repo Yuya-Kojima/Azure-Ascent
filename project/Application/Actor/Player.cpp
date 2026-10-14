@@ -23,6 +23,7 @@
 #include <algorithm>
 #include <filesystem>
 #include <fstream>
+#include <limits>
 
 Player::Player(const ICamera *camera) : camera_(camera) { assert(camera_); }
 Player::~Player() {
@@ -484,6 +485,36 @@ void Player::FireNormalShot() {
               cameraRight.z * (ndcX * maxMoveX)} +
       Vector3{cameraUp.x * (ndcY * maxMoveY), cameraUp.y * (ndcY * maxMoveY),
               cameraUp.z * (ndcY * maxMoveY)};
+
+  // 弾が向かう地点を決める
+  // レティクルに重なっている敵がいればその敵、いなければカメラからレティクル方向へ一定距離の点
+  Vector3 aimRayDir = Normalize(targetPos - cameraPos);
+  targetPos = cameraPos + aimRayDir * kAimConvergenceDistance_;
+
+  Vector2 reticlePos = reticleTunnel_ ? reticleTunnel_->Get2DPosition()
+                                      : Vector2{640.0f, 360.0f};
+  Matrix4x4 viewProj = camera_->GetViewProjectionMatrix();
+  float nearestDepth = (std::numeric_limits<float>::max)();
+  for (BaseActor *target : lockOnTargets_) {
+    if (!target || target->IsDead()) {
+      continue;
+    }
+    Vector3 enemyPos = target->GetTransform().translate;
+    // カメラより後ろの敵は画面座標が反転するので除外する
+    float depth = Dot(enemyPos - cameraPos, cameraForward);
+    if (depth <= 0.0f) {
+      continue;
+    }
+    // 画面上でレティクルに重なっている敵のうち、いちばん手前の敵を狙う
+    Vector2 screenPos = WorldToScreen(enemyPos, viewProj, 1280.0f, 720.0f);
+    float dx = screenPos.x - reticlePos.x;
+    float dy = screenPos.y - reticlePos.y;
+    if (dx * dx + dy * dy <= kAimAssistScreenRadius_ * kAimAssistScreenRadius_ &&
+        depth < nearestDepth) {
+      nearestDepth = depth;
+      targetPos = enemyPos;
+    }
+  }
 
   // 弾から最終目標地点へのベクトルを弾の初速度ベクトルとする
   Vector3 toTarget = {targetPos.x - startPos.x, targetPos.y - startPos.y,
