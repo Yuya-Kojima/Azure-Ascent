@@ -130,9 +130,11 @@ void LockOn::Update(const std::vector<BaseActor *> &inputTargets,
           }
         }
 
-        // ロックオン数が増えるごとにピッチを段階的に上昇（1体捕捉ごとに約8%）
-        // 1体目: 1.00, 2体目: 1.08, 3体目: 1.16 ... 最大8体目で約1.56
-        float pitchRatio = 1.0f + static_cast<float>(lockCount - 1) * 0.08f;
+        // ロックオン数に応じて音階を上げる（半音1つで周波数は 2^(1/12) 倍）
+        // 1体目: ド 1.00, 2体目: レ 約1.12, 3体目: ミ 約1.26 ... 8体目: 高いド 2.00
+        size_t scaleIndex = (std::min)(lockCount, kMaxLockOnPerVolley) - 1;
+        float semitones = static_cast<float>(kLockOnScaleSemitones[scaleIndex]);
+        float pitchRatio = std::pow(2.0f, semitones / kSemitonesPerOctave);
         SoundManager::GetInstance()->PlaySE("lockon", 1.0f, pitchRatio);
 
         lockOnDelayTimer_ = kLockOnInterval; // ディレイを開始

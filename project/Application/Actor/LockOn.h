@@ -78,6 +78,9 @@ private:
   static const size_t kMaxDisplayReticles = 16; // 画面上に表示できるマーカー最大数
   static const size_t kMaxLockOnPerVolley = 8;  // 1回の一斉射撃でロックオンできる最大数
   static const int kLockOnInterval = 6;        // ロックオンする間隔（フレーム、約0.10秒）
+  // n体目のロックオン音の高さ（基準音からの半音数）。ドレミファソラシド
+  static constexpr std::array<int, kMaxLockOnPerVolley> kLockOnScaleSemitones = {0, 2, 4, 5, 7, 9, 11, 12};
+  static constexpr float kSemitonesPerOctave = 12.0f; // 1オクターブ（周波数2倍）の半音数
   std::vector<BaseActor *> targets_;            // 互換性・外部参照用の発射対象敵リスト
   std::vector<TargetInfo> targetInfos_;         // ロックオン・追尾演出用の詳細情報リスト
   int lockOnDelayTimer_ = 0;                    // ロックオン間隔を管理するタイマー
