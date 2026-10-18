@@ -270,5 +270,6 @@ public:
   void SetCamera(const ICamera *camera) { this->camera_ = camera; }
 
   void SetParent(const Object3d *parent) { parent_ = parent; }
+  const Object3d *GetParent() const { return parent_; }
   const Matrix4x4& GetWorldMatrix() const { return worldMatrix_; }
 };

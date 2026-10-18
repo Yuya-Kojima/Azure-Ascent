@@ -50,6 +50,20 @@ inline Vector3 Lerp(const Vector3 &a, const Vector3 &b, float t) {
   return {a.x + (b.x - a.x) * t, a.y + (b.y - a.y) * t, a.z + (b.z - a.z) * t};
 }
 
+// 角度の補間（差を -π〜π に丸めて、近い向きに回る）
+inline float LerpAngle(float a, float b, float t) {
+  float diff = std::remainder(b - a, 2.0f * std::numbers::pi_v<float>);
+  return a + diff * t;
+}
+
+// from から to を向く回転角（x: ピッチ, y: ヨー, z: 0）
+// この回転で正面 (0,0,1) は (cos x * sin y, -sin x, cos x * cos y) を向く
+inline Vector3 LookRotation(const Vector3 &from, const Vector3 &to) {
+  Vector3 d = {to.x - from.x, to.y - from.y, to.z - from.z};
+  float horizontal = std::sqrt(d.x * d.x + d.z * d.z);
+  return {std::atan2(-d.y, horizontal), std::atan2(d.x, d.z), 0.0f};
+}
+
 // 4つの制御点と進行度t(0~1)からCatmull-Rom曲線上の座標を計算する
 inline Vector3 CatmullRom(const Vector3& p0, const Vector3& p1, const Vector3& p2, const Vector3& p3, float t) {
   float t2 = t * t;
@@ -63,6 +77,38 @@ inline Vector3 CatmullRom(const Vector3& p0, const Vector3& p1, const Vector3& p
 }
 
 Quaternion Slerp(const Quaternion& q0, const Quaternion& q1, float t);
+
+/// <summary>
+/// 回転の合成（ハミルトン積）。結果は rhs で回してから lhs で回す回転
+/// </summary>
+Quaternion Multiply(const Quaternion& lhs, const Quaternion& rhs);
+
+/// <summary>
+/// 軸と角度から回転を作る
+/// </summary>
+/// <param name="axis">回転軸（長さ1）</param>
+/// <param name="angle">角度（ラジアン）</param>
+Quaternion MakeRotateAxisAngleQuaternion(const Vector3& axis, float angle);
+
+/// <summary>
+/// 共役。長さ 1 の回転なら逆向きの回転になる
+/// </summary>
+Quaternion Conjugate(const Quaternion& q);
+
+/// <summary>
+/// ベクトルを回転で回す（v' = q v q*）
+/// </summary>
+Vector3 RotateVector(const Quaternion& q, const Vector3& v);
+
+/// <summary>
+/// 向き from を向き to へ回す最短の回転（どちらも長さ 1）
+/// </summary>
+Quaternion MakeRotationFromTo(const Vector3& from, const Vector3& to);
+
+/// <summary>
+/// 回転の角度を maxAngle（ラジアン）までに抑える。軸はそのまま
+/// </summary>
+Quaternion ClampRotationAngle(Quaternion q, float maxAngle);
 
 //=========================
 // Collision (Intersection)
@@ -177,6 +223,11 @@ Matrix4x4 MakeOrthographicMatrix(float left, float top, float right,
 /// <param name="matrix">4x4正則行列</param>
 /// <returns>逆行列</returns>
 Matrix4x4 Inverse(Matrix4x4 matrix);
+
+/// <summary>
+/// 行列の回転の部分を回転（クォータニオン）に直す。行ごとに長さ 1 にして拡大を取り除く
+/// </summary>
+Quaternion MakeRotationFromMatrix(const Matrix4x4& matrix);
 
 // 座標の変換（回転・スケール・平行移動を適用）
 inline Vector3 TransformPoint(const Vector3 &v, const Matrix4x4 &m) {

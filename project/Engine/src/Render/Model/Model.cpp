@@ -386,7 +386,11 @@ Animation LoadAnimationFile(const std::string& directoryPath, const std::string&
 	Assimp::Importer importer;
 	std::string filePath = directoryPath + "/" + filename;
 	const aiScene* scene = importer.ReadFile(filePath.c_str(), 0);
-	assert(scene->mNumAnimations != 0); // アニメーションがない
+	assert(scene); // ファイルが読めない
+	// アニメーションが入っていないファイルは、尺 0 の空のアニメーションを返す
+	if (scene->mNumAnimations == 0) {
+		return animation;
+	}
 	aiAnimation* animationAssimp = scene->mAnimations[0]; // 最初のアニメーションだけ採用
 	animation.duration = float(animationAssimp->mDuration / animationAssimp->mTicksPerSecond); // 時間の単位を秒に変換
 

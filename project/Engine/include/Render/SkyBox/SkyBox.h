@@ -18,12 +18,13 @@ class Skybox {
 
   struct Material {
     Vector4 color;
-    // x: モード(0=キューブマップ, 1=手続き空), y: 時間(雲スクロール用), z,w: 未使用
+    // x: モード(0=キューブマップ, 1=手続き空), y: 時間(雲スクロール用), z: 雲の縁の明るさ, w: 未使用
     Vector4 skyParams;
     Vector4 zenithColor;  // 天頂の色
     Vector4 horizonColor; // 地平線の色
     Vector4 sunDir;       // xyz: 太陽の方向(正規化), w: 雲の量(0〜1)
     Vector4 sunColor;     // rgb: 太陽の色, a: 太陽の強さ
+    Vector4 cloudColor;   // rgb: 雲の色, a: 雲の不透明度（0 のときは白い雲）
   };
 
 public:
@@ -56,6 +57,11 @@ public:
     materialData_->sunColor = {color.x, color.y, color.z, intensity};
   }
   void SetSkyTime(float time) { materialData_->skyParams.y = time; }
+  /// 雲の色を指定する（opacity が 0 のときは白い雲）。rim は太陽側で雲の縁が光る強さ
+  void SetCloudColor(const Vector3 &color, float opacity, float rim) {
+    materialData_->cloudColor = {color.x, color.y, color.z, opacity};
+    materialData_->skyParams.z = rim;
+  }
 
   Vector3 GetScale() const { return transform_.scale; }
   Vector3 GetRotation() const { return transform_.rotate; }

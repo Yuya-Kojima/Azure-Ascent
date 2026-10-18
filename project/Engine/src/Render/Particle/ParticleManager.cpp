@@ -37,6 +37,7 @@ void ParticleManager::Finalize() {
 
   // GPUリソース類を解放
   graphicsPipeLineState_.Reset();
+  alphaPipelineState_.Reset();
   rootSignature_.Reset();
 
   computeRootSignature_.Reset();
@@ -268,6 +269,14 @@ void ParticleManager::CreatePSO() {
   graphicsPipeLineState_ = nullptr;
   hr = dx12Core_->GetDevice()->CreateGraphicsPipelineState(
       &graphicsPipeLineStateDesc, IID_PPV_ARGS(&graphicsPipeLineState_));
+  assert(SUCCEEDED(hr));
+
+  // 半透明合成用PSO：背景を (1 - α) の割合で残す
+  graphicsPipeLineStateDesc.BlendState.RenderTarget[0].DestBlend =
+      D3D12_BLEND_INV_SRC_ALPHA;
+  alphaPipelineState_ = nullptr;
+  hr = dx12Core_->GetDevice()->CreateGraphicsPipelineState(
+      &graphicsPipeLineStateDesc, IID_PPV_ARGS(&alphaPipelineState_));
   assert(SUCCEEDED(hr));
 }
 

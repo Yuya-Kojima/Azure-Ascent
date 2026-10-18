@@ -73,8 +73,13 @@ struct ParticleEmitDesc {
 
 class IParticleEmitter {
 public:
+    // 描画時の合成方法（Add: 加算, Alpha: 半透明）
+    enum class BlendMode { Add, Alpha };
+
     IParticleEmitter() = default;
     virtual ~IParticleEmitter();
+
+    void SetBlendMode(BlendMode mode) { blendMode_ = mode; }
 
     // セッター
     void SetTranslate(const Vector3& translate) { emitterData_->translate = translate; }
@@ -128,6 +133,8 @@ protected:
 
     std::string textureFilePath_;
     uint32_t textureSrvIndex_ = 0;
+
+    BlendMode blendMode_ = BlendMode::Add;
 
     // GPUパーティクル用のリソース群
     Microsoft::WRL::ComPtr<ID3D12Resource> emitterResource_;

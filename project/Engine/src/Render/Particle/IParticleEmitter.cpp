@@ -140,7 +140,9 @@ void IParticleEmitter::Draw() {
     auto commandList = dx12Core->GetCommandList();
 
     commandList->SetGraphicsRootSignature(ParticleManager::GetInstance()->GetRootSignature());
-    commandList->SetPipelineState(ParticleManager::GetInstance()->GetPipelineState());
+    commandList->SetPipelineState(blendMode_ == BlendMode::Alpha
+        ? ParticleManager::GetInstance()->GetAlphaPipelineState()
+        : ParticleManager::GetInstance()->GetPipelineState());
     commandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
     commandList->IASetVertexBuffers(0, 1, &vertexBufferView_);
 

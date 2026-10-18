@@ -37,6 +37,7 @@ void UINode::Update() {
   if (isSelectable && isFocused) {
     drawColor = focusedColor;
   }
+  drawColor.w *= UIManager::GetInstance()->GetGlobalAlpha();
 
   if (type == UINodeType::Text && textObject) {
     textObject->SetText(textString);
@@ -429,6 +430,7 @@ void UIManager::Save(const std::string &filePath) {
 
 void UIManager::Load(const std::string &filePath) {
   currentFilePath_ = filePath;
+  globalAlpha_ = 1.0f;
   std::ifstream file(filePath);
   if (file.is_open()) {
     json j;
