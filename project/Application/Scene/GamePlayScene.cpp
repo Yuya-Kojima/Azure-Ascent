@@ -2,6 +2,7 @@
 #include "../../externals/nlohmann/json.hpp"
 #include "../Effect/EffectManager.h"
 #include "Actor/Behavior/BehaviorFighter.h"
+#include "Actor/DragonModel.h"
 #include "Actor/Behavior/BehaviorMeteor.h"
 #include "Actor/Behavior/BehaviorSineWave.h"
 #include "Actor/Behavior/BehaviorSpline.h"
@@ -32,6 +33,7 @@
 #include "Renderer/TrailRenderer.h"
 #include "Scene/SceneManager.h"
 #include "Sprite/Sprite.h"
+#include "StageIntro.h"
 #include "Texture/TextureManager.h"
 #include <filesystem>
 #include <fstream>
@@ -117,6 +119,10 @@ public:
 #include <numbers>
 #include <string>
 
+GamePlayScene::GamePlayScene() = default;
+
+GamePlayScene::~GamePlayScene() = default;
+
 void GamePlayScene::RequestHitStop(int frames) {
   if (frames <= 0) {
     return;
@@ -155,21 +161,6 @@ void GamePlayScene::Initialize(EngineBase *engine) {
 
   // 参照をコピー
   engine_ = engine;
-
-  // --- フォグの初期化 ---
-  FogData fog;
-  fog.color = Vector4(0.8f, 0.9f, 1.0f, 1.0f); // 空色っぽいフォグ
-  fog.nearDist = 300.0f;
-  fog.farDist = 600.0f;
-  fog.enabled = 1.0f;
-  engine_->GetObject3dRenderer()->SetFog(fog);
-
-  // ディレクショナルライト設定
-  if (auto *dl = engine->GetObject3dRenderer()->GetDirectionalLightData()) {
-    dl->color = {1.0f, 1.0f, 1.0f, 1.0f};
-    dl->direction = Normalize(Vector3{0.0f, -1.0f, 0.0f});
-    dl->intensity = 1.0f;
-  }
 
   //===========================
   // テクスチャファイルの読み込み
@@ -270,13 +261,19 @@ void GamePlayScene::Initialize(EngineBase *engine) {
   skybox_->Initialize(engine_->GetSkyboxRenderer());
   skybox_->SetTexture("resources/Skybox/Skybox.dds");
   skybox_->SetScale({100.0f, 100.0f, 100.0f});
-  skybox_->SetColor({0.6f, 0.6f, 0.6f, 1.0f});
+  skybox_->SetProceduralSky(true);
+
+  // 空・ライト・霧（乗っ取られた暗い空）
+  ApplySkyAndLighting();
+
+  // ステージ開始演出
+  stageIntro_ = std::make_unique<StageIntro>();
+  stageIntro_->Initialize();
 
   //===========================
   // プレイヤーの初期化
   //===========================
   ModelManager::GetInstance()->LoadModel("suzanne.obj");
-  ModelManager::GetInstance()->LoadModel("player_dragon.obj");
 
   player_ = std::make_unique<Player>(railCamera_.get());
   player_->SetSpriteRenderer(engine_->GetSpriteRenderer());
@@ -286,11 +283,10 @@ void GamePlayScene::Initialize(EngineBase *engine) {
 
   // プレイヤーの初期化（照準やコライダーの生成など）
   player_->Initialize();
-  auto playerModel = std::make_unique<Object3d>();
-  playerModel->Initialize(engine_->GetObject3dRenderer());
-  playerModel->SetModel("player_dragon.obj"); // 正式自機モデル
-  playerModel->SetColor({1.0f, 1.0f, 1.0f, 1.0f});
-  player_->SetModel(std::move(playerModel));
+  auto dragonModel = std::make_unique<DragonModel>();
+  dragonModel->Initialize(engine_->GetObject3dRenderer(),
+                          engine_->GetSrvManager());
+  player_->SetDragonModel(std::move(dragonModel));
 
   cameraTransform_ = {
       {1.0f, 1.0f, 1.0f},
@@ -342,6 +338,10 @@ void GamePlayScene::Update() {
         ev.hasSpawned = false;
       }
     }
+
+    if (playIntroOnStart_) {
+      StartIntro();
+    }
   } else if (!isPlayMode_ && previousGlobalPlayMode_) {
     isPaused_ = false;
     useDebugCamera_ = true;
@@ -363,7 +363,9 @@ void GamePlayScene::Update() {
     if (player_) {
       player_->SetLoadConfigOnInitialize(false);
       player_->Initialize();
+      player_->SetReticleAlpha(1.0f);
     }
+    hudFadeTimer_ = hudFadeSec_;
 
     if (railCamera_) {
       railCamera_->SetT(playStartT_);
@@ -397,6 +399,17 @@ void GamePlayScene::Update() {
 
   // Sound更新
   SoundManager::GetInstance()->Update();
+
+  // 開始演出のあと、HUD と照準を薄い状態から現す
+  if (gameState_ == GameState::Play && hudFadeTimer_ < hudFadeSec_) {
+    const float kFrameSec = 1.0f / 60.0f;
+    hudFadeTimer_ = (std::min)(hudFadeTimer_ + kFrameSec, hudFadeSec_);
+    float hudAlpha = hudFadeTimer_ / hudFadeSec_;
+    UIManager::GetInstance()->SetGlobalAlpha(hudAlpha);
+    if (player_) {
+      player_->SetReticleAlpha(hudAlpha);
+    }
+  }
 
   // UI更新
   Input *input = GameManager::GetInstance()->IsGlobalPlayMode()
@@ -487,8 +500,10 @@ void GamePlayScene::Update() {
     hitStopCooldownTimer_--;
   }
 
+  // 開始演出中はレール・敵・弾・当たり判定を止める
   bool shouldUpdateWorld =
-      (isPlayMode_ && !isPaused_ && hitStopTimer_ <= 0) || doStep_;
+      ((isPlayMode_ && !isPaused_ && hitStopTimer_ <= 0) || doStep_) &&
+      gameState_ != GameState::Intro;
 
   if (doStep_) {
     doStep_ = false;
@@ -500,8 +515,13 @@ void GamePlayScene::Update() {
   const ICamera *activeCamera = nullptr;
 
   // RailCameraにプレイヤーの現在位置（前フレーム座標）を渡す
+  // 開始演出中は操作開始時の位置を渡し、レールカメラの向きを固定しておく
   if (player_ && railCamera_) {
-    railCamera_->SetPlayerWorldPosition(player_->GetTransform().translate);
+    if (gameState_ == GameState::Intro) {
+      railCamera_->SetPlayerWorldPosition(stageIntro_->GetDragonEndPosition());
+    } else {
+      railCamera_->SetPlayerWorldPosition(player_->GetTransform().translate);
+    }
   }
 
   if (useDebugCamera_) {
@@ -517,6 +537,16 @@ void GamePlayScene::Update() {
       railCamera_->Update();
     }
     activeCamera = railCamera_.get();
+  }
+
+  // 開始演出：自機の位置を動かし、演出カメラで映す
+  if (gameState_ == GameState::Intro) {
+    if (isPlayMode_ && !isPaused_) {
+      UpdateIntro();
+    }
+    if (!useDebugCamera_) {
+      activeCamera = stageIntro_->GetCamera();
+    }
   }
 
   // ポストエフェクトとエフェクトマネージャーの更新
@@ -725,6 +755,9 @@ void GamePlayScene::Update() {
   engine_->GetObject3dRenderer()->SetDefaultCamera(activeCamera);
 
   if (skybox_) {
+    const float kSkyTimeStep = 1.0f / 60.0f;
+    skyTimer_ += kSkyTimeStep;
+    ApplySkyAndLighting();
     skybox_->SetCamera(activeCamera);
     skybox_->Update();
   }
@@ -740,6 +773,10 @@ void GamePlayScene::Update() {
     } else {
       player_->UpdateTransform();
     }
+    // 羽ばたきは開始演出中も進め、ポーズ・ヒットストップ中は止める
+    const bool isWingMoving =
+        shouldUpdateWorld || gameState_ == GameState::Intro;
+    player_->UpdateWing(isWingMoving ? kWingDeltaTime_ : 0.0f);
   }
 
   // アクター群の更新
@@ -964,6 +1001,20 @@ void GamePlayScene::Update() {
       changed |=
           ImGui::DragFloat((const char *)u8"口元の前方オフセット (Z)",
                            &config.muzzleOffsetForward, 0.05f, -10.0f, 10.0f);
+      changed |= ImGui::SliderFloat((const char *)u8"羽ばたきの基本の強さ",
+                                    &config.wingStrength, 0.0f, 1.0f);
+      changed |= ImGui::SliderFloat((const char *)u8"羽ばたきの回数（1秒あたり）",
+                                    &config.wingFrequency, 0.2f, 4.0f);
+      changed |= ImGui::SliderFloat((const char *)u8"上昇で強める量",
+                                    &config.wingClimbStrength, 0.0f, 20.0f);
+      changed |= ImGui::SliderFloat((const char *)u8"下降で畳む量",
+                                    &config.wingDiveFold, 0.0f, 20.0f);
+      changed |= ImGui::SliderFloat((const char *)u8"左右の移動で付ける左右差",
+                                    &config.wingTurnAsymmetry, 0.0f, 40.0f);
+      changed |= ImGui::SliderFloat((const char *)u8"羽ばたきの姿勢の割合",
+                                    &config.wingHover, 0.0f, 1.0f);
+      changed |= ImGui::SliderFloat((const char *)u8"上昇で体を起こす量",
+                                    &config.wingClimbHover, 0.0f, 20.0f);
 
       if (changed) {
         player_->SetActionConfigDirty(true);
@@ -1650,6 +1701,30 @@ void GamePlayScene::DrawEditorUI() {
     }
   }
 
+  //=========================
+  // 開始演出と空の調整
+  //=========================
+  ImGui::Begin("Stage Intro");
+  ImGui::Checkbox("Play Intro On Start", &playIntroOnStart_);
+  if (isPlayMode_ && ImGui::Button("Replay Intro")) {
+    StartIntro();
+  }
+  stageIntro_->DrawImGui();
+  ImGui::SeparatorText("Sky");
+  ImGui::ColorEdit3("Zenith", &skyZenith_.x);
+  ImGui::ColorEdit3("Horizon", &skyHorizon_.x);
+  ImGui::DragFloat3("Sun Dir", &skySunDir_.x, 0.01f);
+  ImGui::ColorEdit3("Sun Color", &skySunColor_.x);
+  ImGui::SliderFloat("Sun Intensity", &skySunIntensity_, 0.0f, 2.0f);
+  ImGui::SliderFloat("Cloud Amount", &skyCloudAmount_, 0.0f, 1.0f);
+  ImGui::ColorEdit3("Cloud Color", &skyCloudColor_.x);
+  ImGui::SliderFloat("Cloud Opacity", &skyCloudOpacity_, 0.0f, 1.0f);
+  ImGui::SliderFloat("Cloud Rim", &skyCloudRim_, 0.0f, 2.0f);
+  ImGui::SeparatorText("Light");
+  ImGui::ColorEdit3("Light Color", &lightColor_.x);
+  ImGui::SliderFloat("Light Intensity", &lightIntensity_, 0.0f, 2.0f);
+  ImGui::End();
+
 #endif
 }
 
@@ -1772,6 +1847,8 @@ void GamePlayScene::Draw3D() {
                                         activeCamera->GetProjectionMatrix());
     bossDustParticleGroup_->Update(activeCamera->GetViewMatrix(),
                                    activeCamera->GetProjectionMatrix());
+    stageIntro_->UpdateParticles(activeCamera->GetViewMatrix(),
+                                 activeCamera->GetProjectionMatrix());
   }
   ParticleManager::GetInstance()->Emit();
 
@@ -1779,6 +1856,7 @@ void GamePlayScene::Draw3D() {
 
   bossExplosionParticleGroup_->Draw();
   bossDustParticleGroup_->Draw();
+  stageIntro_->DrawParticles();
 
   // リボントレイル（弾やミサイルの光の軌跡）の一括描画
   if (activeCamera) {
@@ -1808,8 +1886,79 @@ void GamePlayScene::Draw2D() {
     }
   }
 
-  // スプライト（UI）の描画
-  UIManager::GetInstance()->Draw();
+  // スプライト（UI）の描画。開始演出中は HUD を出さない
+  if (gameState_ != GameState::Intro) {
+    UIManager::GetInstance()->Draw();
+  }
+}
+
+void GamePlayScene::StartIntro() {
+  // レールを止めたまま、操作開始時のレールカメラと自機の位置を決める
+  railCamera_->SetAutoMove(false);
+  railCamera_->Update();
+  player_->ForceSnapToCamera();
+  railCamera_->SetPlayerWorldPosition(player_->GetTransform().translate);
+  railCamera_->Update();
+
+  // 雲海の面の高さ（配置オブジェクトから探す）
+  float seaHeight = kDefaultSeaHeight_;
+  for (const auto &obj : sceneObjects_) {
+    if (obj->GetModelPath().find("sea_of_clouds") != std::string::npos) {
+      seaHeight = obj->GetTranslation().y;
+      break;
+    }
+  }
+
+  stageIntro_->Start(*railCamera_, player_->GetTransform().translate,
+                     player_->GetTransform().rotate, seaHeight);
+  gameState_ = GameState::Intro;
+
+  // HUD と照準は演出が終わってから現す
+  hudFadeTimer_ = 0.0f;
+  UIManager::GetInstance()->SetGlobalAlpha(0.0f);
+  player_->SetReticleAlpha(0.0f);
+}
+
+void GamePlayScene::UpdateIntro() {
+  stageIntro_->Update();
+
+  // 自機の位置・向きを演出側で決める
+  Transform &playerTransform = player_->GetTransform();
+  playerTransform.translate = stageIntro_->GetDragonPosition();
+  playerTransform.rotate = stageIntro_->GetDragonRotation();
+  player_->SetExternalWingState(stageIntro_->GetWingState());
+
+  // 演出が終わったらレールを動かして操作を開始する（HUD と照準はこのあと現れる）
+  if (stageIntro_->IsFinished()) {
+    gameState_ = GameState::Play;
+    player_->SetExternalWingState(std::nullopt);
+    railCamera_->SetAutoMove(true);
+  }
+}
+
+void GamePlayScene::ApplySkyAndLighting() {
+  // 空：手続き生成の空に、暗い空の色と、空より暗い雲（頭上を覆うふた）を設定する
+  skybox_->SetColor({1.0f, 1.0f, 1.0f, 1.0f});
+  skybox_->SetSkyColors(skyZenith_, skyHorizon_);
+  skybox_->SetSun(Normalize(skySunDir_), skySunColor_, skySunIntensity_,
+                  skyCloudAmount_);
+  skybox_->SetCloudColor(skyCloudColor_, skyCloudOpacity_, skyCloudRim_);
+  skybox_->SetSkyTime(skyTimer_);
+
+  // ライト：ライトとフォグは全シーン共通の設定なので、このシーンの値で毎フレーム上書きする
+  if (auto *dl = engine_->GetObject3dRenderer()->GetDirectionalLightData()) {
+    dl->color = {lightColor_.x, lightColor_.y, lightColor_.z, 1.0f};
+    dl->direction = Normalize(Vector3{0.0f, -1.0f, 0.0f});
+    dl->intensity = lightIntensity_;
+  }
+
+  // フォグ：遠くを地平線の色に溶かす
+  FogData fog;
+  fog.color = Vector4(skyHorizon_.x, skyHorizon_.y, skyHorizon_.z, 1.0f);
+  fog.nearDist = 300.0f;
+  fog.farDist = 600.0f;
+  fog.enabled = 1.0f;
+  engine_->GetObject3dRenderer()->SetFog(fog);
 }
 
 void GamePlayScene::SaveLevel(const std::string &filename) {
