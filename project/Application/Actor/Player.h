@@ -1,16 +1,19 @@
 #pragma once
+#include "Actor/DragonWingAnimator.h"
 #include "Framework/BaseActor.h"
 #include "Math/Vector2.h"
 #include "ReticleTunnel.h"
 #include <cassert>
 #include <functional>
 #include <memory>
+#include <optional>
 #include <vector>
 
 class LockOn;
 class SpriteRenderer;
 class ICamera;
 class Object3d;
+class DragonModel;
 class Sprite;
 class Input;
 class Enemy;
@@ -46,6 +49,21 @@ public:
   void SetModel(std::unique_ptr<Object3d> model) {
     object3d_ = std::move(model);
   }
+  // 羽ばたく自機ドラゴンを使う（SetModel の Object3d より優先して描く）
+  void SetDragonModel(std::unique_ptr<DragonModel> model);
+
+  /// <summary>
+  /// 羽ばたきを進める（1フレームに1回）。deltaTime 0 で止めたまま更新する
+  /// </summary>
+  void UpdateWing(float deltaTime);
+
+  /// <summary>
+  /// 羽ばたきの状態を外から決める（開始演出など）。std::nullopt で自機の動きから決める状態に戻す
+  /// </summary>
+  void SetExternalWingState(
+      const std::optional<DragonWingAnimator::State> &state) {
+    externalWingState_ = state;
+  }
   void SetHitStopCallback(std::function<void(int)> callback) {
     hitStopCallback_ = callback;
   }
@@ -62,6 +80,9 @@ public:
   void AddScore(int amount) { score_ += amount; }
 
   bool IsDead() const { return isDead_; }
+
+  // 照準の不透明度（0〜1）
+  void SetReticleAlpha(float alpha);
   int GetInvincibleTimer() const { return invincibleTimer_; }
 
   // --- アクション・軌道調整用パラメータ ---
@@ -97,6 +118,14 @@ public:
     float muzzleOffsetX = 0.0f;       // 口元の左右オフセット
     float muzzleOffsetY = 0.5f;       // 口元の上方オフセット
     float muzzleOffsetForward = 2.5f; // 口元の前方オフセット
+    // 羽ばたき（速度は1フレームあたりの移動量を、カメラの右・上の向きで見たもの）
+    float wingStrength = 0.6f;       // 羽ばたきの基本の強さ
+    float wingFrequency = 1.5f;      // 1秒あたりの羽ばたき回数
+    float wingClimbStrength = 4.0f;  // 上向きの速度に掛けて強さに足す量
+    float wingDiveFold = 6.0f;       // 下向きの速度に掛けて畳み具合にする量
+    float wingTurnAsymmetry = 10.0f; // 左右の速度に掛けて左右差にする量
+    float wingHover = 0.0f;          // 羽ばたきの姿勢の割合（0: 滑空 〜 1: 体を起こす）
+    float wingClimbHover = 2.0f;     // 上向きの速度に掛けて羽ばたきの姿勢の割合に足す量
   };
   ActionConfig &GetActionConfig() { return actionConfig_; }
 
@@ -151,8 +180,15 @@ private:
 
 
 
-  // 自機の3Dモデル
+  // 自機の3Dモデル（dragonModel_ があればそちらを使う）
   std::unique_ptr<Object3d> object3d_;
+  std::unique_ptr<DragonModel> dragonModel_;
+  // 位置・向きを設定して描く Object3d
+  Object3d *GetBodyObject() const;
+
+  // 自機の動きから決めた羽ばたきの状態と、外から決める状態
+  DragonWingAnimator::State flightWingState_;
+  std::optional<DragonWingAnimator::State> externalWingState_;
 
   // 攻撃用ステート
   enum class AttackState {

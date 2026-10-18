@@ -47,6 +47,8 @@ private:
 	Microsoft::WRL::ComPtr<ID3D12RootSignature> rootSignature_ = nullptr;
 	// PSO (Graphics)
 	Microsoft::WRL::ComPtr<ID3D12PipelineState> graphicsPipeLineState_ = nullptr;
+	// PSO (Graphics、半透明合成)
+	Microsoft::WRL::ComPtr<ID3D12PipelineState> alphaPipelineState_ = nullptr;
 
 	// Particleを0クリアするためのComputePipeline
 	Microsoft::WRL::ComPtr<ID3D12RootSignature> computeRootSignature_ = nullptr;
@@ -89,6 +91,7 @@ public:
 	SrvManager* GetSrvManager() const { return srvManager_; }
 	ID3D12RootSignature* GetRootSignature() const { return rootSignature_.Get(); }
 	ID3D12PipelineState* GetPipelineState() const { return graphicsPipeLineState_.Get(); }
+	ID3D12PipelineState* GetAlphaPipelineState() const { return alphaPipelineState_.Get(); }
 
 	ID3D12Resource* GetPerViewResource() const { return perViewResource_.Get(); }
 	PerView* GetPerViewData() const { return perViewData_; }

@@ -1,6 +1,7 @@
 #include "Actor/Player.h"
 #include "Audio/SoundManager.h"
 #include "../../externals/nlohmann/json.hpp"
+#include "Actor/DragonModel.h"
 #include "Actor/Enemy.h"
 #include "Actor/HomingBullet.h"
 #include "Actor/LockOn.h"
@@ -245,6 +246,20 @@ void Player::Update() {
       std::sqrt(toTarget.x * toTarget.x + toTarget.z * toTarget.z);
   float aimPitch = std::atan2(-toTarget.y, xzLenToTarget);
 
+  // 動きから羽ばたきの状態を決める（上昇で強く、下降で畳み気味、左右の移動で左右差）
+  flightWingState_.strength =
+      std::clamp(actionConfig_.wingStrength +
+                     localVelY * actionConfig_.wingClimbStrength,
+                 0.0f, 1.0f);
+  flightWingState_.frequency = actionConfig_.wingFrequency;
+  flightWingState_.fold =
+      std::clamp(-localVelY * actionConfig_.wingDiveFold, 0.0f, 1.0f);
+  flightWingState_.asymmetry =
+      std::clamp(localVelX * actionConfig_.wingTurnAsymmetry, -1.0f, 1.0f);
+  flightWingState_.hover = std::clamp(
+      actionConfig_.wingHover + localVelY * actionConfig_.wingClimbHover, 0.0f,
+      1.0f);
+
   // 速度に応じて機体を傾ける
   // ピッチとヨーの基本姿勢を、カメラ正面ではなく照準の方向にする
   // 移動量に応じて機体をダイナミックに傾ける
@@ -327,7 +342,7 @@ bool Player::IsLockOnMode() const {
 }
 
 void Player::FireHomingShot() {
-  if (!lockOn_ || !object3dRenderer_ || !object3d_)
+  if (!lockOn_ || !object3dRenderer_ || !GetBodyObject())
     return;
 
   const auto &targets = lockOn_->GetTargets();
@@ -373,7 +388,7 @@ void Player::UpdateHomingQueue() {
 }
 
 void Player::SpawnHomingBullet(BaseActor *target, int index, int totalCount) {
-  if (!object3dRenderer_ || !object3d_ || !camera_)
+  if (!object3dRenderer_ || !GetBodyObject() || !camera_)
     return;
 
   // カメラ空間の各基底ベクトル（正面、右、上）を取得
@@ -384,7 +399,7 @@ void Player::SpawnHomingBullet(BaseActor *target, int index, int totalCount) {
   Vector3 cameraForward = {cameraWorld.m[2][0], cameraWorld.m[2][1], cameraWorld.m[2][2]};
 
   // 自機砲門の位置
-  Vector3 playerPos = object3d_->GetTranslation();
+  Vector3 playerPos = GetBodyObject()->GetTranslation();
   Vector3 muzzlePos = {playerPos.x + cameraForward.x * 2.0f,
                        playerPos.y + cameraForward.y * 2.0f,
                        playerPos.z + cameraForward.z * 2.0f};
@@ -437,11 +452,11 @@ void Player::SpawnHomingBullet(BaseActor *target, int index, int totalCount) {
 }
 
 void Player::FireNormalShot() {
-  if (!object3dRenderer_ || !object3d_)
+  if (!object3dRenderer_ || !GetBodyObject())
     return;
 
   // プレイヤーのワールド行列を取得
-  Matrix4x4 playerWorld = object3d_->GetWorldMatrix();
+  Matrix4x4 playerWorld = GetBodyObject()->GetWorldMatrix();
 
   // 口元のローカル座標（X, Y, Z）を作成
   Vector3 localMuzzle = {actionConfig_.muzzleOffsetX, actionConfig_.muzzleOffsetY,
@@ -533,6 +548,12 @@ void Player::FireNormalShot() {
   SoundManager::GetInstance()->PlaySE("laser_shot");
 }
 
+void Player::SetReticleAlpha(float alpha) {
+  if (reticleTunnel_) {
+    reticleTunnel_->SetAlpha(alpha);
+  }
+}
+
 void Player::Draw3D() {
   // 無敵時間中の点滅
   if (invincibleTimer_ > 0 && (invincibleTimer_ / 4) % 2 == 0) {
@@ -540,8 +561,8 @@ void Player::Draw3D() {
   }
 
   // プレイヤーの描画処理
-  if (object3d_) {
-    object3d_->Draw();
+  if (GetBodyObject()) {
+    GetBodyObject()->Draw();
   }
 }
 
@@ -602,18 +623,35 @@ void Player::TakeDamage(int damage) {
   }
 }
 
+void Player::SetDragonModel(std::unique_ptr<DragonModel> model) {
+  dragonModel_ = std::move(model);
+}
+
+Object3d *Player::GetBodyObject() const {
+  return dragonModel_ ? dragonModel_->GetObject3d() : object3d_.get();
+}
+
+void Player::UpdateWing(float deltaTime) {
+  if (!dragonModel_) {
+    return;
+  }
+  dragonModel_->SetWingState(externalWingState_ ? *externalWingState_
+                                                : flightWingState_);
+  dragonModel_->Update(deltaTime);
+}
+
 void Player::UpdateTransform() {
-  if (object3d_) {
+  if (GetBodyObject()) {
     // カメラの正面方向を取得
     Matrix4x4 viewMatrix = camera_->GetViewMatrix();
     Matrix4x4 cameraWorld = Inverse(viewMatrix);
     Vector3 cameraForward = {cameraWorld.m[2][0], cameraWorld.m[2][1],
                              cameraWorld.m[2][2]};
 
-    object3d_->SetTranslation(transform_.translate);
-    object3d_->SetRotation(transform_.rotate);
-    object3d_->SetScale(transform_.scale);
-    object3d_->Update();
+    GetBodyObject()->SetTranslation(transform_.translate);
+    GetBodyObject()->SetRotation(transform_.rotate);
+    GetBodyObject()->SetScale(transform_.scale);
+    GetBodyObject()->Update();
   }
 }
 
@@ -697,6 +735,13 @@ void Player::SaveActionConfig() {
   root["muzzleOffsetX"] = actionConfig_.muzzleOffsetX;
   root["muzzleOffsetY"] = actionConfig_.muzzleOffsetY;
   root["muzzleOffsetForward"] = actionConfig_.muzzleOffsetForward;
+  root["wingStrength"] = actionConfig_.wingStrength;
+  root["wingFrequency"] = actionConfig_.wingFrequency;
+  root["wingClimbStrength"] = actionConfig_.wingClimbStrength;
+  root["wingDiveFold"] = actionConfig_.wingDiveFold;
+  root["wingTurnAsymmetry"] = actionConfig_.wingTurnAsymmetry;
+  root["wingHover"] = actionConfig_.wingHover;
+  root["wingClimbHover"] = actionConfig_.wingClimbHover;
 
   if (!std::filesystem::exists("resources/config")) {
     std::filesystem::create_directories("resources/config");
@@ -767,6 +812,20 @@ void Player::LoadActionConfig() {
         actionConfig_.muzzleOffsetY = root["muzzleOffsetY"];
       if (root.contains("muzzleOffsetForward"))
         actionConfig_.muzzleOffsetForward = root["muzzleOffsetForward"];
+      if (root.contains("wingStrength"))
+        actionConfig_.wingStrength = root["wingStrength"];
+      if (root.contains("wingFrequency"))
+        actionConfig_.wingFrequency = root["wingFrequency"];
+      if (root.contains("wingClimbStrength"))
+        actionConfig_.wingClimbStrength = root["wingClimbStrength"];
+      if (root.contains("wingDiveFold"))
+        actionConfig_.wingDiveFold = root["wingDiveFold"];
+      if (root.contains("wingTurnAsymmetry"))
+        actionConfig_.wingTurnAsymmetry = root["wingTurnAsymmetry"];
+      if (root.contains("wingHover"))
+        actionConfig_.wingHover = root["wingHover"];
+      if (root.contains("wingClimbHover"))
+        actionConfig_.wingClimbHover = root["wingClimbHover"];
 
       isActionConfigDirty_ = false; // ロード成功時のみ未保存フラグをリセット
     } catch (...) {

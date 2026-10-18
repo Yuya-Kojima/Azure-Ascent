@@ -1,4 +1,5 @@
 #pragma once
+#include "Actor/DragonWingAnimator.h"
 #include "Audio/SoundManager.h"
 #include "Core/EngineBase.h"
 #include "Math/MathUtil.h"
@@ -8,6 +9,7 @@
 #include <vector>
 
 class Object3d;
+class DragonModel;
 class DebugCamera;
 class GameCamera;
 class Skybox;
@@ -19,7 +21,8 @@ private: // メンバ変数(ゲーム用)
   std::unique_ptr<Skybox> skybox_ = nullptr;
 
   // 3Dオブジェクト
-  std::unique_ptr<Object3d> dragonObject_ = nullptr;
+  std::unique_ptr<DragonModel> dragonModel_ = nullptr;
+  Object3d *dragonObject_ = nullptr; // dragonModel_ の Object3d（位置・向き・大きさの設定用）
   std::unique_ptr<Object3d> cloudsObject_ = nullptr;
   std::unique_ptr<Object3d> cloudsObjectFar_ = nullptr;
 
@@ -28,6 +31,19 @@ private: // メンバ変数(ゲーム用)
   Vector3 baseDragonPos_ = {0.0f, 0.0f, 0.0f};
   Vector3 baseDragonRot_ = {0.0f, 0.0f, 0.0f};
   float motionTimer_ = 0.0f;
+
+  // 羽ばたき
+  DragonWingAnimator::State dragonWingState_; // 毎フレーム決めてドラゴンへ渡す状態
+  const float kWingStrength_ = 0.6f;  // 通常飛行の羽ばたきの強さ
+  const float kWingFrequency_ = 1.4f; // 通常飛行の1秒あたりの羽ばたき回数
+  const float kWingClimbGain_ = 0.25f; // 上向きの速さに掛けて強さに足す量
+  const float kWingTurnGain_ = 1.5f;   // 体の傾き（ラジアン）に掛けて左右差にする量
+  const float kWingHover_ = 0.15f;     // 通常飛行の羽ばたきの姿勢の割合（0: 滑空 〜 1: 体を起こす）
+  const float kWingClimbHover_ = 0.3f; // 上向きの速さに掛けて羽ばたきの姿勢の割合に足す量
+  const float kLaunchWingStrength_ = 1.0f;  // 発進中の羽ばたきの強さ
+  const float kLaunchWingFrequency_ = 2.4f; // 発進中の1秒あたりの羽ばたき回数
+  const float kLaunchWingFold_ = 0.5f;      // 発進の加速が最大のときの畳み具合
+  const float kWingDeltaTime_ = 1.0f / 60.0f; // 羽ばたきを進める1フレームの時間（秒）
   float openingTimer_ = 0.0f; // 起動時オープニング演出用タイマー
   const float kOpeningDuration_ = 3.0f; // オープニングのカメラ演出秒数（終了時にカット1へ完全一致）
   const float kLogoLeadTime_ = 0.7f;    // オープニング終了の何秒前からタイトルUIを出し始めるか
@@ -141,6 +157,9 @@ private:
   bool hasTransitioned_ = false;
 
 public:  // メンバ関数
+  TitleScene();
+  ~TitleScene() override;
+
   /// <summary>
   /// 初期化
   /// </summary>

@@ -5,11 +5,12 @@ SamplerState gSampler : register(s0);
 
 struct Material {
 	float4 color;
-	float4 skyParams;    // x: mode, y: time
+	float4 skyParams;    // x: mode, y: time, z: 雲の縁の明るさ
 	float4 zenithColor;
 	float4 horizonColor;
 	float4 sunDir;       // xyz: 方向, w: 雲量
 	float4 sunColor;     // rgb: 色, a: 強さ
+	float4 cloudColor;   // rgb: 雲の色, a: 雲の不透明度（0なら白い雲）
 };
 
 ConstantBuffer<Material> gMaterial : register(b0);
@@ -95,12 +96,24 @@ float3 ProceduralSky(float3 dir) {
 		float cloudLo = 0.58 - cloudAmount * 0.35;
 		float cloud = smoothstep(cloudLo, cloudLo + 0.25, n);
 
-		// 地平線付近は自然にフェードアウト
-		cloud *= smoothstep(0.02, 0.20, h);
+		// 雲の色が指定されているか
+		bool useCloudColor = gMaterial.cloudColor.a > 0.0;
 
-		// 太陽側は明るく、反対側は空色と馴染ませる
-		float3 cloudCol = lerp(gMaterial.horizonColor.rgb * 1.05, float3(1.0, 1.0, 1.0), 0.6) + sunCol * 0.15 * pow(sd, 3.0);
-		sky = lerp(sky, cloudCol, cloud * 0.75);
+		// 地平線付近は自然にフェードアウト（雲の色を指定したときは地平線の近くまで雲を残す）
+		cloud *= smoothstep(0.02, useCloudColor ? 0.08 : 0.20, h);
+
+		if (useCloudColor) {
+			// 指定色の雲。濃さが中間の縁（cloud * (1 - cloud) が最大）ほど、太陽側で太陽の色に光る
+			float rim = cloud * (1.0 - cloud) * 4.0;
+			float rimStrength = gMaterial.skyParams.z;
+			float3 cloudCol = gMaterial.cloudColor.rgb +
+				sunCol * (rimStrength * rim * (0.2 + 0.8 * pow(sd, 4.0)) + 0.15 * pow(sd, 3.0));
+			sky = lerp(sky, cloudCol, cloud * gMaterial.cloudColor.a);
+		} else {
+			// 太陽側は明るく、反対側は空色と馴染ませる
+			float3 cloudCol = lerp(gMaterial.horizonColor.rgb * 1.05, float3(1.0, 1.0, 1.0), 0.6) + sunCol * 0.15 * pow(sd, 3.0);
+			sky = lerp(sky, cloudCol, cloud * 0.75);
+		}
 	}
 	return sky;
 }

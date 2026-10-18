@@ -20,6 +20,7 @@
 #include "Texture/TextureManager.h"
 #include <cmath>
 #include <fstream>
+#include <numbers>
 #include <imgui.h>
 
 void DebugScene::Initialize(EngineBase *engine) {
@@ -212,6 +213,25 @@ void DebugScene::Initialize(EngineBase *engine) {
   animatedCube_->PlayAnimation(animation_);
   animatedCube_->SetTranslation({-3.0f, 1.0f, 0.0f});
 
+  // 自機ドラゴンの見比べ用
+  ModelManager::GetInstance()->LoadModel("player_dragon.obj");
+  dragonObj_ = std::make_unique<Object3d>();
+  dragonObj_->Initialize(engine_->GetObject3dRenderer());
+  dragonObj_->SetModel("player_dragon.obj");
+  dragonSkinned_ = std::make_unique<SkinnedObject>();
+  dragonSkinned_->Initialize(engine_->GetObject3dRenderer(),
+                             engine_->GetSrvManager(),
+                             "resources/player_dragon", "player_dragon.gltf");
+  dragonTestJoint_ =
+      dragonSkinned_->FindJoint("Wing_L_Root").value_or(dragonTestJoint_);
+  const Animation dragonGlidePose = LoadAnimationFile(
+      "resources/player_dragon", "player_dragon_glide_pose.gltf");
+  const Animation dragonHoverPose = LoadAnimationFile(
+      "resources/player_dragon", "player_dragon_hover_pose.gltf");
+  dragonWing_.Initialize(dragonSkinned_.get(), &dragonGlidePose,
+                         &dragonHoverPose);
+  dragonWing_.SetStateImmediate(dragonWingState_);
+
   // ==========================
   // スケルトンのデバッグ描画用初期化
   // ==========================
@@ -231,6 +251,14 @@ void DebugScene::Initialize(EngineBase *engine) {
   sphereModel_ = std::make_unique<Model>();
   sphereModel_->InitializeFromVertices(
       ModelManager::GetInstance()->GetModelRenderer(), sphereVertices);
+
+  // 翼端の関節の位置に置く印
+  dragonTipMarker_ = std::make_unique<Object3d>();
+  dragonTipMarker_->Initialize(engine_->GetObject3dRenderer());
+  dragonTipMarker_->SetModel(sphereModel_.get());
+  dragonTipMarker_->SetColor({1.0f, 0.2f, 0.2f, 1.0f});
+  dragonTipJoint_ =
+      dragonSkinned_->FindJoint("Wing_L_Finger3_2").value_or(dragonTipJoint_);
 
   jointObjects_.clear();
   for (size_t i = 0; i < sneakWalk_->GetSkeleton().joints.size(); ++i) {
@@ -576,6 +604,75 @@ void DebugScene::Update() {
 
   animatedCube_->Update();
 
+  // 自機ドラゴンの見比べ：中心から左右へ半分ずつずらして並べる
+  const float dragonHalfSpacing = dragonCompareSpacing_ * 0.5f;
+  const Vector3 dragonScale = {dragonCompareScale_, dragonCompareScale_,
+                               dragonCompareScale_};
+  const Vector3 dragonRotate = {0.0f, dragonCompareYaw_, 0.0f};
+  dragonObj_->SetTranslation({dragonCompareCenter_.x - dragonHalfSpacing,
+                              dragonCompareCenter_.y, dragonCompareCenter_.z});
+  Object3d *dragonSkinnedObject = dragonSkinned_->GetObject3d();
+  for (Object3d *dragon : {dragonObj_.get(), dragonSkinnedObject}) {
+    dragon->SetScale(dragonScale);
+    dragon->SetRotation(dragonRotate);
+  }
+  dragonObj_->Update();
+
+  // 体を揺らす：周期の違う sin でロール・ピッチ・上下を動かす
+  Vector3 dragonShakeRotate = {};
+  float dragonShakeY = 0.0f;
+  if (dragonShake_) {
+    dragonShakeTime_ += kDragonDeltaTime_;
+    const float angularSpeed =
+        2.0f * std::numbers::pi_v<float> / dragonShakePeriod_;
+    const float t = dragonShakeTime_ * angularSpeed;
+    dragonShakeRotate.z = dragonShakeRoll_ * std::sin(t);
+    dragonShakeRotate.x =
+        dragonShakePitch_ * std::sin(t * kDragonShakePitchRate_);
+    dragonShakeY = dragonShakeHeight_ * std::sin(t * kDragonShakeHeightRate_);
+  }
+  // 急に横へ動かす：残りの差の一定割合ずつ目指す位置へ近づく
+  dragonSideOffset_ +=
+      (dragonSideTarget_ - dragonSideOffset_) *
+      (1.0f - std::exp(-dragonSideSpeed_ * kDragonDeltaTime_));
+  dragonSkinnedObject->SetRotation(dragonRotate + dragonShakeRotate);
+  dragonSkinnedObject->SetTranslation(
+      {dragonCompareCenter_.x + dragonHalfSpacing + dragonSideOffset_,
+       dragonCompareCenter_.y + dragonShakeY, dragonCompareCenter_.z});
+
+  if (dragonAnimateWing_) {
+    // 羽ばたき
+    dragonWing_.SetTargetState(dragonWingState_);
+    dragonWing_.Update(
+        kDragonDeltaTime_,
+        MakeAffineMatrix(dragonSkinnedObject->GetScale(),
+                         dragonSkinnedObject->GetRotation(),
+                         dragonSkinnedObject->GetTranslation()));
+  } else {
+    // 選んだ関節を、元の姿勢から X → Y → Z の順にローカル軸まわりで回す
+    const Quaternion jointDelta = Multiply(
+        MakeRotateAxisAngleQuaternion({0.0f, 0.0f, 1.0f},
+                                      dragonTestJointAngles_.z),
+        Multiply(MakeRotateAxisAngleQuaternion({0.0f, 1.0f, 0.0f},
+                                               dragonTestJointAngles_.y),
+                 MakeRotateAxisAngleQuaternion({1.0f, 0.0f, 0.0f},
+                                               dragonTestJointAngles_.x)));
+    dragonSkinned_->ClearJointOverrides();
+    dragonSkinned_->SetJointRotation(
+        dragonTestJoint_,
+        Multiply(dragonSkinned_->GetRestRotation(dragonTestJoint_),
+                 jointDelta));
+  }
+  dragonSkinned_->Update(kDragonDeltaTime_);
+
+  // 翼端の印を関節の位置へ
+  const Matrix4x4 tipMatrix =
+      dragonSkinned_->GetJointWorldMatrix(dragonTipJoint_);
+  dragonTipMarker_->SetTranslation(
+      {tipMatrix.m[3][0], tipMatrix.m[3][1], tipMatrix.m[3][2]});
+  dragonTipMarker_->SetScale(dragonScale);
+  dragonTipMarker_->Update();
+
   // レベルデータのオブジェクト更新
   for (auto &obj : levelObjects_) {
     obj->Update();
@@ -807,6 +904,64 @@ void DebugScene::Update() {
     ImGui::End();
   }
 
+  //========================
+  // 自機ドラゴンの見比べ（左: OBJ / 右: glTF）
+  //========================
+  ImGui::Begin("World Settings");
+  if (ImGui::CollapsingHeader("Dragon Compare (L: OBJ / R: glTF)",
+                              ImGuiTreeNodeFlags_DefaultOpen)) {
+    ImGui::Checkbox("Show", &showDragonCompare_);
+    ImGui::DragFloat3("Center", &dragonCompareCenter_.x, 0.1f);
+    ImGui::SliderAngle("Yaw", &dragonCompareYaw_, -180.0f, 180.0f);
+    ImGui::DragFloat("Scale", &dragonCompareScale_, 0.05f, 0.1f, 20.0f);
+    ImGui::DragFloat("Spacing", &dragonCompareSpacing_, 0.05f, 0.0f, 20.0f);
+
+    // 羽ばたき（オフのときは、選んだ関節を手で回す）
+    ImGui::Checkbox("Animate Wing", &dragonAnimateWing_);
+    ImGui::SliderFloat("Strength", &dragonWingState_.strength, 0.0f, 1.0f);
+    ImGui::SliderFloat("Frequency", &dragonWingState_.frequency, 0.2f, 4.0f);
+    ImGui::SliderFloat("Fold", &dragonWingState_.fold, 0.0f, 1.0f);
+    ImGui::SliderFloat("Asymmetry", &dragonWingState_.asymmetry, -1.0f, 1.0f);
+    ImGui::SliderFloat("Pose", &dragonWingState_.pose, 0.0f, 1.0f);
+    ImGui::SliderFloat("Hover", &dragonWingState_.hover, 0.0f, 1.0f);
+    ImGui::Checkbox("Shake Body", &dragonShake_);
+    ImGui::SliderAngle("Shake Roll", &dragonShakeRoll_, 0.0f, 90.0f);
+    ImGui::SliderAngle("Shake Pitch", &dragonShakePitch_, 0.0f, 90.0f);
+    ImGui::SliderFloat("Shake Height", &dragonShakeHeight_, 0.0f, 2.0f);
+    ImGui::SliderFloat("Shake Period", &dragonShakePeriod_, 0.5f, 6.0f);
+    if (ImGui::Button("Side Move")) {
+      dragonSideTarget_ =
+          (dragonSideTarget_ == 0.0f) ? dragonSideDistance_ : 0.0f;
+    }
+    ImGui::SameLine();
+    ImGui::SliderFloat("Side Distance", &dragonSideDistance_, 0.0f, 10.0f);
+    ImGui::SliderFloat("Side Speed", &dragonSideSpeed_, 1.0f, 40.0f);
+    if (ImGui::TreeNode("Wing Config")) {
+      dragonWing_.DrawImGui();
+      ImGui::TreePop();
+    }
+
+    // 関節を1本選んで回す
+    const auto &joints = dragonSkinned_->GetSkeleton().joints;
+    if (ImGui::BeginCombo("Joint", joints[dragonTestJoint_].name.c_str())) {
+      for (const Joint &joint : joints) {
+        const bool selected = (joint.index == dragonTestJoint_);
+        if (ImGui::Selectable(joint.name.c_str(), selected)) {
+          dragonTestJoint_ = joint.index;
+          dragonTestJointAngles_ = {};
+        }
+      }
+      ImGui::EndCombo();
+    }
+    ImGui::SliderAngle("Joint X", &dragonTestJointAngles_.x, -90.0f, 90.0f);
+    ImGui::SliderAngle("Joint Y", &dragonTestJointAngles_.y, -90.0f, 90.0f);
+    ImGui::SliderAngle("Joint Z", &dragonTestJointAngles_.z, -90.0f, 90.0f);
+    if (ImGui::Button("Reset Joint")) {
+      dragonTestJointAngles_ = {};
+    }
+  }
+  ImGui::End();
+
 #endif // USE_IMGUI
 }
 
@@ -830,6 +985,12 @@ void DebugScene::Draw3D() {
     target->Draw();
   }
   animatedCube_->Draw();
+
+  if (showDragonCompare_) {
+    dragonObj_->Draw();
+    dragonSkinned_->Draw();
+    dragonTipMarker_->Draw();
+  }
 
   // 全アクターの3Dモデル部分だけをまとめて描く
   ActorManager::GetInstance()->Draw3D();

@@ -1,4 +1,5 @@
 #include "TitleScene.h"
+#include "Actor/DragonModel.h"
 #include "Camera/GameCamera.h"
 #include "Debug/DebugCamera.h"
 #include "Effect/EffectManager.h"
@@ -18,6 +19,9 @@
 #ifdef USE_IMGUI
 #include "Debug/ImGuiManager.h"
 #endif
+
+TitleScene::TitleScene() = default;
+TitleScene::~TitleScene() = default;
 
 void TitleScene::Initialize(EngineBase *engine) {
 
@@ -87,16 +91,16 @@ void TitleScene::Initialize(EngineBase *engine) {
   //===========================
   // 3Dオブジェクト関係の初期化
   //===========================
-  ModelManager::GetInstance()->LoadModel("player_dragon.obj");
   ModelManager::GetInstance()->LoadModel("sea_of_clouds.obj");
 
-  // 自機ドラゴンオブジェクト
-  dragonObject_ = std::make_unique<Object3d>();
-  dragonObject_->Initialize(engine_->GetObject3dRenderer());
-  dragonObject_->SetModel("player_dragon.obj");
-  dragonObject_->SetColor({1.0f, 1.0f, 1.0f, 1.0f});
-  // 輪郭の視認性向上: 黒線ではなく淡い水色のリムライト（縁の発光）
-  dragonObject_->SetRimLight({0.15f, 0.55f, 1.0f}, 1.2f, 2.5f);
+  // 自機ドラゴン（羽ばたくボーン付きモデル。リムライトは DragonModel で設定）
+  dragonModel_ = std::make_unique<DragonModel>();
+  dragonModel_->Initialize(engine_->GetObject3dRenderer(),
+                           engine_->GetSrvManager());
+  dragonObject_ = dragonModel_->GetObject3d();
+  dragonWingState_ = {kWingStrength_, kWingFrequency_, 0.0f, 0.0f, 1.0f,
+                      kWingHover_};
+  dragonModel_->SetWingStateImmediate(dragonWingState_);
   baseDragonPos_ = {0.0f, 0.0f, 0.0f};
   baseDragonRot_ = {0.0f, 0.0f, 0.0f};
   dragonTransform_.scale = {1.7f, 1.7f, 1.7f};
@@ -354,6 +358,10 @@ void TitleScene::UpdateLaunchSequence(Vector3 &outTargetCamPos, Vector3 &outTarg
   // 加速カーブ（3乗イージング）
   float accelCurve = progress * progress * progress;
   outLaunchAccelCurve = accelCurve;
+
+  // 羽ばたき：強く速く打ち、加速するほど翼を後ろへ畳む。体は起こさず前へ突っ込む
+  dragonWingState_ = {kLaunchWingStrength_, kLaunchWingFrequency_,
+                      kLaunchWingFold_ * accelCurve, 0.0f, 1.0f, 0.0f};
   // ホワイトアウト完了まで最高速の前進を維持
   float extraTime = (std::max)(0.0f, startTimer_ - kStartDuration_);
   float accelDist = accelCurve * 260.0f + extraTime * 300.0f;
@@ -609,10 +617,17 @@ void TitleScene::UpdateIdleMotion(Vector3 &outTargetCamPos, Vector3 &outTargetCa
   float pitch = -vy * 0.18f + 0.03f + 0.015f * std::sin(1.9f * t) * noiseEnv;
   float yaw = std::atan2(vx, 2.0f) * 0.40f;
 
-  float wingBeat = std::sin(t * 5.0f) * 0.05f;
-
-  dragonTransform_.translate = baseDragonPos_ + Vector3{flightX, flightY + wingBeat, flightZ};
+  dragonTransform_.translate = baseDragonPos_ + Vector3{flightX, flightY, flightZ};
   dragonTransform_.rotate = baseDragonRot_ + Vector3{pitch, yaw, roll};
+
+  // 羽ばたき：上昇中は強く、傾いた向きと逆の翼を強く打つ（体が右へ傾く roll < 0 で左の翼を強く）
+  dragonWingState_.strength =
+      (std::clamp)(kWingStrength_ + vy * kWingClimbGain_, 0.0f, 1.0f);
+  dragonWingState_.frequency = kWingFrequency_;
+  dragonWingState_.fold = 0.0f;
+  dragonWingState_.asymmetry = (std::clamp)(-roll * kWingTurnGain_, -1.0f, 1.0f);
+  dragonWingState_.hover =
+      (std::clamp)(kWingHover_ + vy * kWingClimbHover_, 0.0f, 1.0f);
 
   // カメラアングルの自動切り替え（オープニング終了後のみ）
   if (!isOpening && !isManualCut_) {
@@ -664,7 +679,7 @@ void TitleScene::UpdateIdleMotion(Vector3 &outTargetCamPos, Vector3 &outTargetCa
                      std::cos((t - kOpeningDuration_) * 0.35f) * kRearWideDriftY_, 0.0f};
 
     // カメラの基準位置: Zのみ自機に追従（X/Yの蛇行には追従せず、画面内で自機が動く）
-    Vector3 anchor = baseDragonPos_ + Vector3{0.0f, wingBeat * f, flightZ * followW};
+    Vector3 anchor = baseDragonPos_ + Vector3{0.0f, 0.0f, flightZ * followW};
 
     Vector3 desiredPos = anchor + Vector3{
         drift.x * (1.0f - f),
@@ -835,10 +850,11 @@ const ICamera *TitleScene::UpdateActiveCamera(const Vector3 &targetCamPos, const
 
 void TitleScene::Update3DObjects(const ICamera *activeCamera) {
   // 最新のカメラWVP行列を適用するためカメラ確定後に実行
-  if (dragonObject_) {
+  if (dragonModel_) {
     dragonObject_->SetTranslation(dragonTransform_.translate);
     dragonObject_->SetRotation(dragonTransform_.rotate);
-    dragonObject_->Update();
+    dragonModel_->SetWingState(dragonWingState_);
+    dragonModel_->Update(kWingDeltaTime_);
   }
 
   if (cloudsObject_) {
@@ -857,17 +873,13 @@ void TitleScene::Update3DObjects(const ICamera *activeCamera) {
 }
 
 void TitleScene::UpdateWingTrails(const ICamera *activeCamera, float launchAccelCurve) {
-  if (!dragonObject_ || !activeCamera) {
+  if (!dragonModel_ || !activeCamera) {
     return;
   }
 
-  // ドラゴンの翼端ローカル座標（player_dragon.objの先端頂点）
-  const Vector3 localRightTip = {0.498f, 0.375f, 0.097f};
-  const Vector3 localLeftTip = {-0.498f, 0.375f, 0.097f};
-
-  // ワールド行列から翼端の現在位置を算出
-  Vector3 currentRightPos = TransformPoint(localRightTip, dragonObject_->GetWorldMatrix());
-  Vector3 currentLeftPos = TransformPoint(localLeftTip, dragonObject_->GetWorldMatrix());
+  // 翼端の現在位置（羽ばたいている翼の、翼端の骨の先）
+  Vector3 currentRightPos = dragonModel_->GetRightWingTip();
+  Vector3 currentLeftPos = dragonModel_->GetLeftWingTip();
 
   // 相対風速（通常巡航時はドラゴンの体長に合わせた流速、発進加速の進捗に合わせて空間固定へスムーズに移行）
   float windShift = trailWindShift_;
@@ -1197,8 +1209,8 @@ void TitleScene::Draw3D() {
   }
 
   // 自機描画
-  if (dragonObject_) {
-    dragonObject_->Draw();
+  if (dragonModel_) {
+    dragonModel_->Draw();
   }
 
   // 翼端リボントレイル描画
@@ -1280,6 +1292,9 @@ void TitleScene::DrawEditorUI() {
     ImGui::SliderFloat("Wind Speed Mult", &windSpeedMult_, 0.1f, 3.0f, "%.2f");
     ImGui::SliderFloat("Wind Length Mult", &windLengthMult_, 0.2f, 3.0f, "%.2f");
     ImGui::SliderFloat("Wind Alpha", &windAlpha_, 0.05f, 1.0f, "%.2f");
+  }
+  if (ImGui::CollapsingHeader("Dragon Wing Config")) {
+    dragonModel_->GetWingAnimator().DrawImGui();
   }
   ImGui::End();
 #endif

@@ -2,6 +2,7 @@
 #include "Core/SrvManager.h"
 #include "Render/Model/ModelManager.h"
 #include "Render/Renderer/Object3dRenderer.h"
+#include <cassert>
 #include <cmath>
 
 void SkinnedObject::Initialize(Object3dRenderer *object3dRenderer,
@@ -24,6 +25,17 @@ void SkinnedObject::Initialize(Object3dRenderer *object3dRenderer,
   // スケルトンの作成
   skeleton_ = CreateSkeleton(model_->GetRootNode());
 
+  // 元の姿勢を控え、回転の上書きは空にしておく
+  restTransforms_.clear();
+  for (const Joint &joint : skeleton_.joints) {
+    restTransforms_.push_back(joint.transform);
+  }
+  rotationOverrides_.assign(skeleton_.joints.size(), std::nullopt);
+  translationOverrides_.assign(skeleton_.joints.size(), std::nullopt);
+
+  // 関節の行列を元の姿勢で計算しておく（最初の Update の前でも関節の行列を読めるように）
+  ::Update(skeleton_);
+
   // スキンクラスターの作成
   skinCluster_ = CreateSkinCluster(object3dRenderer->GetDx12Core(), srvManager,
                                    skeleton_, model_.get());
@@ -36,12 +48,29 @@ void SkinnedObject::Initialize(Object3dRenderer *object3dRenderer,
 }
 
 void SkinnedObject::Update(float deltaTime) {
-  // アニメーション時間の更新
-  animationTime_ += deltaTime;
-  animationTime_ = std::fmod(animationTime_, animation_.duration);
+  // 関節を元の姿勢に戻す
+  for (size_t i = 0; i < skeleton_.joints.size(); ++i) {
+    skeleton_.joints[i].transform = restTransforms_[i];
+  }
 
-  // アニメーションの適用（各関節のローカル行列更新）
-  ApplyAnimation(skeleton_, animation_, animationTime_);
+  if (HasAnimation()) {
+    // アニメーション時間の更新
+    animationTime_ += deltaTime;
+    animationTime_ = std::fmod(animationTime_, animation_.duration);
+
+    // アニメーションの適用（各関節のローカル行列更新）
+    ApplyAnimation(skeleton_, animation_, animationTime_);
+  }
+
+  // 上書きした回転・位置を反映する
+  for (size_t i = 0; i < skeleton_.joints.size(); ++i) {
+    if (rotationOverrides_[i]) {
+      skeleton_.joints[i].transform.rotate = *rotationOverrides_[i];
+    }
+    if (translationOverrides_[i]) {
+      skeleton_.joints[i].transform.translate = *translationOverrides_[i];
+    }
+  }
 
   // スケルトンの更新（親から子への行列伝播）
   ::Update(skeleton_);
@@ -107,4 +136,70 @@ void SkinnedObject::Draw() {
   if (object3d_) {
     object3d_->Draw();
   }
+}
+
+std::optional<int32_t> SkinnedObject::FindJoint(const std::string &name) const {
+  auto it = skeleton_.jointMap.find(name);
+  if (it == skeleton_.jointMap.end()) {
+    return std::nullopt;
+  }
+  return it->second;
+}
+
+const Quaternion &SkinnedObject::GetRestRotation(int32_t jointIndex) const {
+  assert(0 <= jointIndex && jointIndex < int32_t(restTransforms_.size()));
+  return restTransforms_[jointIndex].rotate;
+}
+
+void SkinnedObject::SetJointRotation(int32_t jointIndex,
+                                     const Quaternion &rotate) {
+  assert(0 <= jointIndex && jointIndex < int32_t(rotationOverrides_.size()));
+  rotationOverrides_[jointIndex] = rotate;
+}
+
+const Vector3 &SkinnedObject::GetRestTranslation(int32_t jointIndex) const {
+  assert(0 <= jointIndex && jointIndex < int32_t(restTransforms_.size()));
+  return restTransforms_[jointIndex].translate;
+}
+
+void SkinnedObject::SetJointTranslation(int32_t jointIndex,
+                                        const Vector3 &translate) {
+  assert(0 <= jointIndex &&
+         jointIndex < int32_t(translationOverrides_.size()));
+  translationOverrides_[jointIndex] = translate;
+}
+
+void SkinnedObject::ClearJointOverrides() {
+  rotationOverrides_.assign(skeleton_.joints.size(), std::nullopt);
+  translationOverrides_.assign(skeleton_.joints.size(), std::nullopt);
+}
+
+Matrix4x4 SkinnedObject::GetJointWorldMatrix(int32_t jointIndex) const {
+  assert(0 <= jointIndex && jointIndex < int32_t(skeleton_.joints.size()));
+  // 関節のモデル空間での行列に、Object3d のワールド行列を掛ける
+  return Multiply(skeleton_.joints[jointIndex].skeletonSpaceMatrix,
+                  object3d_->GetWorldMatrix());
+}
+
+Matrix4x4 SkinnedObject::ComputeJointModelMatrix(int32_t jointIndex) const {
+  assert(0 <= jointIndex && jointIndex < int32_t(skeleton_.joints.size()));
+  // 関節から根元へたどり、ローカル行列を右から掛けていく（関節 × 親 × 親の親 …）
+  Matrix4x4 result = MakeIdentity4x4();
+  std::optional<int32_t> current = jointIndex;
+  while (current) {
+    const int32_t index = *current;
+    const Joint &joint = skeleton_.joints[index];
+    // 上書きのない関節は、アニメーションがあれば最後の Update の値、なければ元の姿勢
+    const QuaternionTransform &base =
+        HasAnimation() ? joint.transform : restTransforms_[index];
+    const Quaternion &rotate = rotationOverrides_[index]
+                                   ? *rotationOverrides_[index]
+                                   : base.rotate;
+    const Vector3 &translate = translationOverrides_[index]
+                                   ? *translationOverrides_[index]
+                                   : base.translate;
+    result = Multiply(result, MakeAffineMatrix(base.scale, rotate, translate));
+    current = joint.parent;
+  }
+  return result;
 }

@@ -64,6 +64,10 @@ public:
   void Load(const std::string &filePath);
   void Save(const std::string &filePath);
 
+  // 全ノードの不透明度に掛ける値（0〜1）。Load で 1 に戻る
+  void SetGlobalAlpha(float alpha) { globalAlpha_ = alpha; }
+  float GetGlobalAlpha() const { return globalAlpha_; }
+
   UINode *GetRootNode() { return rootNode_.get(); }
   UINode *GetNodeByName(const std::string &name);
   std::string GetFocusedNodeName();
@@ -78,6 +82,7 @@ private:
   void DrawNodeProperties(UINode *node);
 
   bool isDrawnThisFrame_ = false;
+  float globalAlpha_ = 1.0f;
 
   SpriteRenderer *renderer_ = nullptr;
   std::unique_ptr<UINode> rootNode_;

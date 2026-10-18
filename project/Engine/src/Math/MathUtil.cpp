@@ -1,6 +1,7 @@
 #include "Math/MathUtil.h"
 #include <algorithm>
 #include <cmath>
+#include <numbers>
 #include "Math/Geometry.h"
 
 Quaternion Slerp(const Quaternion &q0, const Quaternion &q1, float t) {
@@ -20,6 +21,103 @@ Quaternion Slerp(const Quaternion &q0, const Quaternion &q1, float t) {
   float s1 = std::sin(t * theta) / sinTheta;
   return {q0.x * s0 + tq1.x * s1, q0.y * s0 + tq1.y * s1,
           q0.z * s0 + tq1.z * s1, q0.w * s0 + tq1.w * s1};
+}
+
+Quaternion Multiply(const Quaternion &lhs, const Quaternion &rhs) {
+  return {lhs.w * rhs.x + lhs.x * rhs.w + lhs.y * rhs.z - lhs.z * rhs.y,
+          lhs.w * rhs.y - lhs.x * rhs.z + lhs.y * rhs.w + lhs.z * rhs.x,
+          lhs.w * rhs.z + lhs.x * rhs.y - lhs.y * rhs.x + lhs.z * rhs.w,
+          lhs.w * rhs.w - lhs.x * rhs.x - lhs.y * rhs.y - lhs.z * rhs.z};
+}
+
+Quaternion MakeRotateAxisAngleQuaternion(const Vector3 &axis, float angle) {
+  float s = std::sin(angle * 0.5f);
+  return {axis.x * s, axis.y * s, axis.z * s, std::cos(angle * 0.5f)};
+}
+
+Quaternion Conjugate(const Quaternion &q) { return {-q.x, -q.y, -q.z, q.w}; }
+
+Vector3 RotateVector(const Quaternion &q, const Vector3 &v) {
+  const Vector3 axis = {q.x, q.y, q.z};
+  const Vector3 t = Cross(axis, v) * 2.0f;
+  return v + t * q.w + Cross(axis, t);
+}
+
+Quaternion MakeRotationFromTo(const Vector3 &from, const Vector3 &to) {
+  // 軸は2つの向きに垂直、角度は2つの間の角
+  const float dot = std::clamp(Dot(from, to), -1.0f, 1.0f);
+  const Vector3 axis = Cross(from, to);
+  const float axisLength = Length(axis);
+  // 同じ向き、または逆向き（軸が決まらない）
+  const float kParallelEpsilon = 1.0e-6f;
+  if (axisLength < kParallelEpsilon) {
+    if (dot > 0.0f) {
+      return {0.0f, 0.0f, 0.0f, 1.0f};
+    }
+    // 逆向きは、from に垂直な好きな軸まわりに半回転
+    Vector3 side = Cross(from, {1.0f, 0.0f, 0.0f});
+    if (Length(side) < kParallelEpsilon) {
+      side = Cross(from, {0.0f, 1.0f, 0.0f});
+    }
+    return MakeRotateAxisAngleQuaternion(Normalize(side),
+                                         std::numbers::pi_v<float>);
+  }
+  return MakeRotateAxisAngleQuaternion(axis * (1.0f / axisLength),
+                                       std::acos(dot));
+}
+
+Quaternion ClampRotationAngle(Quaternion q, float maxAngle) {
+  // w を正にそろえると、角度が 0〜π の短い向きの回転になる
+  if (q.w < 0.0f) {
+    q = {-q.x, -q.y, -q.z, -q.w};
+  }
+  const float angle = 2.0f * std::acos((std::min)(q.w, 1.0f));
+  if (angle <= maxAngle) {
+    return q;
+  }
+  const Vector3 axis = SafeNormalize({q.x, q.y, q.z});
+  return MakeRotateAxisAngleQuaternion(axis, maxAngle);
+}
+
+Quaternion MakeRotationFromMatrix(const Matrix4x4 &matrix) {
+  // 行列の各行は、X・Y・Z の軸が回った先の向き
+  float m[3][3];
+  for (int row = 0; row < 3; ++row) {
+    const Vector3 axis = SafeNormalize(
+        {matrix.m[row][0], matrix.m[row][1], matrix.m[row][2]});
+    m[row][0] = axis.x;
+    m[row][1] = axis.y;
+    m[row][2] = axis.z;
+  }
+  // 対角の和の大きい成分から求めて、割り算の誤差を抑える
+  Quaternion q;
+  const float trace = m[0][0] + m[1][1] + m[2][2];
+  if (trace > 0.0f) {
+    const float s = std::sqrt(trace + 1.0f) * 2.0f; // s = 4w
+    q.w = 0.25f * s;
+    q.x = (m[1][2] - m[2][1]) / s;
+    q.y = (m[2][0] - m[0][2]) / s;
+    q.z = (m[0][1] - m[1][0]) / s;
+  } else if (m[0][0] > m[1][1] && m[0][0] > m[2][2]) {
+    const float s = std::sqrt(1.0f + m[0][0] - m[1][1] - m[2][2]) * 2.0f; // s = 4x
+    q.w = (m[1][2] - m[2][1]) / s;
+    q.x = 0.25f * s;
+    q.y = (m[0][1] + m[1][0]) / s;
+    q.z = (m[2][0] + m[0][2]) / s;
+  } else if (m[1][1] > m[2][2]) {
+    const float s = std::sqrt(1.0f + m[1][1] - m[0][0] - m[2][2]) * 2.0f; // s = 4y
+    q.w = (m[2][0] - m[0][2]) / s;
+    q.x = (m[0][1] + m[1][0]) / s;
+    q.y = 0.25f * s;
+    q.z = (m[1][2] + m[2][1]) / s;
+  } else {
+    const float s = std::sqrt(1.0f + m[2][2] - m[0][0] - m[1][1]) * 2.0f; // s = 4z
+    q.w = (m[0][1] - m[1][0]) / s;
+    q.x = (m[2][0] + m[0][2]) / s;
+    q.y = (m[1][2] + m[2][1]) / s;
+    q.z = 0.25f * s;
+  }
+  return q;
 }
 
 Matrix4x4 MakeIdentity4x4() {

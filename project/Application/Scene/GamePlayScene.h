@@ -17,6 +17,7 @@ class ParticleEmitter;
 class PostProcess;
 class BillboardParticleEmitter;
 class MeshParticleEmitter;
+class StageIntro;
 
 #include "Actor/Boss.h"
 #include "Actor/Enemy.h"
@@ -38,7 +39,7 @@ struct SpawnEvent {
   Vector3 moveDirection = {0.0f, 0.0f, 1.0f}; // カメラ基準の移動方向ベクトル（デフォルトは前進）
 };
 
-enum class GameState { Play, Clear, GameOver };
+enum class GameState { Intro, Play, Clear, GameOver };
 
 class GamePlayScene : public BaseScene {
 
@@ -71,6 +72,34 @@ private: // メンバ変数(ゲーム用)
 
   // ゲーム状態
   GameState gameState_ = GameState::Play;
+
+  // ステージ開始演出
+  std::unique_ptr<StageIntro> stageIntro_;
+  // Play 開始時に開始演出を再生するか
+  bool playIntroOnStart_ = true;
+  // 雲海の面の高さの既定値（配置オブジェクトに雲海がないときに使う）
+  static constexpr float kDefaultSeaHeight_ = -15.0f;
+  // 羽ばたきを進める1フレームの時間（秒）
+  static constexpr float kWingDeltaTime_ = 1.0f / 60.0f;
+
+  // 開始演出のあと、HUD と照準が現れるまでの時間（秒）
+  float hudFadeSec_ = 0.3f;
+  float hudFadeTimer_ = 0.3f;
+
+  // 乗っ取られた空（手続き生成の空・ライト・霧）
+  // 画面の色は「線形の値 × 露出 0.5 → ACES トーンマップ → sRGB」で決まる
+  float skyTimer_ = 0.0f;                             // 雲を流すための経過時間（秒）
+  Vector3 skyZenith_ = {0.069f, 0.047f, 0.104f};      // 天頂の色
+  Vector3 skyHorizon_ = {0.208f, 0.088f, 0.104f};     // 地平線の色
+  Vector3 skySunDir_ = {0.35f, 0.10f, 1.0f};          // 太陽の方向（進行方向の右寄り、地平線の近く）
+  Vector3 skySunColor_ = {1.0f, 0.30f, 0.16f};        // 太陽の色
+  float skySunIntensity_ = 1.4f;                      // 太陽の強さ
+  float skyCloudAmount_ = 0.75f;                      // 雲の量（0〜1）
+  Vector3 skyCloudColor_ = {0.031f, 0.028f, 0.043f};  // 雲の色
+  float skyCloudOpacity_ = 0.92f;                     // 雲の不透明度
+  float skyCloudRim_ = 0.2f;                          // 太陽側で雲の縁が光る強さ
+  Vector3 lightColor_ = {0.85f, 0.80f, 0.95f};        // 平行光源の色
+  float lightIntensity_ = 0.85f;                      // 平行光源の強さ
 
   // ヒットストップタイマー（被弾・ボス演出用）
   int hitStopTimer_ = 0;
@@ -141,6 +170,9 @@ public: // Undo/Redo用アクセッサ
   }
 
 public: // メンバ関数
+  GamePlayScene();
+  ~GamePlayScene() override;
+
   /// <summary>
   /// ヒットストップの要求（フレーム数指定、複数回呼ばれた場合は長い方を優先）
   /// </summary>
@@ -190,6 +222,21 @@ public: // メンバ関数
   void AppendWaypoint(const Vector3 &pos);
 
 private:
+  /// <summary>
+  /// ステージ開始演出を始める（レールを止め、操作開始時の自機とカメラの位置を決めてから渡す）
+  /// </summary>
+  void StartIntro();
+
+  /// <summary>
+  /// ステージ開始演出の更新（終わったら操作を開始する）
+  /// </summary>
+  void UpdateIntro();
+
+  /// <summary>
+  /// 空・ライト・霧を設定する
+  /// </summary>
+  void ApplySkyAndLighting();
+
   void SpawnSceneObject(const std::string &modelPath, const Vector3 &position);
 
   /// <summary>

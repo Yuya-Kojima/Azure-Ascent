@@ -225,7 +225,7 @@ void ReticleTunnel::UpdateLineSprite(size_t index, const Vector2& p1, const Vect
   lineSprites_[index]->SetPosition(transform.position);
   lineSprites_[index]->SetSize(transform.size);
   lineSprites_[index]->SetRotation(transform.rotation);
-  lineSprites_[index]->SetColor(color);
+  lineSprites_[index]->SetColor({color.x, color.y, color.z, color.w * alpha_});
 
   Transform uvTransform = { {1.0f, 1.0f, 1.0f}, {0.0f, 0.0f, 0.0f}, {0.0f, 0.0f, 0.0f} };
   lineSprites_[index]->Update(uvTransform);
