@@ -61,6 +61,11 @@ public:
   /// </summary>
   void ResetPosition();
 
+  /// <summary>
+  /// 照準全体の不透明度（0〜1）。次の Update から反映される
+  /// </summary>
+  void SetAlpha(float alpha) { alpha_ = alpha; }
+
   // プレイヤーおよび武器システム用のアクセサ
   const Vector2& Get2DPosition() const { return position_; }
   const Vector3& GetTarget3DPosition() const { return target3DPos_; }
@@ -73,6 +78,8 @@ private:
   SpriteRenderer* spriteRenderer_ = nullptr;
 
   float lockOnLerp_ = 0.0f; // ロックオン状態のアニメーション用（0.0〜1.0）
+
+  float alpha_ = 1.0f; // 照準全体の不透明度
 
   Vector2 position_ = { 640.0f, 360.0f }; // 2Dスクリーン座標（中央 1280x720 想定）
 

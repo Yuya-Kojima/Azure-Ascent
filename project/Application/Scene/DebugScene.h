@@ -8,6 +8,7 @@
 #include "Particle/MeshParticleEmitter.h"
 #include "Particle/ParticleEmitter.h"
 #include "Render/Object3d/SkinnedObject.h"
+#include "Actor/DragonWingAnimator.h"
 #include "Render/Renderer/SkyBoxRenderer.h"
 #include "Render/SkyBox/SkyBox.h"
 #include "Scene/BaseScene.h"
@@ -81,6 +82,37 @@ private: // メンバ変数(ゲーム用)
   std::unique_ptr<SkinnedObject> sneakWalk_ = nullptr;
   std::unique_ptr<Model> sphereModel_ = nullptr;
   std::vector<std::unique_ptr<Object3d>> jointObjects_;
+
+  // 自機ドラゴンの見比べ（左に OBJ、右にボーン付きの glTF を表示）
+  std::unique_ptr<Object3d> dragonObj_ = nullptr;
+  std::unique_ptr<SkinnedObject> dragonSkinned_ = nullptr;
+  int dragonTestJoint_ = 0;             // 回して確かめる関節の番号
+  Vector3 dragonTestJointAngles_ = {};  // その関節の、元の姿勢からの回転（ラジアン、関節のローカル軸）
+  DragonWingAnimator dragonWing_;
+  DragonWingAnimator::State dragonWingState_;
+  bool dragonAnimateWing_ = true;
+  // 体を揺らす確認（ロール・ピッチ・上下を sin で動かし、頭が残るかを見る）
+  bool dragonShake_ = false;
+  float dragonShakeTime_ = 0.0f;                 // 揺らし始めてからの時間（秒）
+  float dragonShakeRoll_ = 0.5f;                 // ロールの振れ幅（ラジアン）
+  float dragonShakePitch_ = 0.3f;                // ピッチの振れ幅（ラジアン）
+  float dragonShakeHeight_ = 0.3f;               // 上下の振れ幅
+  float dragonShakePeriod_ = 2.0f;               // ロールの1往復の時間（秒）
+  static constexpr float kDragonShakePitchRate_ = 1.3f;  // ピッチの速さ（ロールに対する倍率）
+  static constexpr float kDragonShakeHeightRate_ = 1.7f; // 上下の速さ（ロールに対する倍率）
+  // 急に横へ動かす確認（ボタンを押すたびに左右の位置を行き来し、尾と脚が遅れるかを見る）
+  float dragonSideOffset_ = 0.0f;   // 今の横のずれ
+  float dragonSideTarget_ = 0.0f;   // 目指す横のずれ
+  float dragonSideDistance_ = 3.0f; // 1回で動く距離
+  float dragonSideSpeed_ = 12.0f;   // 目指す位置へ近づく速さ（1/秒）
+  std::unique_ptr<Object3d> dragonTipMarker_ = nullptr; // 翼端の関節の位置の印
+  int32_t dragonTipJoint_ = 0;
+  static constexpr float kDragonDeltaTime_ = 1.0f / 60.0f; // 1フレームの時間（秒）
+  bool showDragonCompare_ = true;
+  Vector3 dragonCompareCenter_ = {0.0f, 3.0f, 0.0f};
+  float dragonCompareYaw_ = 0.0f;     // Y 軸まわりの回転（ラジアン）
+  float dragonCompareScale_ = 3.0f;   // 2体共通の拡大率
+  float dragonCompareSpacing_ = 4.0f; // 2体の中心どうしの左右の間隔
 
   float rotateObj_{};
 
