@@ -18,6 +18,8 @@ const char *const kLeftTipJoint = "Wing_L_Finger3_2";
 const char *const kRightTipJoint = "Wing_R_Finger3_2";
 // 翼端の骨の長さ（モデルの単位、Blender で計測）。骨の根元から骨の向き（ローカル +Y）にこの長さ進んだ点が翼端
 const float kTipBoneLength = 0.126f;
+// 頭の骨
+const char *const kHeadJoint = "Head_3";
 
 // 鏡面反射の倍率（1 で Object3d の標準の強さ）
 const float kSpecularScale = 0.3f;
@@ -40,7 +42,8 @@ void DragonModel::Initialize(Object3dRenderer *object3dRenderer,
 
   leftTipJoint_ = skinned_->FindJoint(kLeftTipJoint).value_or(-1);
   rightTipJoint_ = skinned_->FindJoint(kRightTipJoint).value_or(-1);
-  assert(leftTipJoint_ >= 0 && rightTipJoint_ >= 0);
+  headJoint_ = skinned_->FindJoint(kHeadJoint).value_or(-1);
+  assert(leftTipJoint_ >= 0 && rightTipJoint_ >= 0 && headJoint_ >= 0);
 }
 
 void DragonModel::SetWingState(const DragonWingAnimator::State &state) {
@@ -77,6 +80,14 @@ Vector3 DragonModel::GetLeftWingTip() const {
 
 Vector3 DragonModel::GetRightWingTip() const {
   return GetWingTip(rightTipJoint_);
+}
+
+Vector3 DragonModel::GetHeadPosition() const {
+  if (headJoint_ < 0) {
+    return {};
+  }
+  return TransformPoint({0.0f, 0.0f, 0.0f},
+                        skinned_->GetJointWorldMatrix(headJoint_));
 }
 
 Vector3 DragonModel::GetWingTip(int32_t jointIndex) const {

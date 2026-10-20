@@ -19,6 +19,7 @@ class BillboardParticleEmitter;
 class MeshParticleEmitter;
 class StageIntro;
 class StageLighting;
+class RoarDistortion;
 class CloudSea;
 class CloudSeaEvents;
 
@@ -92,6 +93,9 @@ private: // メンバ変数(ゲーム用)
   // 空・光・霧・ポストエフェクトの値
   std::unique_ptr<StageLighting> stageLighting_;
   float skyTimer_ = 0.0f; // 雲を流すための経過時間（秒）
+
+  // 咆哮の空間のゆがみ
+  std::unique_ptr<RoarDistortion> roarDistortion_;
 
   // 雲海と、雲海を動かす出来事（盛り上がり・裂け目）
   std::unique_ptr<CloudSea> cloudSea_;

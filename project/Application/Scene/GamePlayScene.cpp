@@ -16,6 +16,7 @@
 #include "Debug/ImGuiManager.h"
 #include "Debug/Logger.h"
 #include "Effect/FractureCache.h"
+#include "Effect/RoarDistortion.h"
 #include "Framework/UIManager.h"
 #include "Input/InputKeyState.h"
 #include "Math/MathUtil.h"
@@ -275,6 +276,8 @@ void GamePlayScene::Initialize(EngineBase *engine) {
   skybox_->SetProceduralSky(true);
   stageLighting_ = std::make_unique<StageLighting>();
   stageLighting_->Initialize();
+  roarDistortion_ = std::make_unique<RoarDistortion>();
+  roarDistortion_->Initialize();
 
   // 雲海と、雲海を動かす出来事
   cloudSea_ = std::make_unique<CloudSea>();
@@ -585,6 +588,16 @@ void GamePlayScene::Update() {
   // 目標カード
   if (isPlayMode_ && !isPaused_) {
     stageIntro_->UpdateCaption();
+  }
+
+  // 咆哮の空間のゆがみ（開始演出が終わったあとは「ゆがみだけ再生」のときだけ動く）
+  if (postProcess_ && player_) {
+    std::optional<float> timeSinceRoar;
+    if (!stageIntro_->IsFinished()) {
+      timeSinceRoar = stageIntro_->GetTimeSinceRoar();
+    }
+    roarDistortion_->Update(timeSinceRoar, player_->GetHeadPosition(),
+                            activeCamera, postProcess_.get());
   }
 
   // ポストエフェクトとエフェクトマネージャーの更新
@@ -1771,6 +1784,7 @@ void GamePlayScene::DrawEditorUI() {
     StartIntro();
   }
   stageIntro_->DrawImGui();
+  roarDistortion_->DrawImGui();
   ImGui::SeparatorText("Lighting");
   stageLighting_->DrawImGui();
   ImGui::SeparatorText("Cloud Sea");

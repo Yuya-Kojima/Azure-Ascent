@@ -53,6 +53,11 @@ public:
   void SetDragonModel(std::unique_ptr<DragonModel> model);
 
   /// <summary>
+  /// 頭のワールド座標（ドラゴンのモデルがなければ自機の位置）
+  /// </summary>
+  Vector3 GetHeadPosition() const;
+
+  /// <summary>
   /// 羽ばたきを進める（1フレームに1回）。deltaTime 0 で止めたまま更新する
   /// </summary>
   void UpdateWing(float deltaTime);

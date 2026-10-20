@@ -258,6 +258,7 @@ public:
     float radius = 0.0f;
     float thickness = 0.1f;
     float center[2] = {0.5f, 0.5f};
+    float aberration = 0.0f; // 色ずれ（押し曲げる量に対する赤・青のずらし量の差の割合）
   };
   void SetShockwaves(const std::vector<ShockwaveParams> &shockwaves) {
     shockwaves_ = shockwaves;
@@ -326,7 +327,8 @@ private:
       float radius;     // 衝撃波の現在の半径
       float thickness;  // 衝撃波の波の太さ
       float center[2];  // 衝撃波の中心座標
-      float padding[2];
+      float aberration; // 衝撃波の色ずれ
+      float padding;
     } shockwaves[5];
   };
 

@@ -51,6 +51,11 @@ public:
   Vector3 GetLeftWingTip() const;
   Vector3 GetRightWingTip() const;
 
+  /// <summary>
+  /// 頭の骨（Head_3）の根元のワールド座標（最後の Update の時点）
+  /// </summary>
+  Vector3 GetHeadPosition() const;
+
   DragonWingAnimator &GetWingAnimator() { return wing_; }
 
 private:
@@ -63,4 +68,5 @@ private:
   DragonWingAnimator wing_;
   int32_t leftTipJoint_ = -1;  // 左の翼端の指の最後の骨
   int32_t rightTipJoint_ = -1; // 右の翼端の指の最後の骨
+  int32_t headJoint_ = -1;     // 頭の骨
 };
