@@ -79,6 +79,10 @@ void IParticleEmitter::CreateMaterialResource() {
 
 void IParticleEmitter::ClearParticles() {
     needsClear_ = true;
+    // まだ GPU に渡していない発生の予約も取り消す
+    if (emitterData_) {
+        emitterData_->emit = 0;
+    }
 }
 
 void IParticleEmitter::Emit(const ParticleEmitDesc& desc) {

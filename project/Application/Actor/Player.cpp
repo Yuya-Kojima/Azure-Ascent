@@ -631,6 +631,12 @@ Object3d *Player::GetBodyObject() const {
   return dragonModel_ ? dragonModel_->GetObject3d() : object3d_.get();
 }
 
+void Player::SetWingGesture(const DragonWingAnimator::Gesture &gesture) {
+  if (dragonModel_) {
+    dragonModel_->GetWingAnimator().SetGesture(gesture);
+  }
+}
+
 void Player::UpdateWing(float deltaTime) {
   if (!dragonModel_) {
     return;

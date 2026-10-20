@@ -20,16 +20,22 @@ void EffectManager::Initialize() {
   LoadShockwaveConfig();
   LoadEffectsConfig();
 
+  activeShockwaves_.clear();
+  nextHitEffectIndex_ = 0;
+
+  // 粒の入れ物（GPU バッファ）は最初の1回だけ作り、2回目以降は残っている粒を消す
+  if (!hasCreatedParticleGroups_) {
+    CreateParticleGroups();
+    hasCreatedParticleGroups_ = true;
+  } else {
+    ClearParticleGroups();
+  }
+
   // ==========================================
   // ボス用エフェクト
   // ==========================================
 
   // 通常弾の予兆
-  bossTelegraphNormalParticleGroup_ =
-      std::make_unique<BillboardParticleEmitter>();
-  bossTelegraphNormalParticleGroup_->Initialize("resources/circle.png");
-  bossTelegraphNormalParticleGroup_->SetIsRingMode(false);
-
   bossTelegraphNormalEmitter_ = std::make_unique<ParticleEmitter>(
       bossTelegraphNormalParticleGroup_.get(), Vector3{0.0f, 0.0f, 0.0f},
       Vector3{0.0f, 0.0f, 0.0f}, 1, 0.0f, Vector3{0.0f, 0.0f, 0.0f},
@@ -46,10 +52,6 @@ void EffectManager::Initialize() {
       true); // 発生位置から中心に向かって飛ぶ
 
   // 攻撃時エフェクト
-  bossBurstParticleGroup_ = std::make_unique<BillboardParticleEmitter>();
-  bossBurstParticleGroup_->Initialize("resources/circle.png");
-  bossBurstParticleGroup_->SetIsRingMode(false);
-
   bossBurstEmitter_ = std::make_unique<ParticleEmitter>(
       bossBurstParticleGroup_.get(), Vector3{0.0f, 0.0f, 0.0f},
       Vector3{0.0f, 0.0f, 0.0f}, 1, 0.0f, Vector3{0.0f, 0.0f, 0.0f},
@@ -66,17 +68,6 @@ void EffectManager::Initialize() {
 
   // 死亡時エフェクト
   for (int i = 0; i < kMaxHitEffects; ++i) {
-    hitCoreParticleGroups_[i] = std::make_unique<BillboardParticleEmitter>();
-    hitCoreParticleGroups_[i]->Initialize("resources/circle.png");
-    hitFlareParticleGroups_[i] = std::make_unique<BillboardParticleEmitter>();
-    hitFlareParticleGroups_[i]->Initialize("resources/circle.png");
-    hitRingParticleGroups_[i] = std::make_unique<BillboardParticleEmitter>();
-    hitRingParticleGroups_[i]->Initialize("resources/circle.png");
-    hitRingParticleGroups_[i]->SetIsRingMode(true);
-
-    // 4. ホーミング専用：鋭い十字グリント閃光
-    hitGlintParticleGroups_[i] = std::make_unique<BillboardParticleEmitter>();
-    hitGlintParticleGroups_[i]->Initialize("resources/laser_hit_glint.png");
 
     // 1. コア
     deathCoreEmitters_[i] = std::make_unique<ParticleEmitter>(
@@ -114,6 +105,60 @@ void EffectManager::Initialize() {
     hitGlintEmitters_[i]->SetColor({1.0f, 1.0f, 1.0f, 1.0f});
     hitGlintEmitters_[i]->SetScaleVelocity({-10.0f, -10.0f, -10.0f});
   }
+}
+
+void EffectManager::CreateParticleGroups() {
+  // ボス：通常弾の予兆・攻撃時
+  bossTelegraphNormalParticleGroup_ =
+      std::make_unique<BillboardParticleEmitter>();
+  bossTelegraphNormalParticleGroup_->Initialize("resources/circle.png");
+  bossTelegraphNormalParticleGroup_->SetIsRingMode(false);
+
+  bossBurstParticleGroup_ = std::make_unique<BillboardParticleEmitter>();
+  bossBurstParticleGroup_->Initialize("resources/circle.png");
+  bossBurstParticleGroup_->SetIsRingMode(false);
+
+  // 雑魚敵：撃破時のコア・フレア・リング、ホーミング命中時のグリント
+  for (int i = 0; i < kMaxHitEffects; ++i) {
+    hitCoreParticleGroups_[i] = std::make_unique<BillboardParticleEmitter>();
+    hitCoreParticleGroups_[i]->Initialize("resources/circle.png");
+    hitFlareParticleGroups_[i] = std::make_unique<BillboardParticleEmitter>();
+    hitFlareParticleGroups_[i]->Initialize("resources/circle.png");
+    hitRingParticleGroups_[i] = std::make_unique<BillboardParticleEmitter>();
+    hitRingParticleGroups_[i]->Initialize("resources/circle.png");
+    hitRingParticleGroups_[i]->SetIsRingMode(true);
+    hitGlintParticleGroups_[i] = std::make_unique<BillboardParticleEmitter>();
+    hitGlintParticleGroups_[i]->Initialize("resources/laser_hit_glint.png");
+  }
+}
+
+void EffectManager::ClearParticleGroups() {
+  bossTelegraphNormalParticleGroup_->ClearParticles();
+  bossBurstParticleGroup_->ClearParticles();
+  for (int i = 0; i < kMaxHitEffects; ++i) {
+    hitCoreParticleGroups_[i]->ClearParticles();
+    hitFlareParticleGroups_[i]->ClearParticles();
+    hitRingParticleGroups_[i]->ClearParticles();
+    hitGlintParticleGroups_[i]->ClearParticles();
+  }
+}
+
+void EffectManager::Finalize() {
+  bossTelegraphNormalEmitter_.reset();
+  bossBurstEmitter_.reset();
+  bossTelegraphNormalParticleGroup_.reset();
+  bossBurstParticleGroup_.reset();
+  for (int i = 0; i < kMaxHitEffects; ++i) {
+    deathCoreEmitters_[i].reset();
+    deathFlareEmitters_[i].reset();
+    deathRingEmitters_[i].reset();
+    hitGlintEmitters_[i].reset();
+    hitCoreParticleGroups_[i].reset();
+    hitFlareParticleGroups_[i].reset();
+    hitRingParticleGroups_[i].reset();
+    hitGlintParticleGroups_[i].reset();
+  }
+  hasCreatedParticleGroups_ = false;
 }
 
 void EffectManager::Update(const ICamera *camera) {

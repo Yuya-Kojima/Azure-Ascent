@@ -25,6 +25,8 @@ class Skybox {
     Vector4 sunDir;       // xyz: 太陽の方向(正規化), w: 雲の量(0〜1)
     Vector4 sunColor;     // rgb: 太陽の色, a: 太陽の強さ
     Vector4 cloudColor;   // rgb: 雲の色, a: 雲の不透明度（0 のときは白い雲）
+    // x: 地平線の光の強さ(0で無効), y: 光の帯の高さ, z: 方位の絞り, w: 未使用
+    Vector4 horizonGlow;
   };
 
 public:
@@ -61,6 +63,11 @@ public:
   void SetCloudColor(const Vector3 &color, float opacity, float rim) {
     materialData_->cloudColor = {color.x, color.y, color.z, opacity};
     materialData_->skyParams.z = rim;
+  }
+  /// 太陽の方位で地平線のすぐ上を光らせる。height は帯の高さ（方向ベクトルの y）、
+  /// azimuthPower が大きいほど太陽の左右の狭い範囲だけ光る。strength=0で無効
+  void SetHorizonGlow(float strength, float height, float azimuthPower) {
+    materialData_->horizonGlow = {strength, height, azimuthPower, 0.0f};
   }
 
   Vector3 GetScale() const { return transform_.scale; }

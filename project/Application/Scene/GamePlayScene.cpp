@@ -44,6 +44,7 @@
 #include "Framework/GameManager.h"
 #include "Framework/PrefabManager.h"
 #include "Renderer/PostProcess.h"
+#include "Scene/StageLighting.h"
 
 // ======================================
 // Undo/Redo用コマンドクラス
@@ -135,15 +136,7 @@ void GamePlayScene::RequestHitStop(int frames) {
   hitStopCooldownTimer_ = frames + hitStopCooldown_;
 }
 
-void GamePlayScene::Initialize(EngineBase *engine) {
-
-  // 基底クラスの初期化 (PostProcessの初期化など)
-  BaseScene::Initialize(engine);
-
-  // シーン初期化時に前シーンの残留アクター（弾や古いプレイヤー）を全消去
-  ActorManager::GetInstance()->Clear();
-  CollisionManager::GetInstance()
-      ->Clear(); // コライダーの残留（ダングリングポインタ）を防ぐ
+void GamePlayScene::PreloadResources(EngineBase *engine) {
   PrefabManager::GetInstance()->Initialize(engine->GetObject3dRenderer());
 
   // ロード時に事前にモデルを割る
@@ -154,21 +147,12 @@ void GamePlayScene::Initialize(EngineBase *engine) {
         PrefabManager::GetInstance()->GetModelPath(prefabName);
     // そのモデルを読み込む（読み込み済みなら何もしない）
     ModelManager::GetInstance()->LoadModel(modelPath);
-    // 読み込んだモデルを探して、割っておく
+    // 読み込んだモデルを探して、割っておく（割ってあれば何もしない）
     FractureCache::GetInstance()->Prebuild(
         ModelManager::GetInstance()->FindModel(modelPath));
   }
 
-  // 参照をコピー
-  engine_ = engine;
-
-  //===========================
-  // テクスチャファイルの読み込み
-  //===========================
-
-  //===========================
-  // オーディオファイルの読み込み
-  //===========================
+  // 効果音・BGM（読み込み済みなら何もしない）
   SoundManager::GetInstance()->Load("boss_explosion",
                                     "resources/Sounds/explosion.mp3");
   SoundManager::GetInstance()->Load("laser_shot",
@@ -194,6 +178,31 @@ void GamePlayScene::Initialize(EngineBase *engine) {
                                     "resources/Sounds/boss_bgm.mp3");
   SoundManager::GetInstance()->Load("victory_jingle",
                                     "resources/Sounds/victory_jingle.mp3");
+  SoundManager::GetInstance()->Load("dragon_roar",
+                                    "resources/Sounds/dragon-cry2.mp3");
+}
+
+void GamePlayScene::Initialize(EngineBase *engine) {
+  // 基底クラスの初期化 (PostProcessの初期化など)
+  BaseScene::Initialize(engine);
+
+  // シーン初期化時に前シーンの残留アクター（弾や古いプレイヤー）を全消去
+  ActorManager::GetInstance()->Clear();
+  CollisionManager::GetInstance()
+      ->Clear(); // コライダーの残留（ダングリングポインタ）を防ぐ
+  // ステージで使う重い準備（起動時に済んでいれば、すぐ戻る）
+  PreloadResources(engine);
+
+  // 参照をコピー
+  engine_ = engine;
+
+  //===========================
+  // テクスチャファイルの読み込み
+  //===========================
+
+  //===========================
+  // BGM の再生（読み込みは PreloadResources）
+  //===========================
   SoundManager::GetInstance()->PlayBGM("stage_bgm");
 
   EffectManager::GetInstance()->Initialize();
@@ -262,13 +271,16 @@ void GamePlayScene::Initialize(EngineBase *engine) {
   skybox_->SetTexture("resources/Skybox/Skybox.dds");
   skybox_->SetScale({100.0f, 100.0f, 100.0f});
   skybox_->SetProceduralSky(true);
+  stageLighting_ = std::make_unique<StageLighting>();
+  stageLighting_->Initialize();
 
-  // 空・ライト・霧（乗っ取られた暗い空）
+  // 空・光・霧・ポストエフェクト
   ApplySkyAndLighting();
+
 
   // ステージ開始演出
   stageIntro_ = std::make_unique<StageIntro>();
-  stageIntro_->Initialize();
+  stageIntro_->Initialize(engine_->GetSpriteRenderer());
 
   //===========================
   // プレイヤーの初期化
@@ -314,7 +326,11 @@ void GamePlayScene::Initialize(EngineBase *engine) {
   TextureManager::GetInstance()->LoadTexture("resources/gradationLine.png");
 }
 
-void GamePlayScene::Finalize() { SoundManager::GetInstance()->StopBGM(); }
+void GamePlayScene::Finalize() {
+  SoundManager::GetInstance()->StopBGM();
+  // 平行光源は全シーン共通なので、このシーンで足した環境光と逆光の縁を外しておく
+  StageLighting::ResetSharedLight(engine_->GetObject3dRenderer());
+}
 
 void GamePlayScene::Update() {
 
@@ -349,6 +365,10 @@ void GamePlayScene::Update() {
 
     // ゲーム状態のリセット
     gameState_ = GameState::Play;
+    stageIntro_->Stop();
+    railCamera_->SetSpeedScale(1.0f);
+    player_->SetExternalWingState(std::nullopt);
+    player_->SetWingGesture({});
     UIManager::GetInstance()->Load("resources/UI/GamePlayUI.json");
 
     // 残っている敵や弾をクリア
@@ -528,7 +548,12 @@ void GamePlayScene::Update() {
     debugCamera_->Update(*engine_->GetInputManager());
     activeCamera = debugCamera_->GetCamera();
   } else {
-    if (!shouldUpdateWorld) {
+    // 開始演出の後半は、操作の前からレールを動かし始める
+    const bool isRailMoving =
+        shouldUpdateWorld ||
+        (gameState_ == GameState::Intro && isPlayMode_ && !isPaused_ &&
+         stageIntro_->GetRailSpeedRatio() > 0.0f);
+    if (!isRailMoving) {
       bool autoMoveCache = railCamera_->GetAutoMove();
       railCamera_->SetAutoMove(false);
       railCamera_->Update();
@@ -539,14 +564,19 @@ void GamePlayScene::Update() {
     activeCamera = railCamera_.get();
   }
 
-  // 開始演出：自機の位置を動かし、演出カメラで映す
-  if (gameState_ == GameState::Intro) {
+  // 開始演出：自機の位置を動かし、演出カメラで映す（操作へ移る間も演出カメラで映す）
+  if (gameState_ == GameState::Intro || !stageIntro_->IsFinished()) {
     if (isPlayMode_ && !isPaused_) {
       UpdateIntro();
     }
     if (!useDebugCamera_) {
       activeCamera = stageIntro_->GetCamera();
     }
+  }
+
+  // 目標カード
+  if (isPlayMode_ && !isPaused_) {
+    stageIntro_->UpdateCaption();
   }
 
   // ポストエフェクトとエフェクトマネージャーの更新
@@ -770,6 +800,10 @@ void GamePlayScene::Update() {
     // プレイヤーの照準や挙動の計算には常にレールカメラを使用する
     if (shouldUpdateWorld) {
       player_->Update();
+      // 開始演出から操作へ移る間は、演出が決める位置・向きと操作の位置・向きを混ぜる
+      if (!stageIntro_->IsFinished()) {
+        BlendPlayerWithIntro();
+      }
     } else {
       player_->UpdateTransform();
     }
@@ -1084,6 +1118,14 @@ void GamePlayScene::Update() {
       selected->SetRotation(r);
     if (ImGui::DragFloat3("Scale", &s.x, 0.1f))
       selected->SetScale(s);
+    ImGui::Separator();
+
+    Vector4 color = selected->GetColor();
+    float specularScale = selected->GetSpecularScale();
+    if (ImGui::ColorEdit3("Color", &color.x))
+      selected->SetColor(color);
+    if (ImGui::SliderFloat("Specular", &specularScale, 0.0f, 1.0f))
+      selected->SetSpecularScale(specularScale);
   } else if (currentSelectType_ == EditorSelectType::SpawnEvent &&
              selectedSpawnEventIndex_ >= 0 &&
              selectedSpawnEventIndex_ < spawnEvents_.size()) {
@@ -1710,19 +1752,8 @@ void GamePlayScene::DrawEditorUI() {
     StartIntro();
   }
   stageIntro_->DrawImGui();
-  ImGui::SeparatorText("Sky");
-  ImGui::ColorEdit3("Zenith", &skyZenith_.x);
-  ImGui::ColorEdit3("Horizon", &skyHorizon_.x);
-  ImGui::DragFloat3("Sun Dir", &skySunDir_.x, 0.01f);
-  ImGui::ColorEdit3("Sun Color", &skySunColor_.x);
-  ImGui::SliderFloat("Sun Intensity", &skySunIntensity_, 0.0f, 2.0f);
-  ImGui::SliderFloat("Cloud Amount", &skyCloudAmount_, 0.0f, 1.0f);
-  ImGui::ColorEdit3("Cloud Color", &skyCloudColor_.x);
-  ImGui::SliderFloat("Cloud Opacity", &skyCloudOpacity_, 0.0f, 1.0f);
-  ImGui::SliderFloat("Cloud Rim", &skyCloudRim_, 0.0f, 2.0f);
-  ImGui::SeparatorText("Light");
-  ImGui::ColorEdit3("Light Color", &lightColor_.x);
-  ImGui::SliderFloat("Light Intensity", &lightIntensity_, 0.0f, 2.0f);
+  ImGui::SeparatorText("Lighting");
+  stageLighting_->DrawImGui();
   ImGui::End();
 
 #endif
@@ -1890,6 +1921,9 @@ void GamePlayScene::Draw2D() {
   if (gameState_ != GameState::Intro) {
     UIManager::GetInstance()->Draw();
   }
+
+  // 目標カードは HUD より手前に出す
+  stageIntro_->DrawCaption();
 }
 
 void GamePlayScene::StartIntro() {
@@ -1902,63 +1936,93 @@ void GamePlayScene::StartIntro() {
 
   // 雲海の面の高さ（配置オブジェクトから探す）
   float seaHeight = kDefaultSeaHeight_;
-  for (const auto &obj : sceneObjects_) {
-    if (obj->GetModelPath().find("sea_of_clouds") != std::string::npos) {
-      seaHeight = obj->GetTranslation().y;
-      break;
-    }
+  if (const Object3d *sea = FindSeaObject()) {
+    seaHeight = sea->GetTranslation().y;
   }
 
   stageIntro_->Start(*railCamera_, player_->GetTransform().translate,
                      player_->GetTransform().rotate, seaHeight);
   gameState_ = GameState::Intro;
 
-  // HUD と照準は演出が終わってから現す
+  // HUD と照準は消しておき、演出の後半で現す
   hudFadeTimer_ = 0.0f;
   UIManager::GetInstance()->SetGlobalAlpha(0.0f);
   player_->SetReticleAlpha(0.0f);
 }
 
 void GamePlayScene::UpdateIntro() {
-  stageIntro_->Update();
+  // 一度最後まで見ていれば、決定ボタンで飛ばせる
+  Input *input = engine_->GetInputManager();
+  if (GameManager::GetInstance()->HasSeenStageIntro() &&
+      (input->IsTriggerKey(DIK_RETURN) || input->IsTriggerKey(DIK_SPACE) ||
+       input->IsPadTrigger(PadButton::A) ||
+       input->IsPadTrigger(PadButton::Start))) {
+    stageIntro_->Skip();
+  }
 
-  // 自機の位置・向きを演出側で決める
-  Transform &playerTransform = player_->GetTransform();
-  playerTransform.translate = stageIntro_->GetDragonPosition();
-  playerTransform.rotate = stageIntro_->GetDragonRotation();
-  player_->SetExternalWingState(stageIntro_->GetWingState());
+  stageIntro_->Update(*railCamera_);
 
-  // 演出が終わったらレールを動かして操作を開始する（HUD と照準はこのあと現れる）
-  if (stageIntro_->IsFinished()) {
-    gameState_ = GameState::Play;
-    player_->SetExternalWingState(std::nullopt);
+  // レール：演出の後半から 0 → 通常の速さへ上げる
+  const float railSpeedRatio = stageIntro_->GetRailSpeedRatio();
+  railCamera_->SetSpeedScale(railSpeedRatio);
+  if (railSpeedRatio > 0.0f) {
     railCamera_->SetAutoMove(true);
+  }
+
+  // 開始の合図：ドラゴンの吠え声
+  if (stageIntro_->ConsumeRoarCue()) {
+    SoundManager::GetInstance()->PlaySE("dragon_roar", kRoarSeVolume_);
+  }
+
+  // 溜め → 吠える → 飛び出しの姿勢
+  player_->SetWingGesture(stageIntro_->GetGesture());
+
+  // HUD は声が弱まる頃から、照準は操作が効き始めてから現す
+  // （終わったあとは、Play の HUD の表示の続きから現れきる）
+  const float hudAlpha = stageIntro_->GetHudAlpha();
+  UIManager::GetInstance()->SetGlobalAlpha(hudAlpha);
+  player_->SetReticleAlpha(stageIntro_->GetControlRatio());
+  hudFadeTimer_ = hudFadeSec_ * hudAlpha;
+
+  if (gameState_ == GameState::Intro) {
+    // 自機の位置・向きを演出側で決める
+    Transform &playerTransform = player_->GetTransform();
+    playerTransform.translate = stageIntro_->GetDragonPosition();
+    playerTransform.rotate = stageIntro_->GetDragonRotation();
+    player_->SetExternalWingState(stageIntro_->GetWingState());
+
+    // 飛び出しに合わせて操作を始める（演出は続き、操作の効き具合を少しずつ上げる。HUD と照準はこのあと現れる）
+    if (stageIntro_->IsControlStarted()) {
+      GameManager::GetInstance()->SetSeenStageIntro();
+      gameState_ = GameState::Play;
+      player_->SetExternalWingState(std::nullopt);
+    }
   }
 }
 
+void GamePlayScene::BlendPlayerWithIntro() {
+  // 操作の効き具合 0 で演出の位置・向き、1 で操作の位置・向き
+  const float control = stageIntro_->GetControlRatio();
+  Transform &playerTransform = player_->GetTransform();
+  playerTransform.translate = Lerp(stageIntro_->GetDragonPosition(),
+                                   playerTransform.translate, control);
+  playerTransform.rotate = Lerp(stageIntro_->GetDragonRotation(),
+                                playerTransform.rotate, control);
+  player_->UpdateTransform();
+}
+
 void GamePlayScene::ApplySkyAndLighting() {
-  // 空：手続き生成の空に、暗い空の色と、空より暗い雲（頭上を覆うふた）を設定する
-  skybox_->SetColor({1.0f, 1.0f, 1.0f, 1.0f});
-  skybox_->SetSkyColors(skyZenith_, skyHorizon_);
-  skybox_->SetSun(Normalize(skySunDir_), skySunColor_, skySunIntensity_,
-                  skyCloudAmount_);
-  skybox_->SetCloudColor(skyCloudColor_, skyCloudOpacity_, skyCloudRim_);
-  skybox_->SetSkyTime(skyTimer_);
+  stageLighting_->Apply(skybox_.get(), engine_->GetObject3dRenderer(),
+                        postProcess_.get(), skyTimer_);
+}
 
-  // ライト：ライトとフォグは全シーン共通の設定なので、このシーンの値で毎フレーム上書きする
-  if (auto *dl = engine_->GetObject3dRenderer()->GetDirectionalLightData()) {
-    dl->color = {lightColor_.x, lightColor_.y, lightColor_.z, 1.0f};
-    dl->direction = Normalize(Vector3{0.0f, -1.0f, 0.0f});
-    dl->intensity = lightIntensity_;
+Object3d *GamePlayScene::FindSeaObject() const {
+  for (const auto &obj : sceneObjects_) {
+    if (obj->GetModelPath().find("sea_of_clouds") != std::string::npos) {
+      return obj.get();
+    }
   }
-
-  // フォグ：遠くを地平線の色に溶かす
-  FogData fog;
-  fog.color = Vector4(skyHorizon_.x, skyHorizon_.y, skyHorizon_.z, 1.0f);
-  fog.nearDist = 300.0f;
-  fog.farDist = 600.0f;
-  fog.enabled = 1.0f;
-  engine_->GetObject3dRenderer()->SetFog(fog);
+  return nullptr;
 }
 
 void GamePlayScene::SaveLevel(const std::string &filename) {
@@ -1994,6 +2058,9 @@ void GamePlayScene::SaveLevel(const std::string &filename) {
     oJson["scale"] = {s.x, s.y, s.z};
     oJson["modelPath"] = obj->GetModelPath();
     oJson["tag"] = ActorTagToString(obj->tag_);
+    const Vector4 color = obj->GetColor();
+    oJson["color"] = {color.x, color.y, color.z};
+    oJson["specularScale"] = obj->GetSpecularScale();
     sceneObjectsArray.push_back(oJson);
   }
   root["sceneObjects"] = sceneObjectsArray;
@@ -2107,6 +2174,13 @@ void GamePlayScene::LoadLevel(const std::string &filename) {
       obj->SetScale(s);
       if (oJson.contains("tag"))
         obj->tag_ = StringToActorTag(oJson["tag"]);
+      // 色と鏡面反射の倍率（ないときは Object3d の既定値のまま）
+      if (oJson.contains("color")) {
+        obj->SetColor({oJson["color"][0], oJson["color"][1],
+                       oJson["color"][2], 1.0f});
+      }
+      if (oJson.contains("specularScale"))
+        obj->SetSpecularScale(oJson["specularScale"]);
     }
   }
 

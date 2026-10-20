@@ -39,6 +39,7 @@ const float kRightSide = 1.0f;
 const char *const kBodyJoint = "Root";
 const char *const kNeckJoints[] = {"Neck", "Head_0", "Head_1", "Head_2"};
 const char *const kHeadJoint = "Head_3";
+const char *const kSpineJoints[] = {"Spine_0", "Spine_1", "Spine_2", "Spine_3"};
 // 揺れものの骨の並び（根元から先へ。最後の1つは先端の位置を決めるだけ）
 const std::vector<std::string> kTailSpringJoints = {
     "Tail_04", "Tail_05", "Tail_06", "Tail_07", "Tail_08", "Tail_09", "Tail_10"};
@@ -107,6 +108,38 @@ const ConfigItem kConfigItems[] = {
     {"tailSpringMaxAngle", &Config::tailSpringMaxAngle, 0.0f, 90.0f},
     {"legSpringMaxAngle", &Config::legSpringMaxAngle, 0.0f, 90.0f},
     {"springResetDistance", &Config::springResetDistance, 0.0f, 5.0f},
+    {"trembleFrequency", &Config::trembleFrequency, 0.0f, 30.0f},
+    {"neckTremble", &Config::neckTremble, 0.0f, 10.0f},
+    {"fingerTremble", &Config::fingerTremble, 0.0f, 10.0f},
+};
+
+// 重ねる姿勢の各部の JSON のキー
+using GesturePose = DragonWingAnimator::GesturePose;
+struct GesturePoseItem {
+  const char *key;
+  float GesturePose::*member;
+};
+const GesturePoseItem kGesturePoseItems[] = {
+    {"spine", &GesturePose::spine},       {"neck", &GesturePose::neck},
+    {"head", &GesturePose::head},         {"tail", &GesturePose::tail},
+    {"wingUp", &GesturePose::wingUp},     {"wingBack", &GesturePose::wingBack},
+    {"armUp", &GesturePose::armUp},       {"armBack", &GesturePose::armBack},
+    {"handUp", &GesturePose::handUp},     {"handBack", &GesturePose::handBack},
+    {"fingerFan", &GesturePose::fingerFan},
+};
+// 重ねる姿勢の ImGui のスライダーの範囲（度）
+const float kGesturePoseMinAngle = -90.0f;
+const float kGesturePoseMaxAngle = 90.0f;
+
+// 重ねる姿勢の JSON のキーと、Config の中の場所
+struct GesturePoseSlot {
+  const char *key;
+  GesturePose Config::*member;
+};
+const GesturePoseSlot kGesturePoseSlots[] = {
+    {"crouchPose", &Config::crouchPose},
+    {"roarPose", &Config::roarPose},
+    {"launchPose", &Config::launchPose},
 };
 
 // 向きベクトルを行列で変換する（平行移動は無視し、長さ 1 に戻す）
@@ -199,6 +232,10 @@ void DragonWingAnimator::Initialize(SkinnedObject *skinned,
     tail_.push_back(MakeJoint(name));
   }
   head_ = MakeJoint(kHeadJoint);
+  spine_.clear();
+  for (const char *name : kSpineJoints) {
+    spine_.push_back(MakeJoint(name));
+  }
   body_ = MakeJoint(kBodyJoint);
 
   tailSpring_.Initialize(skinned_, kTailSpringJoints);
@@ -328,6 +365,12 @@ void DragonWingAnimator::Update(float deltaTime,
     DrawNextBeat();
   }
 
+  // 重ねる姿勢の重みの合計の分だけ、羽ばたきを弱める
+  gestureWeight_ = std::clamp(
+      gesture_.crouch + gesture_.roar + gesture_.launch, 0.0f, 1.0f);
+  flapScale_ = 1.0f - gestureWeight_;
+  trembleTime_ += deltaTime;
+
   // 使う側が決めた羽ばたきの姿勢の割合。畳むほど滑空の姿勢に戻す
   hoverWeight_ = std::clamp(currentState_.hover, 0.0f, 1.0f) *
                  (1.0f - currentState_.fold);
@@ -343,10 +386,12 @@ void DragonWingAnimator::Update(float deltaTime,
   UpdateWing(leftWing_, (std::max)(0.0f, 1.0f + asymmetry));
   UpdateWing(rightWing_, (std::max)(0.0f, 1.0f - asymmetry));
   UpdateTail();
+  UpdateSpine();
 
   // 体を羽ばたきで前後に傾けて上下させ、そのあとで頭をその揺れから切り離す
   bodyPitch_ = config_.bodyPitchAmplitude * kDegToRad *
-               currentState_.strength * Stroke(config_.bodyPitchLag);
+               currentState_.strength * flapScale_ *
+               Stroke(config_.bodyPitchLag);
   UpdateBody();
   UpdateHead(worldMatrix);
 
@@ -452,7 +497,7 @@ void DragonWingAnimator::UpdateSprings(float deltaTime,
 
 void DragonWingAnimator::UpdateWing(const Wing &wing, float gain) const {
   const float strength =
-      currentState_.strength * gain *
+      currentState_.strength * gain * flapScale_ *
       (1.0f + config_.beatAmplitudeJitter * BeatJitter(kBeatAmplitude));
   const float rootBias =
       config_.rootBias + config_.beatBiasJitter * BeatJitter(kBeatBias);
@@ -472,33 +517,46 @@ void DragonWingAnimator::UpdateWing(const Wing &wing, float gain) const {
     return config_.wingTwist * strength * StrokeVelocity(lag);
   };
 
-  // 付け根: 翼全体を上下に打つ
+  // 付け根: 翼全体を上下に打つ（重ねる姿勢の角度を足す）
   apply(wing.root,
-        rootBias + config_.rootAmplitude * strength * Stroke(0.0f),
-        0.0f);
+        rootBias + config_.rootAmplitude * strength * Stroke(0.0f) +
+            GestureAngle(&GesturePose::wingUp),
+        GestureAngle(&GesturePose::wingBack));
 
   // 腕・手首: 少し遅れて打ち、打ち上げの途中と畳むときに後ろへ回す
-  apply(wing.arm, config_.armAmplitude * strength * Stroke(config_.armLag),
+  apply(wing.arm,
+        config_.armAmplitude * strength * Stroke(config_.armLag) +
+            GestureAngle(&GesturePose::armUp),
         config_.foldArmSweep * fold +
             config_.upstrokeArmSweep * strength *
-                UpstrokeWeight(config_.armLag),
+                UpstrokeWeight(config_.armLag) +
+            GestureAngle(&GesturePose::armBack),
         kArmTwistRatio * twist(config_.armLag));
-  apply(wing.hand, config_.handAmplitude * strength * Stroke(config_.handLag),
+  apply(wing.hand,
+        config_.handAmplitude * strength * Stroke(config_.handLag) +
+            GestureAngle(&GesturePose::handUp),
         config_.foldHandSweep * fold +
             config_.upstrokeHandSweep * strength *
-                UpstrokeWeight(config_.handLag),
+                UpstrokeWeight(config_.handLag) +
+            GestureAngle(&GesturePose::handBack),
         twist(config_.handLag));
 
   // 指: 先の節ほど遅れて打ち、根元より先の節は打ち上げと畳みで下へ曲げる
   for (int finger = 0; finger < kFingerCount_; ++finger) {
     // 翼端側の指ほど大きく後ろへ回す（0: 後ろ寄りの指 〜 1: 翼端の指）
     const float fanWeight = float(finger) / float(kFingerCount_ - 1);
+    // 重ねる姿勢で指を開く向き（-1: 根元側の指を前へ 〜 1: 翼端側の指を後ろへ）
+    const float spreadSign = fanWeight * 2.0f - 1.0f;
     for (int joint = 0; joint < kFingerJointCount_; ++joint) {
       const float lag = config_.fingerLag + config_.fingerJointLag * joint;
-      float up = config_.fingerAmplitude * strength * Stroke(lag);
+      // 震えは指と節ごとに位相をずらして足す
+      float up = config_.fingerAmplitude * strength * Stroke(lag) +
+                 config_.fingerTremble *
+                     TrembleWave(float(finger * kFingerJointCount_ + joint));
       float back = 0.0f;
       if (joint == 0) {
-        back = config_.foldFingerFan * fold * fanWeight;
+        back = config_.foldFingerFan * fold * fanWeight +
+               GestureAngle(&GesturePose::fingerFan) * spreadSign;
       } else {
         up -= config_.foldFingerCurl * fold +
               config_.upstrokeFingerCurl * strength * UpstrokeWeight(lag);
@@ -512,11 +570,36 @@ void DragonWingAnimator::UpdateTail() const {
   // 尾は後ろを向いているので、左右の軸まわりの正の回転で上がり、上下の軸まわりの正の回転で左へ曲がる
   for (size_t i = 0; i < tail_.size(); ++i) {
     const float lag = config_.tailLag + config_.tailJointLag * float(i);
-    const float up =
-        config_.tailAmplitude * currentState_.strength * Stroke(lag);
+    float up = config_.tailAmplitude * currentState_.strength * flapScale_ *
+               Stroke(lag);
+    if (i < kGestureTailJointCount_) {
+      up += GestureAngle(&GesturePose::tail);
+    }
     const float left = config_.tailTurn * currentState_.asymmetry;
     ApplyRotation(tail_[i], up * kDegToRad, left * kDegToRad, 0.0f);
   }
+}
+
+void DragonWingAnimator::UpdateSpine() const {
+  // 背骨を1本ずつ同じ角度で曲げる
+  const float angle = GestureAngle(&GesturePose::spine) * kDegToRad;
+  for (const DrivenJoint &joint : spine_) {
+    ApplyRotation(joint, angle, 0.0f, 0.0f);
+  }
+}
+
+float DragonWingAnimator::GestureAngle(float GesturePose::*part) const {
+  return gesture_.crouch * (config_.crouchPose.*part) +
+         gesture_.roar * (config_.roarPose.*part) +
+         gesture_.launch * (config_.launchPose.*part);
+}
+
+float DragonWingAnimator::TrembleWave(float phaseOffset) const {
+  // 骨ごとに位相をずらす量（ラジアン）
+  const float kPhaseStep = 1.7f;
+  const float phase = 2.0f * kPi * config_.trembleFrequency * trembleTime_ +
+                      kPhaseStep * phaseOffset;
+  return gesture_.tremble * std::sin(phase);
 }
 
 void DragonWingAnimator::UpdateBody() const {
@@ -524,8 +607,8 @@ void DragonWingAnimator::UpdateBody() const {
     return;
   }
   // 打ち下ろしで体が持ち上がる（翼が下にあるほど体は上）
-  const float lift =
-      -config_.bodyBob * currentState_.strength * Stroke(config_.bodyLag);
+  const float lift = -config_.bodyBob * currentState_.strength * flapScale_ *
+                     Stroke(config_.bodyLag);
   Vector3 translate = body_.restTranslation;
   translate.y += lift;
   skinned_->SetJointTranslation(body_.index, translate);
@@ -573,8 +656,10 @@ void DragonWingAnimator::UpdateHead(const Matrix4x4 &worldMatrix) const {
   // 前向き: 水平に戻した前向きへ headLevelPitch の割合だけ寄せ、曲がる方向へ先に向ける
   const Vector3 levelForward =
       PerpendicularDirection(bodyForward, worldUp, bodyForward);
-  Vector3 forward = SafeNormalize(
-      Lerp(bodyForward, levelForward, config_.headLevelPitch));
+  // 重ねる姿勢の重みの分だけ水平に戻すのを弱め、体を起こした向きを頭に伝える
+  const float levelPitch = config_.headLevelPitch * flapScale_;
+  Vector3 forward =
+      SafeNormalize(Lerp(bodyForward, levelForward, levelPitch));
   const float turnLead =
       config_.headTurnLead * kDegToRad * currentState_.asymmetry;
   forward = RotateVector(MakeRotateAxisAngleQuaternion(worldUp, turnLead),
@@ -616,13 +701,21 @@ void DragonWingAnimator::UpdateHead(const Matrix4x4 &worldMatrix) const {
 
   //---- 首と頭蓋へ書き込む ----
   // 首の4本: 高さ合わせの曲げのあとに、向きの差の neckShare の割合を等分して回す
+  // 重ねる姿勢の首の角度（震えを含む）。首の4本を同じ角度で曲げ、頭蓋はその合計に自分の角度を足して回す
+  const float gestureNeck =
+      (GestureAngle(&GesturePose::neck) +
+       config_.neckTremble * TrembleWave(0.0f)) *
+      kDegToRad;
+  const float gestureHead = gestureNeck * float(neck_.size()) +
+                            GestureAngle(&GesturePose::head) * kDegToRad;
   const Quaternion headTarget =
-      Multiply(headDelta, JointModelRotation(head_.index));
+      Multiply(MakeRotateAxisAngleQuaternion(kLateralAxis, gestureHead),
+               Multiply(headDelta, JointModelRotation(head_.index)));
   const float shareRatio =
       neck_.empty() ? 0.0f : config_.neckShare / float(neck_.size());
-  const Quaternion neckDelta =
-      Multiply(Slerp(kIdentityQuaternion, headDelta, shareRatio),
-               MakeRotateAxisAngleQuaternion(kLateralAxis, neckPitch));
+  const Quaternion neckDelta = Multiply(
+      Slerp(kIdentityQuaternion, headDelta, shareRatio),
+      MakeRotateAxisAngleQuaternion(kLateralAxis, neckPitch + gestureNeck));
   const std::vector<Joint> &joints = skinned_->GetSkeleton().joints;
   auto rotateInModelSpace = [&](const DrivenJoint &joint,
                                 const Quaternion &modelTarget) {
@@ -657,12 +750,28 @@ void DragonWingAnimator::LoadConfig() {
       config_.*item.member = root[item.key].get<float>();
     }
   }
+  for (const GesturePoseSlot &slot : kGesturePoseSlots) {
+    if (!root.contains(slot.key) || !root[slot.key].is_object()) {
+      continue;
+    }
+    const nlohmann::json &pose = root[slot.key];
+    for (const GesturePoseItem &item : kGesturePoseItems) {
+      if (pose.contains(item.key) && pose[item.key].is_number()) {
+        (config_.*slot.member).*item.member = pose[item.key].get<float>();
+      }
+    }
+  }
 }
 
 void DragonWingAnimator::SaveConfig() const {
   nlohmann::json root;
   for (const ConfigItem &item : kConfigItems) {
     root[item.key] = config_.*item.member;
+  }
+  for (const GesturePoseSlot &slot : kGesturePoseSlots) {
+    for (const GesturePoseItem &item : kGesturePoseItems) {
+      root[slot.key][item.key] = (config_.*slot.member).*item.member;
+    }
   }
   if (!std::filesystem::exists(kConfigDirectory)) {
     std::filesystem::create_directories(kConfigDirectory);
@@ -683,6 +792,18 @@ void DragonWingAnimator::DrawImGui() {
   ImGui::Text("hover weight %.2f (0: glide / 1: hover)", hoverWeight_);
   for (const ConfigItem &item : kConfigItems) {
     ImGui::SliderFloat(item.key, &(config_.*item.member), item.min, item.max);
+  }
+  ImGui::Text("gesture: crouch %.2f / roar %.2f / launch %.2f / tremble %.2f",
+              gesture_.crouch, gesture_.roar, gesture_.launch,
+              gesture_.tremble);
+  for (const GesturePoseSlot &slot : kGesturePoseSlots) {
+    if (ImGui::TreeNode(slot.key)) {
+      for (const GesturePoseItem &item : kGesturePoseItems) {
+        ImGui::SliderFloat(item.key, &((config_.*slot.member).*item.member),
+                           kGesturePoseMinAngle, kGesturePoseMaxAngle);
+      }
+      ImGui::TreePop();
+    }
   }
   if (ImGui::Button("Save Wing Config")) {
     SaveConfig();

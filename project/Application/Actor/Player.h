@@ -64,6 +64,11 @@ public:
       const std::optional<DragonWingAnimator::State> &state) {
     externalWingState_ = state;
   }
+
+  /// <summary>
+  /// 羽ばたきに重ねる姿勢（開始演出の吠える姿など）。毎フレーム渡す
+  /// </summary>
+  void SetWingGesture(const DragonWingAnimator::Gesture &gesture);
   void SetHitStopCallback(std::function<void(int)> callback) {
     hitStopCallback_ = callback;
   }

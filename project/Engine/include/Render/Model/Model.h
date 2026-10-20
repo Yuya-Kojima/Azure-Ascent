@@ -72,7 +72,9 @@ public:
     // リムライト（縁の発光）: rgb=色, w=強度(0で無効)
     Vector4 rimColor = {0.0f, 0.0f, 0.0f, 0.0f};
     float rimPower = 3.0f; // 大きいほど縁の細い範囲だけ光る
-    float padding3[3] = {0.0f, 0.0f, 0.0f};
+    float backRimScale = 0.0f; // 平行光源の逆光の縁を掛ける倍率（0で無効）
+    float specularScale = 1.0f; // 鏡面反射の倍率（0で鏡面反射なし）
+    float padding3 = 0.0f;
   };
 
   /// <summary>

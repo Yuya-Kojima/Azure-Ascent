@@ -36,7 +36,7 @@ void RailCamera::Update() {
 
   if (!isFinished_ && isAutoMove_) {
     // 時間で進行度を進める (speed_ は 1秒間に何セグメント進むか)
-    t_ += speed_ * (1.0f / 60.0f);
+    t_ += speed_ * speedScale_ * (1.0f / 60.0f);
 
     float maxT = static_cast<float>(waypoints_.size() - 1);
     if (t_ >= maxT) {

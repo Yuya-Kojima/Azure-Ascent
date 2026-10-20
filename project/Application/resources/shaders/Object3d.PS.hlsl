@@ -81,6 +81,30 @@ GeometryShaderOutput input) {
 	//=========================
 	float3 toEye = normalize(gCamera.worldPosition - input.worldPosition);
 	float3 normal = normalize(input.normal);
+
+	// 調べるための表示（平行光源の debugView で切り替える）
+	if (gDirectionalLight.debugView == 1) {
+		output.color = float4(gMaterial.color.rgb * textureColor.rgb, 1.0f);
+		return output;
+	}
+	if (gDirectionalLight.debugView == 2) {
+		output.color = float4(normal * 0.5f + 0.5f, 1.0f);
+		return output;
+	}
+	if (gDirectionalLight.debugView == 3) {
+		output.color = dot(normal, toEye) >= 0.0f ? float4(0.0f, 0.6f, 0.0f, 1.0f) : float4(1.0f, 0.0f, 0.0f, 1.0f);
+		return output;
+	}
+	if (gDirectionalLight.debugView == 4) {
+		textureColor.rgb = float3(1.0f, 1.0f, 1.0f);
+	}
+	if (gDirectionalLight.debugView == 5) {
+		// 法線が壊れている画素（NaN・長さ0）はマゼンタ、それ以外は灰色で塗り、捨てずに表示する
+		bool brokenNormal = any(isnan(input.normal)) || dot(input.normal, input.normal) < 1e-8f;
+		output.color = brokenNormal ? float4(1.0f, 0.0f, 1.0f, 1.0f) : float4(0.5f, 0.5f, 0.5f, 1.0f);
+		return output;
+	}
+
 	float3 baseColor = gMaterial.color.rgb * textureColor.rgb;
 		
 	//=========================
@@ -93,15 +117,19 @@ GeometryShaderOutput input) {
 	//=========================
 	// Output
 	//=========================
-	output.color.rgb = dirLight.diffuse + dirLight.specular + 
-                       pointLight.diffuse + pointLight.specular + 
-                       spotLight.diffuse + spotLight.specular;
+	float3 specular = (dirLight.specular + pointLight.specular + spotLight.specular) * gMaterial.specularScale;
+	output.color.rgb = dirLight.diffuse + pointLight.diffuse + spotLight.diffuse + specular;
+
+	// 環境光
+	output.color.rgb += CalculateHemisphereAmbient(gDirectionalLight, normal, baseColor);
 	
-	// Environment Map
-	float3 cameraToPosition = normalize(input.worldPosition - gCamera.worldPosition);
-	float3 reflectedVector = reflect(cameraToPosition, normalize(input.normal));
-	float4 environmentColor = gEnvironmentTexture.Sample(gSampler, reflectedVector);
-	output.color.rgb += environmentColor.rgb * gMaterial.environmentCoefficient;
+	// Environment Map（係数が0より大きいときだけ読んで足す）
+	if (gMaterial.environmentCoefficient > 0.0f) {
+		float3 cameraToPosition = normalize(input.worldPosition - gCamera.worldPosition);
+		float3 reflectedVector = reflect(cameraToPosition, normalize(input.normal));
+		float4 environmentColor = gEnvironmentTexture.Sample(gSampler, reflectedVector);
+		output.color.rgb += environmentColor.rgb * gMaterial.environmentCoefficient;
+	}
 
 	// Dissolve Edge 発光
 	if (gMaterial.enableDissolve != 0) {
@@ -112,6 +140,11 @@ GeometryShaderOutput input) {
 	if (gMaterial.rimColor.w > 0.0f) {
 		float rim = pow(saturate(1.0f - saturate(dot(normal, toEye))), max(gMaterial.rimPower, 0.01f));
 		output.color.rgb += gMaterial.rimColor.rgb * gMaterial.rimColor.w * rim;
+	}
+
+	// 逆光の縁（平行光源の設定にマテリアルの倍率を掛ける。倍率0なら無効）
+	if (gMaterial.backRimScale > 0.0f) {
+		output.color.rgb += CalculateBackRim(gDirectionalLight, normal, toEye, gMaterial.backRimScale);
 	}
 
 	// Fog

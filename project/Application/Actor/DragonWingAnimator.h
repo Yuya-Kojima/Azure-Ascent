@@ -30,6 +30,34 @@ public:
   };
 
   /// <summary>
+  /// 羽ばたきに重ねる姿勢の重み（0〜1）。使う側が毎フレーム渡し、そのまま使う（State のようには遅らせない）
+  /// 重みの合計の分だけ羽ばたきを弱め、各姿勢の角度を重みで混ぜて足す
+  /// </summary>
+  struct Gesture {
+    float crouch = 0.0f;  // 溜め（頭を下げ、翼をすぼめる）
+    float roar = 0.0f;    // 吠える（首を空へ立て、翼を張る）
+    float launch = 0.0f;  // 飛び出しの一打ち（翼を打ち下ろす）
+    float tremble = 0.0f; // 首と翼の先の震えの大きさ
+  };
+
+  /// <summary>
+  /// 重ねる姿勢の角度（度）。骨1本あたりの角度で、上げる・後ろへ回す向きが正
+  /// </summary>
+  struct GesturePose {
+    float spine = 0.0f;     // 背骨（左右の軸まわり。正で頭側が下がる）
+    float neck = 0.0f;      // 首（左右の軸まわり。正で頭が下がる）
+    float head = 0.0f;      // 頭蓋（首の角度に足す。正で鼻先が下がる）
+    float tail = 0.0f;      // 尾の根元側（左右の軸まわり。正で上がる）
+    float wingUp = 0.0f;    // 翼の付け根を上げる
+    float wingBack = 0.0f;  // 翼の付け根を後ろへ回す
+    float armUp = 0.0f;     // 腕を上げる
+    float armBack = 0.0f;   // 腕を後ろへ回す
+    float handUp = 0.0f;    // 手首を上げる
+    float handBack = 0.0f;  // 手首を後ろへ回す
+    float fingerFan = 0.0f; // 指を開く（翼端側の指ほど後ろ、根元側の指ほど前へ回す）
+  };
+
+  /// <summary>
   /// 調整値。角度は度、遅れは1周期に対する割合
   /// </summary>
   struct Config {
@@ -102,6 +130,19 @@ public:
     float tailSpringMaxAngle = 12.0f;  // 尾の骨1本が姿勢から曲がる最大の角度（度）
     float legSpringMaxAngle = 8.0f;    // 脚の骨1本が姿勢から曲がる最大の角度（度）
     float springResetDistance = 0.5f;  // これ以上（モデルの単位）一度に動いたら置き直す
+
+    // 重ねる姿勢（翼の付け根は rootBias に足す）
+    GesturePose crouchPose = {4.0f, 6.0f, 8.0f, -2.0f, -15.0f, 20.0f,
+                              0.0f, 15.0f, 0.0f, 25.0f, -8.0f};
+    GesturePose roarPose = {-5.0f, -13.0f, 5.0f, 6.0f, 15.0f, -10.0f,
+                            5.0f, 0.0f, 0.0f, -20.0f, 14.0f};
+    GesturePose launchPose = {2.0f, 3.0f, 0.0f, 0.0f, -40.0f, 0.0f,
+                              -10.0f, 0.0f, -10.0f, 0.0f, 6.0f};
+
+    // 震え（Gesture::tremble が 1 のときの振れ幅、度）
+    float trembleFrequency = 14.0f; // 1秒あたりの回数
+    float neckTremble = 3.0f;       // 首の骨1本あたり
+    float fingerTremble = 4.0f;     // 指の節1つあたり
   };
 
   /// <summary>
@@ -121,6 +162,11 @@ public:
   /// 補間せずに、今の状態を目標と同じにする
   /// </summary>
   void SetStateImmediate(const State &state);
+
+  /// <summary>
+  /// 羽ばたきに重ねる姿勢の重みを渡す（毎フレーム。何もしないときは既定値）
+  /// </summary>
+  void SetGesture(const Gesture &gesture) { gesture_ = gesture; }
 
   /// <summary>
   /// 羽ばたきを進めて関節に書き込む。SkinnedObject::Update の前に呼ぶ
@@ -194,6 +240,12 @@ private:
   void UpdateTail() const;
   void UpdateBody() const;
   void UpdateHead(const Matrix4x4 &worldMatrix) const;
+  void UpdateSpine() const;
+
+  // 重ねる姿勢の角度を、重みで混ぜて求める（度）
+  float GestureAngle(float GesturePose::*part) const;
+  // 震えの今の角度（-1 〜 1 に Gesture::tremble を掛けたもの）
+  float TrembleWave(float phaseOffset) const;
   void UpdateSprings(float deltaTime, const Matrix4x4 &worldMatrix);
 
   // 関節のモデル空間の回転・位置（今の上書きを反映したもの）
@@ -218,12 +270,18 @@ private:
   std::vector<int32_t> posedJoints_;
   float hoverWeight_ = 0.0f; // 飛行姿勢のうち羽ばたきの割合（0: 滑空 〜 1: 羽ばたき）
   float bodyPitch_ = 0.0f;   // 羽ばたきでの体の前後の傾き（ラジアン、モデルの左右の軸まわり）
+  Gesture gesture_;          // 重ねる姿勢の重み
+  float gestureWeight_ = 0.0f; // 重ねる姿勢の重みの合計（0〜1）
+  float flapScale_ = 1.0f;     // 羽ばたきの強さに掛ける割合（1 - gestureWeight_）
+  float trembleTime_ = 0.0f;   // 震えの経過時間（秒）
 
   Wing leftWing_;
   Wing rightWing_;
   std::vector<DrivenJoint> neck_; // 頭蓋より根元側の首の骨
   DrivenJoint head_;              // 頭蓋（前を向く骨）
   std::vector<DrivenJoint> tail_;
+  std::vector<DrivenJoint> spine_;
+  static constexpr size_t kGestureTailJointCount_ = 6; // 重ねる姿勢で曲げる尾の骨の数（根元から）
   DrivenJoint body_;
   static constexpr int kLegCount_ = 4; // 前脚・後脚の左右
 

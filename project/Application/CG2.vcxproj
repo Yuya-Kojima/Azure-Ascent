@@ -194,6 +194,8 @@ copy "$(WindowsSdkDir)bin\$(TargetPlatformVersion)\x64\dxil.dll" "$(TargetDir)dx
     <ClCompile Include="Scene\FractureTestScene.cpp" />
     <ClCompile Include="Scene\GamePlayScene.cpp" />
     <ClCompile Include="Scene\StageIntro.cpp" />
+    <ClCompile Include="Scene\StageIntroText.cpp" />
+    <ClCompile Include="Scene\StageLighting.cpp" />
     <ClCompile Include="Framework\GameManager.cpp" />
     <ClCompile Include="main.cpp">
       <Optimization Condition="'$(Configuration)|$(Platform)'=='Development|x64'">MaxSpeed</Optimization>
@@ -296,6 +298,8 @@ copy "$(WindowsSdkDir)bin\$(TargetPlatformVersion)\x64\dxil.dll" "$(TargetDir)dx
     <ClInclude Include="Scene\FractureTestScene.h" />
     <ClInclude Include="Scene\GamePlayScene.h" />
     <ClInclude Include="Scene\StageIntro.h" />
+    <ClInclude Include="Scene\StageIntroText.h" />
+    <ClInclude Include="Scene\StageLighting.h" />
     <ClInclude Include="Framework\GameManager.h" />
   </ItemGroup>
   <ItemGroup>

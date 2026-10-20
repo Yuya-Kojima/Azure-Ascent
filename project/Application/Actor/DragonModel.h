@@ -19,7 +19,7 @@ public:
   ~DragonModel();
 
   /// <summary>
-  /// 初期化（モデルの読み込み、リムライト、羽ばたきの準備）
+  /// 初期化（モデルの読み込み、鏡面反射の強さ、羽ばたきの準備）
   /// </summary>
   void Initialize(Object3dRenderer *object3dRenderer, SrvManager *srvManager);
 

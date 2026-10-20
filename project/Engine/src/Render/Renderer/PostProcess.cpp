@@ -7,6 +7,13 @@
 #include <imgui.h>
 #endif
 
+namespace {
+// シェーダーのコンパイル結果。PostProcess はシーンごとに作られるので、
+// 最初の1回だけコンパイルし、以降はこれを使って PSO を作る
+Microsoft::WRL::ComPtr<IDxcBlob> gVertexShaderBlob;
+Microsoft::WRL::ComPtr<IDxcBlob> gPixelShaderBlob;
+} // namespace
+
 void PostProcess::Initialize(Dx12Core *dx12Core) {
   dx12Core_ = dx12Core;
 
@@ -195,14 +202,20 @@ void PostProcess::CreatePSO() {
   rasterizerDesc.CullMode = D3D12_CULL_MODE_BACK;
   rasterizerDesc.FillMode = D3D12_FILL_MODE_SOLID;
 
-  // shaderをcompileする
-  IDxcBlob *vertexShaderBlob = dx12Core_->CompileShader(
-      L"resources/shaders/Fullscreen.VS.hlsl", L"vs_6_0");
-  assert(vertexShaderBlob != nullptr);
+  // shaderをcompileする（コンパイル済みならそれを使う）
+  if (!gVertexShaderBlob) {
+    gVertexShaderBlob.Attach(dx12Core_->CompileShader(
+        L"resources/shaders/Fullscreen.VS.hlsl", L"vs_6_0"));
+  }
+  assert(gVertexShaderBlob != nullptr);
+  IDxcBlob *vertexShaderBlob = gVertexShaderBlob.Get();
 
-  IDxcBlob *pixelShaderBlob = dx12Core_->CompileShader(
-      L"resources/shaders/PostProcess.PS.hlsl", L"ps_6_0");
-  assert(pixelShaderBlob != nullptr);
+  if (!gPixelShaderBlob) {
+    gPixelShaderBlob.Attach(dx12Core_->CompileShader(
+        L"resources/shaders/PostProcess.PS.hlsl", L"ps_6_0"));
+  }
+  assert(gPixelShaderBlob != nullptr);
+  IDxcBlob *pixelShaderBlob = gPixelShaderBlob.Get();
 
   // DepthStencilStateの設定
   D3D12_DEPTH_STENCIL_DESC depthStencilDesc{};

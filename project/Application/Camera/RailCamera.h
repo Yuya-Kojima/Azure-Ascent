@@ -37,6 +37,8 @@ public:
 
   // ゲッター/セッター
   void SetSpeed(float speed) { speed_ = speed; }
+  // 進行スピードに掛ける割合（開始演出で 0 から加速させる）
+  void SetSpeedScale(float scale) { speedScale_ = scale; }
   const Vector3& GetRotate() const { return transform_.rotate; }
   bool IsFinished() const { return isFinished_; }
   float GetT() const { return t_; }
@@ -87,6 +89,7 @@ private:
   std::vector<Vector3> waypoints_; // 通過ポイント
   float t_ = 0.0f; // 現在の進行度
   float speed_ = 0.5f; // 進行スピード
+  float speedScale_ = 1.0f; // 進行スピードに掛ける割合
   bool isFinished_ = false;
   bool isAutoMove_ = true; // 自動で前進するかどうか
 
