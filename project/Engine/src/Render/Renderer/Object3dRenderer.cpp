@@ -339,6 +339,12 @@ void Object3dRenderer::CreateDirectionalLightData() {
   directionalLightData_->color = Vector4(1.0f, 1.0f, 1.0f, 1.0f);
   directionalLightData_->direction = Normalize(Vector3(0.0f, -1.0f, 0.0f));
   directionalLightData_->intensity = 1.0f;
+  directionalLightData_->skyAmbient = Vector4(0.0f, 0.0f, 0.0f, 0.0f);
+  directionalLightData_->groundAmbient = Vector4(0.0f, 0.0f, 0.0f, 0.0f);
+  directionalLightData_->backRimColor = Vector4(0.0f, 0.0f, 0.0f, 0.0f);
+  directionalLightData_->backRimPower = 2.5f;
+  directionalLightData_->backRimDirection = Vector3(0.0f, 0.0f, -1.0f);
+  directionalLightData_->debugView = 0;
 }
 
 void Object3dRenderer::CreatePointLightData() {

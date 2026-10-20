@@ -58,7 +58,7 @@ void StageSelectScene::Initialize(EngineBase *engine) {
   groundObject_->SetUVTransform(
       MakeScaleMatrix({kGroundTextureRepeat, kGroundTextureRepeat, 1.0f}));
 
-  // ドラゴン（羽ばたくボーン付きモデル。リムライトは DragonModel で設定）
+  // ドラゴン（羽ばたくボーン付きモデル。見た目は DragonModel で設定）
   dragonModel_ = std::make_unique<DragonModel>();
   dragonModel_->Initialize(engine_->GetObject3dRenderer(),
                            engine_->GetSrvManager());

@@ -201,6 +201,28 @@ public:
   }
 
   /// <summary>
+  /// 平行光源の逆光の縁をどれだけ受けるか。0で受けない
+  /// </summary>
+  void SetBackRimScale(float scale) {
+    if (materialData) {
+      materialData->backRimScale = scale;
+    }
+  }
+
+  /// <summary>
+  /// 鏡面反射の倍率。0で鏡面反射なし
+  /// </summary>
+  void SetSpecularScale(float scale) {
+    if (materialData) {
+      materialData->specularScale = scale;
+    }
+  }
+
+  float GetSpecularScale() const {
+    return materialData ? materialData->specularScale : 1.0f;
+  }
+
+  /// <summary>
   /// ディゾルブエフェクトの有効/無効を切り替える
   /// </summary>
   /// <param name="enable">trueで有効、falseで無効</param>

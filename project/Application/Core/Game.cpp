@@ -1,6 +1,7 @@
 #include "Core/Game.h"
 #include "Debug/Logger.h"
 #include <filesystem>
+#include <iterator>
 #include "Math/Vector2.h"
 #include "Collision/CollisionManager.h"
 #include "Core/ResourceObject.h"
@@ -548,6 +549,15 @@ void Game::DrawWorldSettingsUI() {
         }
       }
       
+      // 調べるための表示（Object3d の描画を切り替える）
+      if (auto *dl = renderer->GetDirectionalLightData()) {
+        const char *const kDebugViewNames[] = {"Normal", "Albedo Only", "Normal Color",
+                                               "Normal Facing", "Lighting Only",
+                                               "Problem Pixels"};
+        ImGui::Combo("Debug View", &dl->debugView, kDebugViewNames,
+                     static_cast<int>(std::size(kDebugViewNames)));
+      }
+
       ImGui::Separator();
 
       if (showDirectionalLight) {

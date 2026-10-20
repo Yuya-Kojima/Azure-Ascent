@@ -18,6 +18,7 @@ class PostProcess;
 class BillboardParticleEmitter;
 class MeshParticleEmitter;
 class StageIntro;
+class StageLighting;
 
 #include "Actor/Boss.h"
 #include "Actor/Enemy.h"
@@ -88,20 +89,9 @@ private: // メンバ変数(ゲーム用)
   float hudFadeSec_ = 0.3f;
   float hudFadeTimer_ = 0.3f;
 
-  // 乗っ取られた空（手続き生成の空・ライト・霧）
-  // 画面の色は「線形の値 × 露出 0.5 → ACES トーンマップ → sRGB」で決まる
-  float skyTimer_ = 0.0f;                             // 雲を流すための経過時間（秒）
-  Vector3 skyZenith_ = {0.069f, 0.047f, 0.104f};      // 天頂の色
-  Vector3 skyHorizon_ = {0.208f, 0.088f, 0.104f};     // 地平線の色
-  Vector3 skySunDir_ = {0.35f, 0.10f, 1.0f};          // 太陽の方向（進行方向の右寄り、地平線の近く）
-  Vector3 skySunColor_ = {1.0f, 0.30f, 0.16f};        // 太陽の色
-  float skySunIntensity_ = 1.4f;                      // 太陽の強さ
-  float skyCloudAmount_ = 0.75f;                      // 雲の量（0〜1）
-  Vector3 skyCloudColor_ = {0.031f, 0.028f, 0.043f};  // 雲の色
-  float skyCloudOpacity_ = 0.92f;                     // 雲の不透明度
-  float skyCloudRim_ = 0.2f;                          // 太陽側で雲の縁が光る強さ
-  Vector3 lightColor_ = {0.85f, 0.80f, 0.95f};        // 平行光源の色
-  float lightIntensity_ = 0.85f;                      // 平行光源の強さ
+  // 空・光・霧・ポストエフェクトの値
+  std::unique_ptr<StageLighting> stageLighting_;
+  float skyTimer_ = 0.0f; // 雲を流すための経過時間（秒）
 
   // ヒットストップタイマー（被弾・ボス演出用）
   int hitStopTimer_ = 0;
@@ -246,9 +236,11 @@ private:
   void BlendPlayerWithIntro();
 
   /// <summary>
-  /// 空・ライト・霧を設定する
+  /// 空・光・霧・ポストエフェクトを設定する
   /// </summary>
   void ApplySkyAndLighting();
+  // 配置オブジェクトから雲海の板を探す（ないときは null）
+  Object3d *FindSeaObject() const;
 
   void SpawnSceneObject(const std::string &modelPath, const Vector3 &position);
 

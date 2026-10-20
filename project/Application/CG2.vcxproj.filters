@@ -84,6 +84,9 @@
     <ClCompile Include="Scene\StageIntroText.cpp">
       <Filter>ソース ファイル</Filter>
     </ClCompile>
+    <ClCompile Include="Scene\StageLighting.cpp">
+      <Filter>ソース ファイル</Filter>
+    </ClCompile>
     <ClCompile Include="Framework\GameManager.cpp">
       <Filter>ソース ファイル</Filter>
     </ClCompile>
@@ -213,6 +216,9 @@
       <Filter>ヘッダー ファイル</Filter>
     </ClInclude>
     <ClInclude Include="Scene\StageIntroText.h">
+      <Filter>ヘッダー ファイル</Filter>
+    </ClInclude>
+    <ClInclude Include="Scene\StageLighting.h">
       <Filter>ヘッダー ファイル</Filter>
     </ClInclude>
     <ClInclude Include="Actor\DragonWingAnimator.h">

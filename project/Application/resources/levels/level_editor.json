@@ -4,127 +4,169 @@
             "modelPath": "sea_of_clouds.obj",
             "translation": [0.0, -15.0, 2500.0],
             "rotation": [-1.5708, 0.0, 0.0],
-            "scale": [2000.0, 3000.0, 1.0]
+            "scale": [2000.0, 3000.0, 1.0],
+            "color": [0.16, 0.16, 0.17],
+            "specularScale": 0.0
         },
         {
             "modelPath": "Box/box.gltf",
             "translation": [-30.0, -10.0, 100.0],
             "rotation": [0.0, 0.3, 0.0],
-            "scale": [10.0, 20.0, 10.0]
+            "scale": [10.0, 20.0, 10.0],
+            "color": [0.05, 0.055, 0.07],
+            "specularScale": 0.0
         },
         {
             "modelPath": "Box/box.gltf",
             "translation": [40.0, -10.0, 120.0],
             "rotation": [0.0, -0.5, 0.0],
-            "scale": [15.0, 25.0, 15.0]
+            "scale": [15.0, 25.0, 15.0],
+            "color": [0.05, 0.055, 0.07],
+            "specularScale": 0.0
         },
         {
             "modelPath": "Box/box.gltf",
             "translation": [-50.0, -15.0, 250.0],
             "rotation": [0.0, 0.785, 0.0],
-            "scale": [20.0, 40.0, 20.0]
+            "scale": [20.0, 40.0, 20.0],
+            "color": [0.05, 0.055, 0.07],
+            "specularScale": 0.0
         },
         {
             "modelPath": "Box/box.gltf",
             "translation": [-65.0, -15.0, 450.0],
             "rotation": [0.0, 0.0, 0.0],
-            "scale": [15.0, 60.0, 15.0]
+            "scale": [15.0, 60.0, 15.0],
+            "color": [0.05, 0.055, 0.07],
+            "specularScale": 0.0
         },
         {
             "modelPath": "Box/box.gltf",
             "translation": [55.0, -15.0, 450.0],
             "rotation": [0.0, 0.0, 0.0],
-            "scale": [15.0, 60.0, 15.0]
+            "scale": [15.0, 60.0, 15.0],
+            "color": [0.05, 0.055, 0.07],
+            "specularScale": 0.0
         },
         {
             "modelPath": "Box/box.gltf",
             "translation": [20.0, 10.0, 700.0],
             "rotation": [0.0, 0.5, 0.0],
-            "scale": [10.0, 40.0, 10.0]
+            "scale": [10.0, 40.0, 10.0],
+            "color": [0.05, 0.055, 0.07],
+            "specularScale": 0.0
         },
         {
             "modelPath": "Box/box.gltf",
             "translation": [-65.0, 20.0, 750.0],
             "rotation": [0.0, -0.5, 0.0],
-            "scale": [10.0, 40.0, 10.0]
+            "scale": [10.0, 40.0, 10.0],
+            "color": [0.05, 0.055, 0.07],
+            "specularScale": 0.0
         },
         {
             "modelPath": "Box/box.gltf",
             "translation": [85.0, -10.0, 1350.0],
             "rotation": [0.0, 0.4, 0.0],
-            "scale": [20.0, 80.0, 20.0]
+            "scale": [20.0, 80.0, 20.0],
+            "color": [0.05, 0.055, 0.07],
+            "specularScale": 0.0
         },
         {
             "modelPath": "Box/box.gltf",
             "translation": [-45.0, -10.0, 1650.0],
             "rotation": [0.0, -0.2, 0.0],
-            "scale": [25.0, 60.0, 25.0]
+            "scale": [25.0, 60.0, 25.0],
+            "color": [0.05, 0.055, 0.07],
+            "specularScale": 0.0
         },
         {
             "modelPath": "Box/box.gltf",
             "translation": [-85.0, -10.0, 1900.0],
             "rotation": [0.0, 0.5, 0.0],
-            "scale": [20.0, 60.0, 20.0]
+            "scale": [20.0, 60.0, 20.0],
+            "color": [0.05, 0.055, 0.07],
+            "specularScale": 0.0
         },
         {
             "modelPath": "Box/box.gltf",
             "translation": [-18.0, -10.0, 2360.0],
             "rotation": [0.0, 0.1, 0.0],
-            "scale": [20.0, 65.0, 20.0]
+            "scale": [20.0, 65.0, 20.0],
+            "color": [0.05, 0.055, 0.07],
+            "specularScale": 0.0
         },
         {
             "modelPath": "Box/box.gltf",
             "translation": [38.0, -10.0, 2380.0],
             "rotation": [0.0, -0.1, 0.0],
-            "scale": [20.0, 65.0, 20.0]
+            "scale": [20.0, 65.0, 20.0],
+            "color": [0.05, 0.055, 0.07],
+            "specularScale": 0.0
         },
         {
             "modelPath": "Box/box.gltf",
             "translation": [-26.0, 0.0, 2980.0],
             "rotation": [0.0, 0.0, 0.0],
-            "scale": [20.0, 82.0, 20.0]
+            "scale": [20.0, 82.0, 20.0],
+            "color": [0.05, 0.055, 0.07],
+            "specularScale": 0.0
         },
         {
             "modelPath": "Box/box.gltf",
             "translation": [30.0, 0.0, 2980.0],
             "rotation": [0.0, 0.0, 0.0],
-            "scale": [20.0, 82.0, 20.0]
+            "scale": [20.0, 82.0, 20.0],
+            "color": [0.05, 0.055, 0.07],
+            "specularScale": 0.0
         },
         {
             "modelPath": "Box/box.gltf",
             "translation": [2.0, 53.0, 2980.0],
             "rotation": [0.0, 0.0, 0.0],
-            "scale": [70.0, 10.0, 15.0]
+            "scale": [70.0, 10.0, 15.0],
+            "color": [0.05, 0.055, 0.07],
+            "specularScale": 0.0
         },
         {
             "modelPath": "Box/box.gltf",
             "translation": [-50.0, 45.0, 1050.0],
             "rotation": [0.0, 0.2, 0.0],
-            "scale": [15.0, 120.0, 15.0]
+            "scale": [15.0, 120.0, 15.0],
+            "color": [0.05, 0.055, 0.07],
+            "specularScale": 0.0
         },
         {
             "modelPath": "Box/box.gltf",
             "translation": [62.0, 45.0, 1050.0],
             "rotation": [0.0, -0.2, 0.0],
-            "scale": [15.0, 120.0, 15.0]
+            "scale": [15.0, 120.0, 15.0],
+            "color": [0.05, 0.055, 0.07],
+            "specularScale": 0.0
         },
         {
             "modelPath": "Box/box.gltf",
             "translation": [6.0, 105.0, 1050.0],
             "rotation": [0.0, 0.0, 0.0],
-            "scale": [130.0, 16.0, 16.0]
+            "scale": [130.0, 16.0, 16.0],
+            "color": [0.05, 0.055, 0.07],
+            "specularScale": 0.0
         },
         {
             "modelPath": "Box/box.gltf",
             "translation": [-75.0, 35.0, 1380.0],
             "rotation": [0.0, 0.2, 0.0],
-            "scale": [30.0, 90.0, 30.0]
+            "scale": [30.0, 90.0, 30.0],
+            "color": [0.05, 0.055, 0.07],
+            "specularScale": 0.0
         },
         {
             "modelPath": "Box/box.gltf",
             "translation": [145.0, 35.0, 1635.0],
             "rotation": [0.0, -0.3, 0.0],
-            "scale": [35.0, 90.0, 15.0]
+            "scale": [35.0, 90.0, 15.0],
+            "color": [0.05, 0.055, 0.07],
+            "specularScale": 0.0
         }
     ],
     "spawnEvents": [

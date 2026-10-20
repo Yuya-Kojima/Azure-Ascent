@@ -169,4 +169,5 @@ void Skybox::CreateMaterialResource() {
   materialData_->sunDir = Vector4(0.0f, 0.5f, 0.85f, 0.5f);
   materialData_->sunColor = Vector4(1.0f, 0.95f, 0.85f, 1.0f);
   materialData_->cloudColor = Vector4(0.0f, 0.0f, 0.0f, 0.0f);
+  materialData_->horizonGlow = Vector4(0.0f, 0.0f, 0.0f, 0.0f);
 }

@@ -93,7 +93,7 @@ void TitleScene::Initialize(EngineBase *engine) {
   //===========================
   ModelManager::GetInstance()->LoadModel("sea_of_clouds.obj");
 
-  // 自機ドラゴン（羽ばたくボーン付きモデル。リムライトは DragonModel で設定）
+  // 自機ドラゴン（羽ばたくボーン付きモデル。見た目は DragonModel で設定）
   dragonModel_ = std::make_unique<DragonModel>();
   dragonModel_->Initialize(engine_->GetObject3dRenderer(),
                            engine_->GetSrvManager());

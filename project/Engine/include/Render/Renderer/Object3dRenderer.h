@@ -67,6 +67,16 @@ public:
     Vector4 color;     // ライトの色
     Vector3 direction; // ライトの向き
     float intensity;   // 輝度
+    // 環境光（法線が上を向くほど skyAmbient、下を向くほど groundAmbient）。rgb のみ使う
+    Vector4 skyAmbient;
+    Vector4 groundAmbient;
+    // 逆光の縁: rgb=色, w=強度(0で無効)。マテリアルの backRimScale を掛けて使う
+    Vector4 backRimColor;
+    float backRimPower;       // 大きいほど縁の細い範囲だけ光る
+    Vector3 backRimDirection; // 逆光の縁を作る光が進む向き
+    // 調べるための表示（0: 通常, 1: テクスチャの色だけ, 2: 法線, 3: 法線の向き, 4: 光だけ, 5: 壊れた法線）
+    int32_t debugView;
+    float padding[3];
   };
 
   ID3D12Resource *GetDirectionalLightResource() {

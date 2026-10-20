@@ -19,10 +19,8 @@ const char *const kRightTipJoint = "Wing_R_Finger3_2";
 // 翼端の骨の長さ（モデルの単位、Blender で計測）。骨の根元から骨の向き（ローカル +Y）にこの長さ進んだ点が翼端
 const float kTipBoneLength = 0.126f;
 
-// 輪郭を光らせるリムライト（水色）
-const Vector3 kRimColor = {0.15f, 0.55f, 1.0f};
-const float kRimIntensity = 1.2f;
-const float kRimPower = 2.5f;
+// 鏡面反射の倍率（1 で Object3d の標準の強さ）
+const float kSpecularScale = 0.3f;
 } // namespace
 
 DragonModel::DragonModel() = default;
@@ -34,7 +32,7 @@ void DragonModel::Initialize(Object3dRenderer *object3dRenderer,
   skinned_->Initialize(object3dRenderer, srvManager, kModelDirectory,
                        kModelFile);
   skinned_->GetObject3d()->SetColor({1.0f, 1.0f, 1.0f, 1.0f});
-  skinned_->GetObject3d()->SetRimLight(kRimColor, kRimIntensity, kRimPower);
+  skinned_->GetObject3d()->SetSpecularScale(kSpecularScale);
 
   const Animation glidePose = LoadAnimationFile(kModelDirectory, kGlidePoseFile);
   const Animation hoverPose = LoadAnimationFile(kModelDirectory, kHoverPoseFile);

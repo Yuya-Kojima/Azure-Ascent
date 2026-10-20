@@ -8,6 +8,13 @@ struct DirectionalLight {
 	float4 color;
 	float3 direction;
 	float intensity;
+	float4 skyAmbient;     // 法線が上を向くときの環境光
+	float4 groundAmbient;  // 法線が下を向くときの環境光
+	float4 backRimColor;   // 逆光の縁: rgb=色, w=強度
+	float backRimPower;
+	float3 backRimDirection; // 逆光の縁を作る光が進む向き
+	int debugView;           // 調べるための表示（0: 通常, 1: テクスチャの色だけ, 2: 法線, 3: 法線の向き, 4: 光だけ, 5: 壊れた法線）
+	float3 padding;
 };
 
 struct PointLight {
@@ -53,6 +60,21 @@ LightResult CalculateDirectionalLight(DirectionalLight light, float3 normal, flo
     result.specular = light.color.rgb * light.intensity * specularPow;
     
     return result;
+}
+
+// 環境光（法線の上下で空の色と照り返しの色を混ぜる）
+float3 CalculateHemisphereAmbient(DirectionalLight light, float3 normal, float3 baseColor) {
+    float up = normal.y * 0.5f + 0.5f;
+    return baseColor * lerp(light.groundAmbient.rgb, light.skyAmbient.rgb, up);
+}
+
+// 逆光の縁（視線に対して横を向いた面ほど強く、カメラが光の方を向いているほど強い）
+float3 CalculateBackRim(DirectionalLight light, float3 normal, float3 toEye, float scale) {
+    float fresnel = pow(saturate(1.0f - saturate(dot(normal, toEye))), max(light.backRimPower, 0.01f));
+    // 視線の向き（-toEye）と光の来る向き（-backRimDirection）が一致すると 1、直交で 0.25、逆向きで 0
+    float facing = dot(-toEye, -light.backRimDirection) * 0.5f + 0.5f;
+    facing *= facing;
+    return light.backRimColor.rgb * light.backRimColor.w * scale * fresnel * facing;
 }
 
 // 点光源の計算

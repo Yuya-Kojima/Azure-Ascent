@@ -44,6 +44,7 @@
 #include "Framework/GameManager.h"
 #include "Framework/PrefabManager.h"
 #include "Renderer/PostProcess.h"
+#include "Scene/StageLighting.h"
 
 // ======================================
 // Undo/Redo用コマンドクラス
@@ -270,8 +271,10 @@ void GamePlayScene::Initialize(EngineBase *engine) {
   skybox_->SetTexture("resources/Skybox/Skybox.dds");
   skybox_->SetScale({100.0f, 100.0f, 100.0f});
   skybox_->SetProceduralSky(true);
+  stageLighting_ = std::make_unique<StageLighting>();
+  stageLighting_->Initialize();
 
-  // 空・ライト・霧（乗っ取られた暗い空）
+  // 空・光・霧・ポストエフェクト
   ApplySkyAndLighting();
 
 
@@ -323,7 +326,11 @@ void GamePlayScene::Initialize(EngineBase *engine) {
   TextureManager::GetInstance()->LoadTexture("resources/gradationLine.png");
 }
 
-void GamePlayScene::Finalize() { SoundManager::GetInstance()->StopBGM(); }
+void GamePlayScene::Finalize() {
+  SoundManager::GetInstance()->StopBGM();
+  // 平行光源は全シーン共通なので、このシーンで足した環境光と逆光の縁を外しておく
+  StageLighting::ResetSharedLight(engine_->GetObject3dRenderer());
+}
 
 void GamePlayScene::Update() {
 
@@ -1111,6 +1118,14 @@ void GamePlayScene::Update() {
       selected->SetRotation(r);
     if (ImGui::DragFloat3("Scale", &s.x, 0.1f))
       selected->SetScale(s);
+    ImGui::Separator();
+
+    Vector4 color = selected->GetColor();
+    float specularScale = selected->GetSpecularScale();
+    if (ImGui::ColorEdit3("Color", &color.x))
+      selected->SetColor(color);
+    if (ImGui::SliderFloat("Specular", &specularScale, 0.0f, 1.0f))
+      selected->SetSpecularScale(specularScale);
   } else if (currentSelectType_ == EditorSelectType::SpawnEvent &&
              selectedSpawnEventIndex_ >= 0 &&
              selectedSpawnEventIndex_ < spawnEvents_.size()) {
@@ -1737,19 +1752,8 @@ void GamePlayScene::DrawEditorUI() {
     StartIntro();
   }
   stageIntro_->DrawImGui();
-  ImGui::SeparatorText("Sky");
-  ImGui::ColorEdit3("Zenith", &skyZenith_.x);
-  ImGui::ColorEdit3("Horizon", &skyHorizon_.x);
-  ImGui::DragFloat3("Sun Dir", &skySunDir_.x, 0.01f);
-  ImGui::ColorEdit3("Sun Color", &skySunColor_.x);
-  ImGui::SliderFloat("Sun Intensity", &skySunIntensity_, 0.0f, 2.0f);
-  ImGui::SliderFloat("Cloud Amount", &skyCloudAmount_, 0.0f, 1.0f);
-  ImGui::ColorEdit3("Cloud Color", &skyCloudColor_.x);
-  ImGui::SliderFloat("Cloud Opacity", &skyCloudOpacity_, 0.0f, 1.0f);
-  ImGui::SliderFloat("Cloud Rim", &skyCloudRim_, 0.0f, 2.0f);
-  ImGui::SeparatorText("Light");
-  ImGui::ColorEdit3("Light Color", &lightColor_.x);
-  ImGui::SliderFloat("Light Intensity", &lightIntensity_, 0.0f, 2.0f);
+  ImGui::SeparatorText("Lighting");
+  stageLighting_->DrawImGui();
   ImGui::End();
 
 #endif
@@ -1932,11 +1936,8 @@ void GamePlayScene::StartIntro() {
 
   // 雲海の面の高さ（配置オブジェクトから探す）
   float seaHeight = kDefaultSeaHeight_;
-  for (const auto &obj : sceneObjects_) {
-    if (obj->GetModelPath().find("sea_of_clouds") != std::string::npos) {
-      seaHeight = obj->GetTranslation().y;
-      break;
-    }
+  if (const Object3d *sea = FindSeaObject()) {
+    seaHeight = sea->GetTranslation().y;
   }
 
   stageIntro_->Start(*railCamera_, player_->GetTransform().translate,
@@ -2011,28 +2012,17 @@ void GamePlayScene::BlendPlayerWithIntro() {
 }
 
 void GamePlayScene::ApplySkyAndLighting() {
-  // 空：手続き生成の空に、暗い空の色と、空より暗い雲（頭上を覆うふた）を設定する
-  skybox_->SetColor({1.0f, 1.0f, 1.0f, 1.0f});
-  skybox_->SetSkyColors(skyZenith_, skyHorizon_);
-  skybox_->SetSun(Normalize(skySunDir_), skySunColor_, skySunIntensity_,
-                  skyCloudAmount_);
-  skybox_->SetCloudColor(skyCloudColor_, skyCloudOpacity_, skyCloudRim_);
-  skybox_->SetSkyTime(skyTimer_);
+  stageLighting_->Apply(skybox_.get(), engine_->GetObject3dRenderer(),
+                        postProcess_.get(), skyTimer_);
+}
 
-  // ライト：ライトとフォグは全シーン共通の設定なので、このシーンの値で毎フレーム上書きする
-  if (auto *dl = engine_->GetObject3dRenderer()->GetDirectionalLightData()) {
-    dl->color = {lightColor_.x, lightColor_.y, lightColor_.z, 1.0f};
-    dl->direction = Normalize(Vector3{0.0f, -1.0f, 0.0f});
-    dl->intensity = lightIntensity_;
+Object3d *GamePlayScene::FindSeaObject() const {
+  for (const auto &obj : sceneObjects_) {
+    if (obj->GetModelPath().find("sea_of_clouds") != std::string::npos) {
+      return obj.get();
+    }
   }
-
-  // フォグ：遠くを地平線の色に溶かす
-  FogData fog;
-  fog.color = Vector4(skyHorizon_.x, skyHorizon_.y, skyHorizon_.z, 1.0f);
-  fog.nearDist = 300.0f;
-  fog.farDist = 600.0f;
-  fog.enabled = 1.0f;
-  engine_->GetObject3dRenderer()->SetFog(fog);
+  return nullptr;
 }
 
 void GamePlayScene::SaveLevel(const std::string &filename) {
@@ -2068,6 +2058,9 @@ void GamePlayScene::SaveLevel(const std::string &filename) {
     oJson["scale"] = {s.x, s.y, s.z};
     oJson["modelPath"] = obj->GetModelPath();
     oJson["tag"] = ActorTagToString(obj->tag_);
+    const Vector4 color = obj->GetColor();
+    oJson["color"] = {color.x, color.y, color.z};
+    oJson["specularScale"] = obj->GetSpecularScale();
     sceneObjectsArray.push_back(oJson);
   }
   root["sceneObjects"] = sceneObjectsArray;
@@ -2181,6 +2174,13 @@ void GamePlayScene::LoadLevel(const std::string &filename) {
       obj->SetScale(s);
       if (oJson.contains("tag"))
         obj->tag_ = StringToActorTag(oJson["tag"]);
+      // 色と鏡面反射の倍率（ないときは Object3d の既定値のまま）
+      if (oJson.contains("color")) {
+        obj->SetColor({oJson["color"][0], oJson["color"][1],
+                       oJson["color"][2], 1.0f});
+      }
+      if (oJson.contains("specularScale"))
+        obj->SetSpecularScale(oJson["specularScale"]);
     }
   }
 

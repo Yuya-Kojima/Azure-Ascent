@@ -11,6 +11,7 @@ struct Material {
 	float4 sunDir;       // xyz: 方向, w: 雲量
 	float4 sunColor;     // rgb: 色, a: 強さ
 	float4 cloudColor;   // rgb: 雲の色, a: 雲の不透明度（0なら白い雲）
+	float4 horizonGlow;  // x: 地平線の光の強さ, y: 光の帯の高さ（dir.y の単位）, z: 方位の絞り（大きいほど太陽の左右だけ）
 };
 
 ConstantBuffer<Material> gMaterial : register(b0);
@@ -84,6 +85,16 @@ float3 ProceduralSky(float3 dir) {
 	float sd = saturate(dot(dir, sunDir));
 	float3 sunCol = gMaterial.sunColor.rgb * gMaterial.sunColor.a;
 	sky += sunCol * (pow(sd, 3000.0) * 2.5 + pow(sd, 120.0) * 0.20 + pow(sd, 10.0) * 0.08);
+
+	// 地平線の光：太陽の方位で、地平線のすぐ上だけを帯状に光らせる（強さ0なら無効）
+	float glowStrength = gMaterial.horizonGlow.x;
+	if (glowStrength > 0.0) {
+		float2 dirXZ = normalize(dir.xz + float2(1e-5, 0.0));
+		float2 sunXZ = normalize(sunDir.xz + float2(1e-5, 0.0));
+		float azimuth = pow(saturate(dot(dirXZ, sunXZ)), max(gMaterial.horizonGlow.z, 0.01));
+		float band = exp(-max(h, 0.0) / max(gMaterial.horizonGlow.y, 0.001));
+		sky += gMaterial.sunColor.rgb * glowStrength * azimuth * band;
+	}
 
 	// 球体3Dプロシージャル雲（平面投影を廃止し、あおりや天頂でも切れ目・筋が原理的に出ない）
 	float cloudAmount = gMaterial.sunDir.w;
