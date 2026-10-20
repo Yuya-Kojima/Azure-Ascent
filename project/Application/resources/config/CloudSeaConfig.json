@@ -1,0 +1,18 @@
+{
+    "amplitude": 3.0,
+    "blobSize": 30.0,
+    "color": [
+        0.16,
+        0.16,
+        0.17
+    ],
+    "height": -15.0,
+    "rimPower": 3.0,
+    "rimStrength": 0.0,
+    "textureScale": 0.01,
+    "valleyDarkness": 0.6,
+    "wind": [
+        0.3,
+        -1.5
+    ]
+}

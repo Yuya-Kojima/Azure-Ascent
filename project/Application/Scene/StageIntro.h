@@ -1,6 +1,7 @@
 #pragma once
 #include "Actor/DragonWingAnimator.h"
 #include "Math/MathUtil.h"
+#include "Scene/CloudSeaEvents.h"
 #include <memory>
 
 class GameCamera;
@@ -33,7 +34,9 @@ public:
   /// <summary>
   /// 初期化（雲の粒のパーティクルと、目標カードを作る）
   /// </summary>
-  void Initialize(SpriteRenderer *spriteRenderer);
+  /// <param name="cloudSeaEvents">雲海の出来事を登録する先</param>
+  void Initialize(SpriteRenderer *spriteRenderer,
+                  CloudSeaEvents *cloudSeaEvents);
 
   /// <summary>
   /// 演出を開始する
@@ -86,6 +89,13 @@ public:
   /// 調整用UI
   /// </summary>
   void DrawImGui();
+
+  /// <summary>
+  /// 雲海の出来事の調整用UI と、その場で起こすボタン
+  /// </summary>
+  /// <param name="focus">ドラゴンの位置</param>
+  /// <param name="forward">盛り上がり・裂け目を置く前方</param>
+  void DrawCloudSeaImGui(const Vector3 &focus, const Vector3 &forward);
 
   bool IsFinished() const { return isFinished_; }
   const ICamera *GetCamera() const;
@@ -157,6 +167,14 @@ private:
   /// </summary>
   Vector3 FollowRail(const Vector3 &startPosition) const;
 
+  /// <summary>
+  /// 雲海の出来事を作る（startTime は出来事の時刻の秒）
+  /// </summary>
+  CloudSeaEvents::Event MakeSwellEvent(float startTime,
+                                       const Vector3 &center) const;
+  CloudSeaEvents::Event MakeTearEvent(float startTime,
+                                      const Vector3 &center) const;
+
 private:
   // 演出カメラ
   std::unique_ptr<GameCamera> camera_;
@@ -164,6 +182,8 @@ private:
   std::unique_ptr<BillboardParticleEmitter> cloudParticles_;
   // 目標カード
   std::unique_ptr<StageIntroText> text_;
+  // 雲海の出来事の登録先
+  CloudSeaEvents *cloudSeaEvents_ = nullptr;
 
   // ステージに入ってからの経過時間（秒）
   float timer_ = 0.0f;
@@ -278,6 +298,23 @@ private:
   float launchBodyLift_ = 0.15f;
   float roarShake_ = 0.07f;      // 吠える間のカメラの揺れの大きさ
   Vector3 puffColor_ = {0.95f, 0.95f, 1.0f}; // 雲の粒の色
+
+  //===========================
+  // 調整値：雲海の出来事
+  //===========================
+  // 盛り上がり（突き破る点が中心。始まりは burstTime_ - swellLeadSec_、だんだん速く高くなる）
+  float swellRadius_ = 12.0f;   // 広がりの半径
+  float swellHeight_ = 3.0f;    // 高さ
+  float swellCrack_ = 1.0f;     // ひびの濃さ
+  float swellFallSec_ = 0.5f;   // 突き破ってから崩れて沈みきるまでの時間
+  // 裂け目（突き破る点が中心。burstTime_ に開き始める）
+  float tearRadius_ = 5.0f;     // 穴の最大の半径
+  float tearLip_ = 1.2f;        // 縁のめくれの高さ
+  float tearOpenSec_ = 0.2f;    // 開ききるまでの時間
+  float tearHoldSec_ = 0.3f;    // 開いたままの時間
+  float tearCloseSec_ = 1.6f;   // 閉じきるまでの時間
+  // その場で起こすボタンで、盛り上がり・裂け目を置く前方の距離
+  float triggerAheadDistance_ = 25.0f;
 
   //===========================
   // 調整値：羽ばたき（強さ, 1秒あたりの回数, 畳み具合, 左右差, 姿勢, 羽ばたきの姿勢の割合）

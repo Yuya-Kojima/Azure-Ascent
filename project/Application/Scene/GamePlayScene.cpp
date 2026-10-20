@@ -44,6 +44,8 @@
 #include "Framework/GameManager.h"
 #include "Framework/PrefabManager.h"
 #include "Renderer/PostProcess.h"
+#include "Render/CloudSea/CloudSea.h"
+#include "Scene/CloudSeaEvents.h"
 #include "Scene/StageLighting.h"
 
 // ======================================
@@ -274,13 +276,20 @@ void GamePlayScene::Initialize(EngineBase *engine) {
   stageLighting_ = std::make_unique<StageLighting>();
   stageLighting_->Initialize();
 
-  // 空・光・霧・ポストエフェクト
+  // 雲海と、雲海を動かす出来事
+  cloudSea_ = std::make_unique<CloudSea>();
+  cloudSea_->Initialize(engine_->GetCloudSeaRenderer(),
+                        "resources/sea_of_clouds/sea_of_clouds.png");
+  cloudSeaEvents_ = std::make_unique<CloudSeaEvents>();
+  cloudSeaEvents_->Initialize();
+
+  // 空・雲海・光・霧・ポストエフェクト
   ApplySkyAndLighting();
 
 
   // ステージ開始演出
   stageIntro_ = std::make_unique<StageIntro>();
-  stageIntro_->Initialize(engine_->GetSpriteRenderer());
+  stageIntro_->Initialize(engine_->GetSpriteRenderer(), cloudSeaEvents_.get());
 
   //===========================
   // プレイヤーの初期化
@@ -787,9 +796,16 @@ void GamePlayScene::Update() {
   if (skybox_) {
     const float kSkyTimeStep = 1.0f / 60.0f;
     skyTimer_ += kSkyTimeStep;
+    // 開始演出の間は演出が出来事の時刻を決め、それ以外はここで進める
+    if (stageIntro_->IsFinished()) {
+      cloudSeaEvents_->Advance(kSkyTimeStep);
+    }
     ApplySkyAndLighting();
     skybox_->SetCamera(activeCamera);
     skybox_->Update();
+    cloudSea_->SetTime(skyTimer_);
+    cloudSea_->SetCamera(activeCamera);
+    cloudSea_->Update();
   }
 
   //===========================================
@@ -1754,6 +1770,12 @@ void GamePlayScene::DrawEditorUI() {
   stageIntro_->DrawImGui();
   ImGui::SeparatorText("Lighting");
   stageLighting_->DrawImGui();
+  ImGui::SeparatorText("Cloud Sea");
+  cloudSeaEvents_->DrawImGui();
+  if (player_) {
+    stageIntro_->DrawCloudSeaImGui(player_->GetTransform().translate,
+                                   railCamera_->GetRailForward());
+  }
   ImGui::End();
 
 #endif
@@ -1768,7 +1790,10 @@ void GamePlayScene::Draw3D() {
     engine_->GetSkyboxRenderer()->Begin();
     skybox_->Draw();
 
-    // Skybox描画後に通常3Dへ戻す
+    // 雲海は空のあと、ほかの物の前に描く
+    cloudSea_->Draw();
+
+    // 通常3Dへ戻す
     engine_->GetObject3dRenderer()->Begin();
   }
 
@@ -1934,14 +1959,8 @@ void GamePlayScene::StartIntro() {
   railCamera_->SetPlayerWorldPosition(player_->GetTransform().translate);
   railCamera_->Update();
 
-  // 雲海の面の高さ（配置オブジェクトから探す）
-  float seaHeight = kDefaultSeaHeight_;
-  if (const Object3d *sea = FindSeaObject()) {
-    seaHeight = sea->GetTranslation().y;
-  }
-
   stageIntro_->Start(*railCamera_, player_->GetTransform().translate,
-                     player_->GetTransform().rotate, seaHeight);
+                     player_->GetTransform().rotate, cloudSea_->GetHeight());
   gameState_ = GameState::Intro;
 
   // HUD と照準は消しておき、演出の後半で現す
@@ -2014,15 +2033,7 @@ void GamePlayScene::BlendPlayerWithIntro() {
 void GamePlayScene::ApplySkyAndLighting() {
   stageLighting_->Apply(skybox_.get(), engine_->GetObject3dRenderer(),
                         postProcess_.get(), skyTimer_);
-}
-
-Object3d *GamePlayScene::FindSeaObject() const {
-  for (const auto &obj : sceneObjects_) {
-    if (obj->GetModelPath().find("sea_of_clouds") != std::string::npos) {
-      return obj.get();
-    }
-  }
-  return nullptr;
+  cloudSeaEvents_->Apply(cloudSea_.get());
 }
 
 void GamePlayScene::SaveLevel(const std::string &filename) {

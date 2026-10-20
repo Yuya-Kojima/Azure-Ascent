@@ -4,6 +4,7 @@
 #include "Input/Input.h"
 #include "Particle/ParticleManager.h"
 #include "Render/Renderer/SkyBoxRenderer.h"
+#include "Renderer/CloudSeaRenderer.h"
 #include "Renderer/Object3dRenderer.h"
 #include "Renderer/SpriteRenderer.h"
 #include "Scene/AbstractSceneFactory.h"
@@ -53,6 +54,9 @@ public:
     return object3dRenderer_.get();
   }
   SkyboxRenderer *GetSkyboxRenderer() const { return skyboxRenderer_.get(); }
+  CloudSeaRenderer *GetCloudSeaRenderer() const {
+    return cloudSeaRenderer_.get();
+  }
   LineRenderer *GetLineRenderer() const { return LineRenderer::GetInstance(); }
   TrailRenderer *GetTrailRenderer() const { return TrailRenderer::GetInstance(); }
   SrvManager *GetSrvManager() const { return srvManager_.get(); }
@@ -77,6 +81,8 @@ protected:
   std::unique_ptr<Object3dRenderer> object3dRenderer_ = nullptr;
 
   std::unique_ptr<SkyboxRenderer> skyboxRenderer_ = nullptr;
+
+  std::unique_ptr<CloudSeaRenderer> cloudSeaRenderer_ = nullptr;
 
   std::unique_ptr<SrvManager> srvManager_ = nullptr;
 

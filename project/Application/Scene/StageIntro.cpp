@@ -20,7 +20,10 @@ StageIntro::StageIntro() : camera_(std::make_unique<GameCamera>()) {}
 
 StageIntro::~StageIntro() = default;
 
-void StageIntro::Initialize(SpriteRenderer *spriteRenderer) {
+void StageIntro::Initialize(SpriteRenderer *spriteRenderer,
+                            CloudSeaEvents *cloudSeaEvents) {
+  cloudSeaEvents_ = cloudSeaEvents;
+
   cloudParticles_ = std::make_unique<BillboardParticleEmitter>();
   cloudParticles_->Initialize("resources/cloud_puff.png");
   cloudParticles_->SetBlendMode(IParticleEmitter::BlendMode::Alpha);
@@ -88,6 +91,15 @@ void StageIntro::Start(const RailCamera &railCamera,
   dragonRot_ = {risePitch_, dragonEndRot_.y, 0.0f};
   followLookPos_ = lowLookPos_;
 
+  // 雲海の出来事：突き破る点で盛り上がり → 裂け目
+  if (cloudSeaEvents_) {
+    cloudSeaEvents_->Clear();
+    cloudSeaEvents_->SetTime(0.0f);
+    cloudSeaEvents_->Add(
+        MakeSwellEvent(burstTime_ - swellLeadSec_, burstPos_));
+    cloudSeaEvents_->Add(MakeTearEvent(burstTime_, burstPos_));
+  }
+
   text_->Start();
 }
 
@@ -104,6 +116,9 @@ void StageIntro::Skip() {
 void StageIntro::Stop() {
   isFinished_ = true;
   text_->Stop();
+  if (cloudSeaEvents_) {
+    cloudSeaEvents_->Clear();
+  }
 }
 
 void StageIntro::Update(const RailCamera &railCamera) {
@@ -134,6 +149,11 @@ void StageIntro::Update(const RailCamera &railCamera) {
   UpdateDragon();
   UpdateCamera();
   EmitCloudParticles();
+
+  // 雲海の出来事の時刻を進める
+  if (cloudSeaEvents_) {
+    cloudSeaEvents_->SetTime(timer_);
+  }
 
   if (timer_ >= GetEndTime()) {
     isFinished_ = true;
@@ -554,6 +574,38 @@ DragonWingAnimator::State StageIntro::GetWingState() const {
   return endWing_;
 }
 
+CloudSeaEvents::Event StageIntro::MakeSwellEvent(float startTime,
+                                                 const Vector3 &center) const {
+  CloudSeaEvents::Event e;
+  e.kind = CloudSeaEvents::Kind::Swell;
+  e.startTime = startTime;
+  e.riseSec = swellLeadSec_;
+  e.riseEase = CloudSeaEvents::Ease::In;
+  e.fallSec = swellFallSec_;
+  e.fallEase = CloudSeaEvents::Ease::InOut;
+  e.position = center;
+  e.size = swellRadius_;
+  e.amount = swellHeight_;
+  e.crack = swellCrack_;
+  return e;
+}
+
+CloudSeaEvents::Event StageIntro::MakeTearEvent(float startTime,
+                                                const Vector3 &center) const {
+  CloudSeaEvents::Event e;
+  e.kind = CloudSeaEvents::Kind::Tear;
+  e.startTime = startTime;
+  e.riseSec = tearOpenSec_;
+  e.riseEase = CloudSeaEvents::Ease::Out;
+  e.holdSec = tearHoldSec_;
+  e.fallSec = tearCloseSec_;
+  e.fallEase = CloudSeaEvents::Ease::InOut;
+  e.position = center;
+  e.size = tearRadius_;
+  e.amount = tearLip_;
+  return e;
+}
+
 Vector3 StageIntro::ToWorld(const Vector3 &origin, const Vector3 &local) const {
   return origin + railRight_ * local.x + kWorldUp * local.y +
          railForward_ * local.z;
@@ -650,5 +702,50 @@ void StageIntro::DrawImGui() {
   ImGui::SliderFloat("Dive Wing Ratio", &diveWingRatio_, 0.0f, 1.0f);
   ImGui::ColorEdit3("Puff Color", &puffColor_.x);
   text_->DrawImGui();
+#endif
+}
+
+void StageIntro::DrawCloudSeaImGui(const Vector3 &focus,
+                                   const Vector3 &forward) {
+#ifdef USE_IMGUI
+  ImGui::SeparatorText("Cloud Sea Events");
+  if (ImGui::TreeNode("Swell / Tear")) {
+    ImGui::DragFloat("Swell Radius", &swellRadius_, 0.1f, 0.5f, 100.0f);
+    ImGui::DragFloat("Swell Height", &swellHeight_, 0.05f, 0.0f, 20.0f);
+    ImGui::SliderFloat("Swell Crack", &swellCrack_, 0.0f, 1.0f);
+    ImGui::DragFloat("Swell Fall Sec", &swellFallSec_, 0.01f, 0.0f, 5.0f);
+    ImGui::DragFloat("Tear Radius", &tearRadius_, 0.1f, 0.5f, 50.0f);
+    ImGui::DragFloat("Tear Lip", &tearLip_, 0.05f, 0.0f, 10.0f);
+    ImGui::DragFloat("Tear Open Sec", &tearOpenSec_, 0.01f, 0.0f, 5.0f);
+    ImGui::DragFloat("Tear Hold Sec", &tearHoldSec_, 0.01f, 0.0f, 5.0f);
+    ImGui::DragFloat("Tear Close Sec", &tearCloseSec_, 0.01f, 0.0f, 10.0f);
+    ImGui::TreePop();
+  }
+
+  if (!cloudSeaEvents_) {
+    return;
+  }
+  // その場で起こす：盛り上がり・裂け目はドラゴンの前方に置く
+  ImGui::DragFloat("Trigger Ahead Distance", &triggerAheadDistance_, 0.5f,
+                   0.0f, 200.0f);
+  const Vector3 flatForward = Normalize(Vector3{forward.x, 0.0f, forward.z});
+  const Vector3 ahead = focus + flatForward * triggerAheadDistance_;
+  const float now = cloudSeaEvents_->GetTime();
+  if (ImGui::Button("Swell")) {
+    cloudSeaEvents_->Add(MakeSwellEvent(now, ahead));
+  }
+  ImGui::SameLine();
+  if (ImGui::Button("Tear")) {
+    cloudSeaEvents_->Add(MakeTearEvent(now, ahead));
+  }
+  ImGui::SameLine();
+  if (ImGui::Button("Swell + Tear")) {
+    cloudSeaEvents_->Add(MakeSwellEvent(now, ahead));
+    cloudSeaEvents_->Add(MakeTearEvent(now + swellLeadSec_, ahead));
+  }
+  ImGui::SameLine();
+  if (ImGui::Button("Clear Events")) {
+    cloudSeaEvents_->Clear();
+  }
 #endif
 }
