@@ -1,5 +1,6 @@
 #pragma once
 #include "Math/Matrix4x4.h"
+#include "Math/Vector2.h"
 #include "Math/Vector3.h"
 #include <vector>
 #include <memory>
@@ -86,6 +87,25 @@ public:
   void PlayShockwave(const Vector3 &worldPos);
 
   /// <summary>
+  /// このフレームだけの衝撃波の輪を渡す（毎フレーム渡し直す。Update で自分の輪と合わせて PostProcess に渡す）
+  /// </summary>
+  /// <param name="worldPos">輪の中心のワールド座標</param>
+  /// <param name="radius">半径（画面の高さを 1 とした長さ）</param>
+  /// <param name="thickness">太さの半分（画面の高さを 1 とした長さ）</param>
+  /// <param name="distortion">押し曲げる量の最大（画面の高さを 1 とした長さ）</param>
+  /// <param name="weight">強さ（0〜1）</param>
+  /// <param name="aberration">色ずれ（押し曲げる量に対する赤・青のずらし量の差の割合）</param>
+  void SubmitShockwave(const Vector3 &worldPos, float radius, float thickness,
+                       float distortion, float weight, float aberration);
+
+  /// <summary>
+  /// ワールド座標を画面の位置（UV、左上 0・右下 1）に変える
+  /// </summary>
+  static Vector2 WorldToScreenUV(const Vector3 &worldPos,
+                                 const Matrix4x4 &viewProj);
+  static Vector2 WorldToScreenUV(const Vector3 &worldPos, const ICamera *camera);
+
+  /// <summary>
   /// 汎用的な敵の撃破エフェクト（後方互換ラッパー）
   /// </summary>
   void PlayEnemyDeathEffect(const Vector3 &worldPos, const Vector4 &baseColor = {1.0f, 1.0f, 1.0f, 1.0f}) {
@@ -143,6 +163,20 @@ private:
     Vector3 worldPos;
   };
   std::vector<ActiveShockwave> activeShockwaves_;
+
+  // このフレームだけの輪（SubmitShockwave で受け取り、Update で使って消す）
+  struct SubmittedShockwave {
+    Vector3 worldPos;
+    float radius;
+    float thickness;
+    float distortion;
+    float weight;
+    float aberration;
+  };
+  std::vector<SubmittedShockwave> submittedShockwaves_;
+
+  // PostProcess に渡せる輪の上限（シェーダーの shockwaves の数）
+  static constexpr size_t kMaxShockwaves_ = 5;
 
 
   void SaveShockwaveConfig();

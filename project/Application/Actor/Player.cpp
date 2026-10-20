@@ -627,6 +627,10 @@ void Player::SetDragonModel(std::unique_ptr<DragonModel> model) {
   dragonModel_ = std::move(model);
 }
 
+Vector3 Player::GetHeadPosition() const {
+  return dragonModel_ ? dragonModel_->GetHeadPosition() : transform_.translate;
+}
+
 Object3d *Player::GetBodyObject() const {
   return dragonModel_ ? dragonModel_->GetObject3d() : object3d_.get();
 }

@@ -21,6 +21,7 @@ void EffectManager::Initialize() {
   LoadEffectsConfig();
 
   activeShockwaves_.clear();
+  submittedShockwaves_.clear();
   nextHitEffectIndex_ = 0;
 
   // 粒の入れ物（GPU バッファ）は最初の1回だけ作り、2回目以降は残っている粒を消す
@@ -162,14 +163,18 @@ void EffectManager::Finalize() {
 }
 
 void EffectManager::Update(const ICamera *camera) {
-  if (!camera)
+  if (!camera) {
+    submittedShockwaves_.clear();
     return;
+  }
   Matrix4x4 viewProj =
       Multiply(camera->GetViewMatrix(), camera->GetProjectionMatrix());
 
   auto postProcess = SceneManager::GetInstance()->GetCurrentScenePostProcess();
-  if (!postProcess)
+  if (!postProcess) {
+    submittedShockwaves_.clear();
     return;
+  }
 
   if (!activeShockwaves_.empty()) {
     // タイマー更新
@@ -183,49 +188,44 @@ void EffectManager::Update(const ICamera *camera) {
     }
   }
 
-  if (!activeShockwaves_.empty()) {
-    postProcess->SetPostEffectType(10); // 10: Shockwave
-
-    std::vector<PostProcess::ShockwaveParams> shockwaveParams;
-    for (const auto &sw : activeShockwaves_) {
-      Vector3 pos = sw.worldPos;
-      float w = pos.x * viewProj.m[0][3] + pos.y * viewProj.m[1][3] +
-                pos.z * viewProj.m[2][3] + viewProj.m[3][3];
-      if (w <= 0.0f)
-        w = 0.0001f;
-
-      Vector3 ndcPos = {(pos.x * viewProj.m[0][0] + pos.y * viewProj.m[1][0] +
-                         pos.z * viewProj.m[2][0] + viewProj.m[3][0]) /
-                            w,
-                        (pos.x * viewProj.m[0][1] + pos.y * viewProj.m[1][1] +
-                         pos.z * viewProj.m[2][1] + viewProj.m[3][1]) /
-                            w,
-                        (pos.x * viewProj.m[0][2] + pos.y * viewProj.m[1][2] +
-                         pos.z * viewProj.m[2][2] + viewProj.m[3][2]) /
-                            w};
-
-      float uvX = (ndcPos.x + 1.0f) * 0.5f;
-      float uvY = (1.0f - ndcPos.y) * 0.5f;
-      float t = sw.timer / shockwaveConfig_.duration;
-
-      PostProcess::ShockwaveParams param;
-      param.center[0] = uvX;
-      param.center[1] = uvY;
-      param.radius = (1.0f - t) * shockwaveConfig_.maxRadius;
-      param.thickness = shockwaveConfig_.thickness;
-      param.weight = t;
-      param.distortion = shockwaveConfig_.distortion;
-
-      shockwaveParams.push_back(param);
+  // 自分の輪（敵の撃破など）とこのフレームに渡された輪を合わせ、上限まで PostProcess に渡す
+  std::vector<PostProcess::ShockwaveParams> shockwaveParams;
+  for (const auto &sw : activeShockwaves_) {
+    if (shockwaveParams.size() >= kMaxShockwaves_) {
+      break;
     }
-    postProcess->SetShockwaves(shockwaveParams);
-  } else {
-    // リセット
-    if (postProcess && postProcess->GetPostEffectType() == 10) {
-      postProcess->SetPostEffectType(0);
-      postProcess->SetShockwaves({});
-    }
+    const Vector2 center = WorldToScreenUV(sw.worldPos, viewProj);
+    float t = sw.timer / shockwaveConfig_.duration;
+
+    PostProcess::ShockwaveParams param;
+    param.center[0] = center.x;
+    param.center[1] = center.y;
+    param.radius = (1.0f - t) * shockwaveConfig_.maxRadius;
+    param.thickness = shockwaveConfig_.thickness;
+    param.weight = t;
+    param.distortion = shockwaveConfig_.distortion;
+
+    shockwaveParams.push_back(param);
   }
+  for (const auto &sw : submittedShockwaves_) {
+    if (shockwaveParams.size() >= kMaxShockwaves_) {
+      break;
+    }
+    const Vector2 center = WorldToScreenUV(sw.worldPos, viewProj);
+
+    PostProcess::ShockwaveParams param;
+    param.center[0] = center.x;
+    param.center[1] = center.y;
+    param.radius = sw.radius;
+    param.thickness = sw.thickness;
+    param.weight = sw.weight;
+    param.distortion = sw.distortion;
+    param.aberration = sw.aberration;
+
+    shockwaveParams.push_back(param);
+  }
+  submittedShockwaves_.clear();
+  postProcess->SetShockwaves(shockwaveParams);
 
   // パーティクルの更新
   for (int i = 0; i < kMaxHitEffects; ++i) {
@@ -379,9 +379,44 @@ void EffectManager::PlayEffect(EffectType type, const Vector3 &worldPos,
 }
 
 void EffectManager::PlayShockwave(const Vector3 &worldPos) {
-  if (activeShockwaves_.size() < 5) {
+  if (activeShockwaves_.size() < kMaxShockwaves_) {
     activeShockwaves_.push_back({shockwaveConfig_.duration, worldPos});
   }
+}
+
+void EffectManager::SubmitShockwave(const Vector3 &worldPos, float radius,
+                                    float thickness, float distortion,
+                                    float weight, float aberration) {
+  submittedShockwaves_.push_back(
+      {worldPos, radius, thickness, distortion, weight, aberration});
+}
+
+Vector2 EffectManager::WorldToScreenUV(const Vector3 &worldPos,
+                                       const Matrix4x4 &viewProj) {
+  float w = worldPos.x * viewProj.m[0][3] + worldPos.y * viewProj.m[1][3] +
+            worldPos.z * viewProj.m[2][3] + viewProj.m[3][3];
+  // カメラの後ろ（w が 0 以下）のときは 0 除算を避ける
+  if (w <= 0.0f)
+    w = 0.0001f;
+
+  const float ndcX = (worldPos.x * viewProj.m[0][0] +
+                      worldPos.y * viewProj.m[1][0] +
+                      worldPos.z * viewProj.m[2][0] + viewProj.m[3][0]) /
+                     w;
+  const float ndcY = (worldPos.x * viewProj.m[0][1] +
+                      worldPos.y * viewProj.m[1][1] +
+                      worldPos.z * viewProj.m[2][1] + viewProj.m[3][1]) /
+                     w;
+
+  // NDC（-1〜1、上が +）を UV（0〜1、下が +）へ
+  return {(ndcX + 1.0f) * 0.5f, (1.0f - ndcY) * 0.5f};
+}
+
+Vector2 EffectManager::WorldToScreenUV(const Vector3 &worldPos,
+                                       const ICamera *camera) {
+  return WorldToScreenUV(
+      worldPos,
+      Multiply(camera->GetViewMatrix(), camera->GetProjectionMatrix()));
 }
 
 void EffectManager::DrawEditorUI(RailCamera *railCamera) {

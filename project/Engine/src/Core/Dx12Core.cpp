@@ -658,7 +658,11 @@ IDxcBlob *Dx12Core::CompileShader(const std::wstring &filePath,
       profile, // shderProfileの設定
       L"-Zi",
       L"-Qembed_debug", // デバッグ用の情報を埋め込む
+#ifdef _DEBUG
       L"-Od",           // 最適化を外しておく
+#else
+      L"-O3",           // 最適化する
+#endif
       L"-Zpr",          // メモリレイアウトは最優先
   };
 
@@ -929,6 +933,20 @@ DirectX::ScratchImage Dx12Core::LoadTexture(const std::string &filePath) {
 
   // ミニマップ付きのデータを返す
   return mipImages;
+}
+
+void Dx12Core::BeginSceneDepthRead() {
+  // 深度を描画先から外してから、シェーダーで読む状態にする
+  commandList->OMSetRenderTargets(1, &sceneRtvHandle_, false, nullptr);
+  TransitionResource(depthStencilResource.Get(),
+                     D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
+}
+
+void Dx12Core::EndSceneDepthRead() {
+  TransitionResource(depthStencilResource.Get(),
+                     D3D12_RESOURCE_STATE_DEPTH_WRITE);
+  D3D12_CPU_DESCRIPTOR_HANDLE dsvHandle = GetDsvCpuDescriptorHandle();
+  commandList->OMSetRenderTargets(1, &sceneRtvHandle_, false, &dsvHandle);
 }
 
 void Dx12Core::TransitionResource(ID3D12Resource* resource, D3D12_RESOURCE_STATES newState) {

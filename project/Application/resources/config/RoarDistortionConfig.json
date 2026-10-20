@@ -1,0 +1,39 @@
+{
+    "blur": {
+        "aberration": 0.15,
+        "endTime": 0.75,
+        "innerRadius": 0.35,
+        "outerRadius": 0.9,
+        "peakEndTime": 0.4,
+        "peakStartTime": 0.2,
+        "riseStartTime": 0.1,
+        "samples": 10,
+        "width": 0.008
+    },
+    "rings": [
+        {
+            "aberration": 0.3,
+            "distortion": 0.035,
+            "duration": 0.65,
+            "maxRadius": 1.15,
+            "startTime": 0.15,
+            "thickness": 0.08
+        },
+        {
+            "aberration": 0.3,
+            "distortion": 0.025,
+            "duration": 0.65,
+            "maxRadius": 1.15,
+            "startTime": 0.35,
+            "thickness": 0.07
+        },
+        {
+            "aberration": 0.3,
+            "distortion": 0.015,
+            "duration": 0.6,
+            "maxRadius": 1.15,
+            "startTime": 0.55,
+            "thickness": 0.06
+        }
+    ]
+}

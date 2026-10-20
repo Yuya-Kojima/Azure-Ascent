@@ -139,6 +139,9 @@
     <ClCompile Include="src\Render\Renderer\TrailRenderer.cpp" />
     <ClCompile Include="src\Render\Renderer\SkyboxRenderer.cpp" />
     <ClCompile Include="src\Render\SkyBox\SkyBox.cpp" />
+    <ClCompile Include="src\Render\CloudSea\CloudNoise.cpp" />
+    <ClCompile Include="src\Render\CloudSea\CloudSea.cpp" />
+    <ClCompile Include="src\Render\Renderer\CloudSeaRenderer.cpp" />
     <ClCompile Include="src\Render\Sprite\Fade.cpp" />
     <ClCompile Include="src\Input\InputPadState.cpp" />
     <ClCompile Include="src\Input\Input.cpp" />
@@ -154,6 +157,7 @@
     <ClCompile Include="src\Core\ResourceObject.cpp" />
     <ClCompile Include="src\Core\SrvManager.cpp" />
     <ClCompile Include="src\Core\WindowSystem.cpp" />
+    <ClCompile Include="src\Debug\GpuTimer.cpp" />
     <ClCompile Include="src\Debug\Logger.cpp" />
     <ClCompile Include="src\Input\InputKeyState.cpp" />
     <ClCompile Include="src\Input\InputMouseState.cpp" />
@@ -203,6 +207,9 @@
     <ClInclude Include="include\Render\Renderer\TrailRenderer.h" />
     <ClInclude Include="include\Render\Renderer\SkyboxRenderer.h" />
     <ClInclude Include="include\Render\SkyBox\SkyBox.h" />
+    <ClInclude Include="include\Render\CloudSea\CloudNoise.h" />
+    <ClInclude Include="include\Render\CloudSea\CloudSea.h" />
+    <ClInclude Include="include\Render\Renderer\CloudSeaRenderer.h" />
     <ClInclude Include="include\Render\Sprite\Fade.h" />
     <ClInclude Include="include\Render\Camera\ICamera.h" />
     <ClInclude Include="include\Debug\ImGuiManager.h" />
@@ -216,6 +223,7 @@
     <ClInclude Include="include\Core\ResourceObject.h" />
     <ClInclude Include="include\Core\SrvManager.h" />
     <ClInclude Include="include\Core\WindowSystem.h" />
+    <ClInclude Include="include\Debug\GpuTimer.h" />
     <ClInclude Include="include\Debug\Logger.h" />
     <ClInclude Include="include\Input\InputKeyState.h" />
     <ClInclude Include="include\Input\InputMouseState.h" />

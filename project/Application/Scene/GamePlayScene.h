@@ -19,6 +19,9 @@ class BillboardParticleEmitter;
 class MeshParticleEmitter;
 class StageIntro;
 class StageLighting;
+class RoarDistortion;
+class CloudSea;
+class CloudSeaEvents;
 
 #include "Actor/Boss.h"
 #include "Actor/Enemy.h"
@@ -78,8 +81,6 @@ private: // メンバ変数(ゲーム用)
   std::unique_ptr<StageIntro> stageIntro_;
   // Play 開始時に開始演出を再生するか
   bool playIntroOnStart_ = true;
-  // 雲海の面の高さの既定値（配置オブジェクトに雲海がないときに使う）
-  static constexpr float kDefaultSeaHeight_ = -15.0f;
   // 開始の合図（操作開始の瞬間に鳴らすドラゴンの吠え声）の音量
   static constexpr float kRoarSeVolume_ = 1.0f;
   // 羽ばたきを進める1フレームの時間（秒）
@@ -92,6 +93,13 @@ private: // メンバ変数(ゲーム用)
   // 空・光・霧・ポストエフェクトの値
   std::unique_ptr<StageLighting> stageLighting_;
   float skyTimer_ = 0.0f; // 雲を流すための経過時間（秒）
+
+  // 咆哮の空間のゆがみ
+  std::unique_ptr<RoarDistortion> roarDistortion_;
+
+  // 雲海と、雲海を動かす出来事（盛り上がり・裂け目）
+  std::unique_ptr<CloudSea> cloudSea_;
+  std::unique_ptr<CloudSeaEvents> cloudSeaEvents_;
 
   // ヒットストップタイマー（被弾・ボス演出用）
   int hitStopTimer_ = 0;
@@ -236,11 +244,9 @@ private:
   void BlendPlayerWithIntro();
 
   /// <summary>
-  /// 空・光・霧・ポストエフェクトを設定する
+  /// 空・雲海・光・霧・ポストエフェクトを設定する
   /// </summary>
   void ApplySkyAndLighting();
-  // 配置オブジェクトから雲海の板を探す（ないときは null）
-  Object3d *FindSeaObject() const;
 
   void SpawnSceneObject(const std::string &modelPath, const Vector3 &position);
 

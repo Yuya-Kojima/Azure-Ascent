@@ -72,6 +72,6 @@
     "sunIntensity": 0.5,
     "useBloom": true,
     "useVignette": true,
-    "vignetteExponent": 0.5,
+    "vignetteExponent": 0.15,
     "vignetteScale": 16.0
 }

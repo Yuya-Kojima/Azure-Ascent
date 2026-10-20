@@ -307,7 +307,8 @@ void PostProcess::Draw(uint32_t renderSrvIndex, uint32_t depthSrvIndex,
       float radius;
       float thickness;
       float center[2];
-      float padding[2];
+      float aberration;
+      float padding;
     } shockwaves[5];
   };
   PostProcessData *data = nullptr;
@@ -374,6 +375,7 @@ void PostProcess::Draw(uint32_t renderSrvIndex, uint32_t depthSrvIndex,
       data->shockwaves[i].thickness = shockwaves_[i].thickness;
       data->shockwaves[i].center[0] = shockwaves_[i].center[0];
       data->shockwaves[i].center[1] = shockwaves_[i].center[1];
+      data->shockwaves[i].aberration = shockwaves_[i].aberration;
     } else {
       data->shockwaves[i].weight = 0.0f;
       data->shockwaves[i].distortion = 0.0f;
@@ -381,9 +383,9 @@ void PostProcess::Draw(uint32_t renderSrvIndex, uint32_t depthSrvIndex,
       data->shockwaves[i].thickness = 0.0f;
       data->shockwaves[i].center[0] = 0.0f;
       data->shockwaves[i].center[1] = 0.0f;
+      data->shockwaves[i].aberration = 0.0f;
     }
-    data->shockwaves[i].padding[0] = 0.0f;
-    data->shockwaves[i].padding[1] = 0.0f;
+    data->shockwaves[i].padding = 0.0f;
   }
 
   constBuffer_->Unmap(0, nullptr);
