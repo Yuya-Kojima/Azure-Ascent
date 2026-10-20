@@ -236,9 +236,14 @@ private:
   void StartIntro();
 
   /// <summary>
-  /// ステージ開始演出の更新（終わったら操作を開始する）
+  /// ステージ開始演出の更新（レールの加速・吠え声の合図・姿勢を渡し、飛び出しに合わせて操作を開始する）
   /// </summary>
   void UpdateIntro();
+
+  /// <summary>
+  /// 開始演出から操作へ移る間、演出が決める自機の位置・向きと操作の位置・向きを混ぜる
+  /// </summary>
+  void BlendPlayerWithIntro();
 
   /// <summary>
   /// 空・ライト・霧を設定する

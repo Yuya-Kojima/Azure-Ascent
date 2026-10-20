@@ -35,6 +35,10 @@ void StageIntro::Start(const RailCamera &railCamera,
   timer_ = 0.0f;
   isFinished_ = false;
   hasBurst_ = false;
+  isRoarCued_ = false;
+  railOrigin_ = railCamera.GetRailPosition();
+  liveRailOrigin_ = railOrigin_;
+  railYawDelta_ = 0.0f;
 
   dragonEndPos_ = dragonEndPos;
   dragonEndRot_ = dragonEndRot;
@@ -43,6 +47,8 @@ void StageIntro::Start(const RailCamera &railCamera,
   Vector3 forward = railCamera.GetRailForward();
   railForward_ = Normalize(Vector3{forward.x, 0.0f, forward.z});
   railRight_ = Normalize(Cross(kWorldUp, railForward_));
+  liveRailForward_ = railForward_;
+  liveRailRight_ = railRight_;
 
   // レールカメラの位置・画角と、見ている点
   // ビュー行列の逆行列（カメラのワールド行列）の3行目がカメラの正面方向
@@ -53,6 +59,9 @@ void StageIntro::Start(const RailCamera &railCamera,
   railCameraPos_ = railCamera.GetTranslate();
   railLookPos_ = railCameraPos_ + railLookDir * kRailLookDistance;
   railCameraFov_ = railCamera.GetFov();
+  liveRailCameraPos_ = railCameraPos_;
+  liveRailLookPos_ = railLookPos_;
+  liveRailCameraFov_ = railCameraFov_;
 
   // 各ショットの位置
   hoverPos_ = ToWorld(dragonEndPos_, hoverOffset_);
@@ -86,9 +95,9 @@ void StageIntro::Skip() {
   if (isFinished_) {
     return;
   }
-  dragonPos_ = dragonEndPos_;
-  dragonRot_ = dragonEndRot_;
-  isFinished_ = true;
+  // 溜めの直前まで進める（雲海を突き破る雲の粒は出さない）
+  timer_ = (std::max)(timer_, crouchStartTime_);
+  hasBurst_ = true;
   text_->Stop();
 }
 
@@ -97,16 +106,38 @@ void StageIntro::Stop() {
   text_->Stop();
 }
 
-void StageIntro::Update() {
+void StageIntro::Update(const RailCamera &railCamera) {
   if (isFinished_) {
     return;
   }
 
   timer_ += kFrameSec;
 
+  // 今のレールの位置・向き（右・前は水平にする）と、今のレールカメラ
+  const float kRailLookDistance = 10.0f;
+  liveRailOrigin_ = railCamera.GetRailPosition();
+  Vector3 forward = railCamera.GetRailForward();
+  liveRailForward_ = Normalize(Vector3{forward.x, 0.0f, forward.z});
+  liveRailRight_ = Normalize(Cross(kWorldUp, liveRailForward_));
+  // 曲がった角度は -π 〜 π に収める
+  railYawDelta_ = std::remainder(
+      std::atan2(liveRailForward_.x, liveRailForward_.z) -
+          std::atan2(railForward_.x, railForward_.z),
+      2.0f * std::numbers::pi_v<float>);
+  Matrix4x4 railWorld = Inverse(railCamera.GetViewMatrix());
+  Vector3 railLookDir = {railWorld.m[2][0], railWorld.m[2][1],
+                         railWorld.m[2][2]};
+  liveRailCameraPos_ = railCamera.GetTranslate();
+  liveRailLookPos_ = liveRailCameraPos_ + railLookDir * kRailLookDistance;
+  liveRailCameraFov_ = railCamera.GetFov();
+
   UpdateDragon();
   UpdateCamera();
   EmitCloudParticles();
+
+  if (timer_ >= GetEndTime()) {
+    isFinished_ = true;
+  }
 }
 
 void StageIntro::UpdateDragon() {
@@ -182,9 +213,146 @@ void StageIntro::UpdateDragon() {
     if (progress >= 1.0f) {
       dragonPos_ = dragonEndPos_;
       dragonRot_ = dragonEndRot_;
-      isFinished_ = true;
     }
   }
+
+  //===========================
+  // S8 操作開始の位置に着いてからも、操作が効ききるまでゆっくり上下させ、体を傾ける
+  //===========================
+  float arriveTime = turnStartTime_ + turnSec_;
+  if (timer_ >= arriveTime) {
+    float bobY = 0.0f;
+    float roll = 0.0f;
+    CalcHover(timer_ - arriveTime, bobY, roll);
+    float remain = 1.0f - GetControlRatio();
+    dragonPos_ += kWorldUp * (bobY * remain);
+    dragonRot_.z += roll * remain;
+  }
+
+  //===========================
+  // S8 溜め・吠える・飛び出しに合わせて体を起こし、今のレールの位置と向きへ移す
+  //===========================
+  ApplyGestureBody(GetGesture());
+  dragonPos_ = FollowRail(dragonPos_);
+  dragonRot_.y += railYawDelta_;
+}
+
+Vector3 StageIntro::FollowRail(const Vector3 &startPosition) const {
+  // Start の時点のレールから見た右・上・前の量を求め、今のレールの右・上・前で組み立て直す
+  Vector3 offset = startPosition - railOrigin_;
+  float right = Dot(offset, railRight_);
+  float forward = Dot(offset, railForward_);
+  return liveRailOrigin_ + liveRailRight_ * right + kWorldUp * offset.y +
+         liveRailForward_ * forward;
+}
+
+Vector3 StageIntro::GetDragonEndPosition() const {
+  return FollowRail(dragonEndPos_);
+}
+
+float StageIntro::GetHudAlpha() const {
+  if (isFinished_) {
+    return 1.0f;
+  }
+  return EaseInOutCubic(
+      std::clamp((timer_ - hudStartTime_) / hudSec_, 0.0f, 1.0f));
+}
+
+void StageIntro::ApplyGestureBody(const DragonWingAnimator::Gesture &gesture) {
+  float pitch = gesture.crouch * crouchBodyPitch_ +
+                gesture.roar * roarBodyPitch_ +
+                gesture.launch * launchBodyPitch_;
+  float lift = gesture.crouch * crouchBodyLift_ +
+               gesture.roar * roarBodyLift_ + gesture.launch * launchBodyLift_;
+
+  // 原点（足元）まわりの回転を体の中心（bodyPivot_）まわりにするため、中心がずれた分を戻す
+  // 機首を下げる向き（正）に a 回すと、点 (y, z) は (y cos a - z sin a, y sin a + z cos a) へ移る
+  float c = std::cos(pitch);
+  float s = std::sin(pitch);
+  float rotatedY = bodyPivot_.y * c - bodyPivot_.z * s;
+  float rotatedZ = bodyPivot_.y * s + bodyPivot_.z * c;
+  dragonPos_ += kWorldUp * (bodyPivot_.y - rotatedY + lift) +
+                railForward_ * (bodyPivot_.z - rotatedZ);
+  dragonRot_.x += pitch;
+}
+
+DragonWingAnimator::Gesture StageIntro::GetGesture() const {
+  DragonWingAnimator::Gesture gesture;
+  if (isFinished_) {
+    return gesture;
+  }
+  // 区間の進み具合（0〜1）
+  auto progress = [&](float start, float end) {
+    return std::clamp((timer_ - start) / (end - start), 0.0f, 1.0f);
+  };
+  if (timer_ < crouchPeakTime_) {
+    // 通常 → 溜め
+    gesture.crouch =
+        EaseInOutCubic(progress(crouchStartTime_, crouchPeakTime_));
+  } else if (timer_ < roarPeakTime_) {
+    // 溜め → 吠える（声が大きくなるまでに一気に起こす）
+    float rise = EaseOutCubic(progress(crouchPeakTime_, roarPeakTime_));
+    gesture.crouch = 1.0f - rise;
+    gesture.roar = rise;
+  } else if (timer_ < roarEndTime_) {
+    gesture.roar = 1.0f;
+  } else if (timer_ < launchPeakTime_) {
+    // 吠える → 飛び出しの一打ち（翼を打ち下ろす）
+    float beat = EaseInOutCubic(progress(roarEndTime_, launchPeakTime_));
+    gesture.roar = 1.0f - beat;
+    gesture.launch = beat;
+  } else {
+    // 一打ち → 通常の飛行（羽ばたきが戻ってくる）
+    gesture.launch =
+        1.0f - EaseInOutCubic(progress(launchPeakTime_, gestureEndTime_));
+  }
+  gesture.tremble = CalcTremble();
+  return gesture;
+}
+
+float StageIntro::CalcTremble() const {
+  // 声が鳴ってから姿勢を起こしきるまでで強め、最大を過ぎたら吠える姿勢を解くまでに弱める
+  if (timer_ < roarSoundTime_ || timer_ >= roarEndTime_) {
+    return 0.0f;
+  }
+  if (timer_ < roarPeakTime_) {
+    return (timer_ - roarSoundTime_) / (roarPeakTime_ - roarSoundTime_);
+  }
+  if (timer_ < trembleFadeTime_) {
+    return 1.0f;
+  }
+  return 1.0f - (timer_ - trembleFadeTime_) / (roarEndTime_ - trembleFadeTime_);
+}
+
+float StageIntro::GetEndTime() const {
+  return (std::max)({gestureEndTime_, controlStartTime_ + controlSec_,
+                     hudStartTime_ + hudSec_,
+                     cameraReturnTime_ + cameraReturnSec_,
+                     turnStartTime_ + turnSec_});
+}
+
+float StageIntro::GetRailSpeedRatio() const {
+  if (isFinished_) {
+    return 1.0f;
+  }
+  return EaseInOutCubic(
+      std::clamp((timer_ - railStartTime_) / railRampSec_, 0.0f, 1.0f));
+}
+
+float StageIntro::GetControlRatio() const {
+  if (isFinished_) {
+    return 1.0f;
+  }
+  return EaseInOutCubic(
+      std::clamp((timer_ - controlStartTime_) / controlSec_, 0.0f, 1.0f));
+}
+
+bool StageIntro::ConsumeRoarCue() {
+  if (isFinished_ || isRoarCued_ || timer_ < roarSoundTime_) {
+    return false;
+  }
+  isRoarCued_ = true;
+  return true;
 }
 
 void StageIntro::UpdateCamera() {
@@ -216,17 +384,48 @@ void StageIntro::UpdateCamera() {
 
   if (timer_ >= turnStartTime_) {
     //===========================
-    // S7 位置・見る点・画角をレールカメラのものへ移す
+    // S7 位置・見る点・画角を、吠える間のカメラ（レールカメラか、右後ろの低い位置）へ移す
     // 見る点を補間するので、途中もドラゴンが画面に残る
     //===========================
+    Vector3 roarCameraPos = railCameraPos_;
+    Vector3 roarLookPos = railLookPos_;
+    if (roarCamera_ == RoarCamera::Showcase) {
+      roarCameraPos = ToWorld(dragonEndPos_, roarCameraOffset_);
+      roarLookPos = ToWorld(dragonEndPos_, roarLookOffset_);
+    }
     float ease = EaseInOutCubic(
         (std::min)((timer_ - turnStartTime_) / turnSec_, 1.0f));
-    cameraPos = Lerp(revealCameraPos_, railCameraPos_, ease);
-    lookPos = Lerp(revealLookPos_, railLookPos_, ease);
+    cameraPos = Lerp(revealCameraPos_, roarCameraPos, ease);
+    lookPos = Lerp(revealLookPos_, roarLookPos, ease);
     fov = Lerp(lowCameraFov_, railCameraFov_, ease);
   }
 
+  // ここまでは Start の時点のレールを基準に求めたので、今のレールの位置と向きへ移す
+  cameraPos = FollowRail(cameraPos);
+  lookPos = FollowRail(lookPos);
+
+  //===========================
+  // S8 飛び出しに合わせて、今のレールカメラへ移る（移りきると操作中のカメラと同じになる）
+  //===========================
+  if (timer_ >= cameraReturnTime_) {
+    float ease = EaseInOutCubic(
+        (std::min)((timer_ - cameraReturnTime_) / cameraReturnSec_, 1.0f));
+    cameraPos = Lerp(cameraPos, liveRailCameraPos_, ease);
+    lookPos = Lerp(lookPos, liveRailLookPos_, ease);
+    fov = Lerp(fov, liveRailCameraFov_, ease);
+  }
+
   Vector3 cameraRot = LookRotation(cameraPos, lookPos);
+
+  // 吠える間の揺れ：震えと同じ強さで、突き破った瞬間の揺れと同じ形に揺らす
+  float roarPower = roarShake_ * CalcTremble();
+  if (roarPower > 0.0f) {
+    float elapsed = timer_ - roarSoundTime_;
+    cameraPos += Vector3{std::sin(elapsed * 53.0f),
+                         std::sin(elapsed * 71.0f + 1.3f),
+                         std::sin(elapsed * 37.0f + 0.7f)} *
+                 roarPower;
+  }
 
   // 突き破った瞬間の揺れ：3つの周波数のsinでずらし、残り時間の2乗で弱める
   if (timer_ >= burstTime_) {
@@ -374,7 +573,14 @@ void StageIntro::CalcHover(float time, float &bobY, float &roll) const {
 
 void StageIntro::DrawImGui() {
 #ifdef USE_IMGUI
-  ImGui::Text("Time %.2f / %.2f", timer_, turnStartTime_ + turnSec_);
+  ImGui::Text("Time %.2f / %.2f", timer_, GetEndTime());
+  int roarCamera = static_cast<int>(roarCamera_);
+  ImGui::RadioButton("Roar Camera: Follow (A)", &roarCamera,
+                     static_cast<int>(RoarCamera::Follow));
+  ImGui::SameLine();
+  ImGui::RadioButton("Showcase (B)", &roarCamera,
+                     static_cast<int>(RoarCamera::Showcase));
+  roarCamera_ = static_cast<RoarCamera>(roarCamera);
   ImGui::SeparatorText("Timing");
   ImGui::DragFloat("Burst Time", &burstTime_, 0.01f, 0.0f, 5.0f);
   ImGui::DragFloat("Swell Lead Sec", &swellLeadSec_, 0.01f, 0.0f, 2.0f);
@@ -384,6 +590,34 @@ void StageIntro::DrawImGui() {
   ImGui::SliderFloat("Crane Look Delay", &craneLookDelay_, 0.0f, 0.95f);
   ImGui::DragFloat("Turn Start Time", &turnStartTime_, 0.01f, 0.0f, 10.0f);
   ImGui::DragFloat("Turn Sec", &turnSec_, 0.01f, 0.1f, 5.0f);
+  ImGui::SeparatorText("Roar Timing");
+  ImGui::DragFloat("Rail Start Time", &railStartTime_, 0.01f, 0.0f, 10.0f);
+  ImGui::DragFloat("Rail Ramp Sec", &railRampSec_, 0.01f, 0.1f, 5.0f);
+  ImGui::DragFloat("Crouch Start Time", &crouchStartTime_, 0.01f, 0.0f, 10.0f);
+  ImGui::DragFloat("Crouch Peak Time", &crouchPeakTime_, 0.01f, 0.0f, 10.0f);
+  ImGui::DragFloat("Roar Sound Time", &roarSoundTime_, 0.01f, 0.0f, 10.0f);
+  ImGui::DragFloat("Roar Peak Time", &roarPeakTime_, 0.01f, 0.0f, 10.0f);
+  ImGui::DragFloat("Tremble Fade Time", &trembleFadeTime_, 0.01f, 0.0f, 10.0f);
+  ImGui::DragFloat("Roar End Time", &roarEndTime_, 0.01f, 0.0f, 10.0f);
+  ImGui::DragFloat("Launch Peak Time", &launchPeakTime_, 0.01f, 0.0f, 10.0f);
+  ImGui::DragFloat("Gesture End Time", &gestureEndTime_, 0.01f, 0.0f, 10.0f);
+  ImGui::DragFloat("Hud Start Time", &hudStartTime_, 0.01f, 0.0f, 10.0f);
+  ImGui::DragFloat("Hud Sec", &hudSec_, 0.01f, 0.01f, 5.0f);
+  ImGui::DragFloat("Control Start Time", &controlStartTime_, 0.01f, 0.0f, 10.0f);
+  ImGui::DragFloat("Control Sec", &controlSec_, 0.01f, 0.01f, 5.0f);
+  ImGui::DragFloat("Camera Return Time", &cameraReturnTime_, 0.01f, 0.0f, 10.0f);
+  ImGui::DragFloat("Camera Return Sec", &cameraReturnSec_, 0.01f, 0.01f, 5.0f);
+  ImGui::SeparatorText("Roar Body");
+  ImGui::SliderFloat("Crouch Body Pitch", &crouchBodyPitch_, -1.0f, 1.0f);
+  ImGui::SliderFloat("Roar Body Pitch", &roarBodyPitch_, -1.0f, 1.0f);
+  ImGui::SliderFloat("Launch Body Pitch", &launchBodyPitch_, -1.0f, 1.0f);
+  ImGui::DragFloat("Crouch Body Lift", &crouchBodyLift_, 0.01f);
+  ImGui::DragFloat("Roar Body Lift", &roarBodyLift_, 0.01f);
+  ImGui::DragFloat("Launch Body Lift", &launchBodyLift_, 0.01f);
+  ImGui::DragFloat3("Body Pivot", &bodyPivot_.x, 0.05f);
+  ImGui::DragFloat3("Roar Camera Offset", &roarCameraOffset_.x, 0.1f);
+  ImGui::DragFloat3("Roar Look Offset", &roarLookOffset_.x, 0.1f);
+  ImGui::DragFloat("Roar Shake", &roarShake_, 0.005f, 0.0f, 1.0f);
   ImGui::SeparatorText("Position");
   ImGui::DragFloat3("Hover Offset", &hoverOffset_.x, 0.1f);
   ImGui::DragFloat("Rise Start Depth", &riseStartDepth_, 0.1f, 0.0f, 30.0f);

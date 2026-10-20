@@ -359,7 +359,9 @@ void GamePlayScene::Update() {
     // ゲーム状態のリセット
     gameState_ = GameState::Play;
     stageIntro_->Stop();
+    railCamera_->SetSpeedScale(1.0f);
     player_->SetExternalWingState(std::nullopt);
+    player_->SetWingGesture({});
     UIManager::GetInstance()->Load("resources/UI/GamePlayUI.json");
 
     // 残っている敵や弾をクリア
@@ -539,7 +541,12 @@ void GamePlayScene::Update() {
     debugCamera_->Update(*engine_->GetInputManager());
     activeCamera = debugCamera_->GetCamera();
   } else {
-    if (!shouldUpdateWorld) {
+    // 開始演出の後半は、操作の前からレールを動かし始める
+    const bool isRailMoving =
+        shouldUpdateWorld ||
+        (gameState_ == GameState::Intro && isPlayMode_ && !isPaused_ &&
+         stageIntro_->GetRailSpeedRatio() > 0.0f);
+    if (!isRailMoving) {
       bool autoMoveCache = railCamera_->GetAutoMove();
       railCamera_->SetAutoMove(false);
       railCamera_->Update();
@@ -550,8 +557,8 @@ void GamePlayScene::Update() {
     activeCamera = railCamera_.get();
   }
 
-  // 開始演出：自機の位置を動かし、演出カメラで映す
-  if (gameState_ == GameState::Intro) {
+  // 開始演出：自機の位置を動かし、演出カメラで映す（操作へ移る間も演出カメラで映す）
+  if (gameState_ == GameState::Intro || !stageIntro_->IsFinished()) {
     if (isPlayMode_ && !isPaused_) {
       UpdateIntro();
     }
@@ -786,6 +793,10 @@ void GamePlayScene::Update() {
     // プレイヤーの照準や挙動の計算には常にレールカメラを使用する
     if (shouldUpdateWorld) {
       player_->Update();
+      // 開始演出から操作へ移る間は、演出が決める位置・向きと操作の位置・向きを混ぜる
+      if (!stageIntro_->IsFinished()) {
+        BlendPlayerWithIntro();
+      }
     } else {
       player_->UpdateTransform();
     }
@@ -1932,7 +1943,7 @@ void GamePlayScene::StartIntro() {
                      player_->GetTransform().rotate, seaHeight);
   gameState_ = GameState::Intro;
 
-  // HUD と照準は演出が終わってから現す
+  // HUD と照準は消しておき、演出の後半で現す
   hudFadeTimer_ = 0.0f;
   UIManager::GetInstance()->SetGlobalAlpha(0.0f);
   player_->SetReticleAlpha(0.0f);
@@ -1948,23 +1959,55 @@ void GamePlayScene::UpdateIntro() {
     stageIntro_->Skip();
   }
 
-  stageIntro_->Update();
+  stageIntro_->Update(*railCamera_);
 
-  // 自機の位置・向きを演出側で決める
-  Transform &playerTransform = player_->GetTransform();
-  playerTransform.translate = stageIntro_->GetDragonPosition();
-  playerTransform.rotate = stageIntro_->GetDragonRotation();
-  player_->SetExternalWingState(stageIntro_->GetWingState());
-
-  // 演出が終わったらレールを動かして操作を開始する（HUD と照準はこのあと現れる）
-  if (stageIntro_->IsFinished()) {
-    GameManager::GetInstance()->SetSeenStageIntro();
-    gameState_ = GameState::Play;
-    player_->SetExternalWingState(std::nullopt);
+  // レール：演出の後半から 0 → 通常の速さへ上げる
+  const float railSpeedRatio = stageIntro_->GetRailSpeedRatio();
+  railCamera_->SetSpeedScale(railSpeedRatio);
+  if (railSpeedRatio > 0.0f) {
     railCamera_->SetAutoMove(true);
-    // 開始の合図：ドラゴンの吠え声
+  }
+
+  // 開始の合図：ドラゴンの吠え声
+  if (stageIntro_->ConsumeRoarCue()) {
     SoundManager::GetInstance()->PlaySE("dragon_roar", kRoarSeVolume_);
   }
+
+  // 溜め → 吠える → 飛び出しの姿勢
+  player_->SetWingGesture(stageIntro_->GetGesture());
+
+  // HUD は声が弱まる頃から、照準は操作が効き始めてから現す
+  // （終わったあとは、Play の HUD の表示の続きから現れきる）
+  const float hudAlpha = stageIntro_->GetHudAlpha();
+  UIManager::GetInstance()->SetGlobalAlpha(hudAlpha);
+  player_->SetReticleAlpha(stageIntro_->GetControlRatio());
+  hudFadeTimer_ = hudFadeSec_ * hudAlpha;
+
+  if (gameState_ == GameState::Intro) {
+    // 自機の位置・向きを演出側で決める
+    Transform &playerTransform = player_->GetTransform();
+    playerTransform.translate = stageIntro_->GetDragonPosition();
+    playerTransform.rotate = stageIntro_->GetDragonRotation();
+    player_->SetExternalWingState(stageIntro_->GetWingState());
+
+    // 飛び出しに合わせて操作を始める（演出は続き、操作の効き具合を少しずつ上げる。HUD と照準はこのあと現れる）
+    if (stageIntro_->IsControlStarted()) {
+      GameManager::GetInstance()->SetSeenStageIntro();
+      gameState_ = GameState::Play;
+      player_->SetExternalWingState(std::nullopt);
+    }
+  }
+}
+
+void GamePlayScene::BlendPlayerWithIntro() {
+  // 操作の効き具合 0 で演出の位置・向き、1 で操作の位置・向き
+  const float control = stageIntro_->GetControlRatio();
+  Transform &playerTransform = player_->GetTransform();
+  playerTransform.translate = Lerp(stageIntro_->GetDragonPosition(),
+                                   playerTransform.translate, control);
+  playerTransform.rotate = Lerp(stageIntro_->GetDragonRotation(),
+                                playerTransform.rotate, control);
+  player_->UpdateTransform();
 }
 
 void GamePlayScene::ApplySkyAndLighting() {
