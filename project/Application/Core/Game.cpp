@@ -1,11 +1,11 @@
 #include "Core/Game.h"
-#include "Audio/SoundManager.h"
 #include "Debug/Logger.h"
 #include <filesystem>
 #include "Math/Vector2.h"
 #include "Collision/CollisionManager.h"
 #include "Core/ResourceObject.h"
 #include "Core/SrvManager.h"
+#include "Effect/EffectManager.h"
 #include "Effect/FractureCache.h"
 #include "Framework/ActorManager.h"
 #include "Framework/UIManager.h"
@@ -18,6 +18,7 @@
 #include "Renderer/PostProcess.h"
 #include "Renderer/SpriteRenderer.h"
 #include "Scene/SceneFactory.h"
+#include "Scene/GamePlayScene.h"
 #include "Scene/SceneManager.h"
 #include "Framework/GameManager.h"
 #include "Sprite/Sprite.h"
@@ -33,16 +34,10 @@ void Game::Initialize() {
   // 基底クラスの初期化処理
   EngineBase::Initialize();
 
-  // 重い BGM は起動時に先読みして常駐させる。
-  // mp3 を丸ごと PCM に変換するため 1 秒ほどかかり、
-  // シーン切り替え（遷移の途中）で読むと画面が止まってしまうため。
-  // 各シーンの Load は読み込み済みならすぐ戻るので、そのまま残してよい
-  SoundManager::GetInstance()->Load("stage_bgm",
-                                    "resources/Sounds/stage_bgm.mp3");
-  SoundManager::GetInstance()->Load("boss_bgm",
-                                    "resources/Sounds/boss_bgm.mp3");
-  SoundManager::GetInstance()->Load("victory_jingle",
-                                    "resources/Sounds/victory_jingle.mp3");
+  // ステージで使う重い準備（BGM・効果音の読み込み、敵のモデルを割る、エフェクトの粒の入れ物を作る）は起動時に済ませる
+  // BGM は mp3 を丸ごと PCM に変換するため 1 秒ほどかかり、シーン切り替えの途中で読むと画面が止まる
+  GamePlayScene::PreloadResources(this);
+  EffectManager::GetInstance()->Initialize();
 
   SceneManager::GetInstance()->Initialize(this);
 
@@ -217,6 +212,8 @@ void Game::Finalize() {
   // 破片の形セットは GPU バッファを持つので、デバイスを消す EngineBase::Finalize より前に解放する
   // （形セットを借りている爆発は、上の ActorManager::Clear で先に消えている）
   FractureCache::GetInstance()->Clear();
+  // エフェクトの粒の入れ物も GPU バッファを持つので、同じくここで解放する
+  EffectManager::GetInstance()->Finalize();
 
   renderPipeline_.reset();
   imGuiManager_.reset();

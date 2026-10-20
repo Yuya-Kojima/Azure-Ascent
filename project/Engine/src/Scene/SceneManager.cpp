@@ -46,6 +46,18 @@ void SceneManager::Update() {
   const float dt = 1.0f / 60.0f;
   fade_.Update(dt);
 
+  // 切り替えた後の数フレームは、前のフレームからの実時間をログに出す
+  auto now = std::chrono::steady_clock::now();
+  if (framesToLog_ > 0) {
+    float frameMs =
+        std::chrono::duration<float, std::milli>(now - lastUpdateTime_).count();
+    Logger::Log("[SceneManager] frame " +
+                std::to_string(kFramesToLogAfterSwitch_ - framesToLog_ + 1) +
+                " after switch: " + std::to_string(frameMs) + " ms\n");
+    --framesToLog_;
+  }
+  lastUpdateTime_ = now;
+
   // 予約が入ったらフェードアウト開始
   if (transitionState_ == TransitionState::None) {
     if (nextScene_) {
@@ -55,30 +67,39 @@ void SceneManager::Update() {
     }
   }
 
-  // フェードアウト完了待ち
+  // フェードアウト完了待ち：覆いきったらすぐシーンを切り替える
   if (transitionState_ == TransitionState::FadeOut) {
     if (fade_.IsCovered()) {
-      transitionState_ = TransitionState::BlackHold;
-      holdSec_ = 0.0f;
-    }
-  }
-
-  // 黒保持
-  if (transitionState_ == TransitionState::BlackHold) {
-    holdSec_ += dt;
-    if (holdSec_ >= holdDurationSec_) {
       transitionState_ = TransitionState::SwitchScene;
     }
   }
 
-  // シーン切り替え
+  // 覆ったまま保持：切り替えにかかった時間も保持の時間に数える
+  // 保持の間は新しいシーンを更新しない（フェードインと同時に動き出す）
+  bool isHolding = false;
+  if (transitionState_ == TransitionState::BlackHold) {
+    holdSec_ += dt;
+    if (holdSec_ >= holdDurationSec_) {
+      transitionState_ = TransitionState::FadeIn;
+      fade_.StartFadeIn(transitionDurationSec_, transitionFadeType_,
+                        transitionColor_, transitionEasing_);
+      ResetTransitionSettings();
+    } else {
+      isHolding = true;
+    }
+  }
+
+  // シーン切り替え（このフレームは新しいシーンを1回更新して、描画できる状態にする）
   if (transitionState_ == TransitionState::SwitchScene) {
+
+    auto switchStart = std::chrono::steady_clock::now();
 
     // 旧シーン終了
     if (scene_) {
       scene_->Finalize();
       scene_.reset();
     }
+    auto finalizeEnd = std::chrono::steady_clock::now();
 
     // 次シーンへ
     scene_ = std::move(nextScene_);
@@ -87,15 +108,18 @@ void SceneManager::Update() {
     scene_->SetSceneManger(this);
     scene_->Initialize(engine_);
 
-    // フェードイン開始
-    transitionState_ = TransitionState::FadeIn;
-    fade_.StartFadeIn(transitionDurationSec_, transitionFadeType_,
-                      transitionColor_, transitionEasing_);
+    auto initializeEnd = std::chrono::steady_clock::now();
+    using Ms = std::chrono::duration<float, std::milli>;
+    Logger::Log("[SceneManager] " + currentSceneName_ + " switch: finalize " +
+                std::to_string(Ms(finalizeEnd - switchStart).count()) +
+                " ms / initialize " +
+                std::to_string(Ms(initializeEnd - finalizeEnd).count()) +
+                " ms\n");
+    framesToLog_ = kFramesToLogAfterSwitch_;
 
-    transitionDurationSec_ = 0.35f;
-    transitionColor_ = Vector4{0.0f, 0.0f, 0.0f, 1.0f};
-    transitionFadeType_ = Fade::FadeType::Solid;
-    transitionEasing_ = Fade::EasingType::EaseInOutCubic;
+    // 覆ったまま保持へ（切り替えにかかった時間はすでに保持した分とする）
+    transitionState_ = TransitionState::BlackHold;
+    holdSec_ = Ms(initializeEnd - switchStart).count() / 1000.0f;
   }
 
   // フェードイン完了待ち
@@ -108,9 +132,16 @@ void SceneManager::Update() {
   //=========================
   // シーン更新
   //=========================
-  if (scene_) {
+  if (scene_ && !isHolding) {
     scene_->Update();
   }
+}
+
+void SceneManager::ResetTransitionSettings() {
+  transitionDurationSec_ = 0.35f;
+  transitionColor_ = Vector4{0.0f, 0.0f, 0.0f, 1.0f};
+  transitionFadeType_ = Fade::FadeType::Solid;
+  transitionEasing_ = Fade::EasingType::EaseInOutCubic;
 }
 
 void SceneManager::Draw() {

@@ -55,7 +55,16 @@ class EffectManager {
 public:
   static EffectManager *GetInstance();
 
+  /// <summary>
+  /// 初期化（設定を読み、残っているエフェクトを消す。粒の入れ物は最初の1回だけ作る）
+  /// </summary>
   void Initialize();
+
+  /// <summary>
+  /// 終了（粒の入れ物を解放する。デバイスを消す前に呼ぶ）
+  /// </summary>
+  void Finalize();
+
   void Update(const ICamera* camera);
   void Draw();
 
@@ -157,4 +166,17 @@ private:
   std::array<std::unique_ptr<ParticleEmitter>, kMaxHitEffects> deathRingEmitters_;
   std::array<std::unique_ptr<ParticleEmitter>, kMaxHitEffects> hitGlintEmitters_;
   int nextHitEffectIndex_ = 0;
+
+  // 粒の入れ物（BillboardParticleEmitter）を作ったか
+  bool hasCreatedParticleGroups_ = false;
+
+  /// <summary>
+  /// 粒の入れ物（GPU バッファ）を作る
+  /// </summary>
+  void CreateParticleGroups();
+
+  /// <summary>
+  /// すべての粒の入れ物に残っている粒を消す
+  /// </summary>
+  void ClearParticleGroups();
 };

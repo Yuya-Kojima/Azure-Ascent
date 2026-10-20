@@ -1,5 +1,6 @@
 #pragma once
 #include "Sprite/Fade.h"
+#include <chrono>
 #include <memory>
 #include <string>
 
@@ -38,6 +39,17 @@ private:
   };
 
   TransitionState transitionState_ = TransitionState::None;
+
+  /// <summary>
+  /// 次の遷移の設定（時間・色・種類・イージング）を既定に戻す
+  /// </summary>
+  void ResetTransitionSettings();
+
+  // シーン切り替えの所要時間の計測（Debug / Development のログに出す）
+  // 切り替えた後の数フレームは、1フレームにかかった実時間も出す
+  static constexpr int kFramesToLogAfterSwitch_ = 8;
+  int framesToLog_ = 0;
+  std::chrono::steady_clock::time_point lastUpdateTime_;
 
 public:
   static SceneManager *GetInstance();

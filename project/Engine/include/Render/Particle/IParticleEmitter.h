@@ -112,6 +112,9 @@ public:
 
     bool needsClear_ = false;
 
+    /// <summary>
+    /// 生きている粒をすべて消し、まだ出していない発生の予約も取り消す（実際に消すのは次の ParticleManager::Emit）
+    /// </summary>
     void ClearParticles();
     void Emit(const ParticleEmitDesc& desc);
     void Emit(const Vector3& position, uint32_t count,

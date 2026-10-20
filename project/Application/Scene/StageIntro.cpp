@@ -2,6 +2,7 @@
 #include "Camera/GameCamera.h"
 #include "Camera/RailCamera.h"
 #include "Render/Particle/BillboardParticleEmitter.h"
+#include "StageIntroText.h"
 #include <algorithm>
 
 #ifdef USE_IMGUI
@@ -19,10 +20,13 @@ StageIntro::StageIntro() : camera_(std::make_unique<GameCamera>()) {}
 
 StageIntro::~StageIntro() = default;
 
-void StageIntro::Initialize() {
+void StageIntro::Initialize(SpriteRenderer *spriteRenderer) {
   cloudParticles_ = std::make_unique<BillboardParticleEmitter>();
   cloudParticles_->Initialize("resources/cloud_puff.png");
   cloudParticles_->SetBlendMode(IParticleEmitter::BlendMode::Alpha);
+
+  text_ = std::make_unique<StageIntroText>();
+  text_->Initialize(spriteRenderer);
 }
 
 void StageIntro::Start(const RailCamera &railCamera,
@@ -59,6 +63,10 @@ void StageIntro::Start(const RailCamera &railCamera,
   revealCameraPos_ = ToWorld(hoverPos_, revealCameraOffset_);
   revealLookPos_ = ToWorld(hoverPos_, revealLookOffset_);
 
+  // 雲の粒を飛ばす向き：S4・S5 のカメラから突き破る点へ向かう水平の向き
+  Vector3 away = burstPos_ - lowCameraPos_;
+  awayFromCamera_ = Normalize(Vector3{away.x, 0.0f, away.z});
+
   // 上昇を始める時刻：雲海の面を通る時刻が burstTime_ になるよう逆算する
   // 上昇は EaseOutQuad（進んだ割合 = 1 - (1 - s)^2）なので、
   // 割合 f を進む時間の割合 s は 1 - √(1 - f)
@@ -70,6 +78,23 @@ void StageIntro::Start(const RailCamera &railCamera,
   dragonPos_ = riseStartPos_;
   dragonRot_ = {risePitch_, dragonEndRot_.y, 0.0f};
   followLookPos_ = lowLookPos_;
+
+  text_->Start();
+}
+
+void StageIntro::Skip() {
+  if (isFinished_) {
+    return;
+  }
+  dragonPos_ = dragonEndPos_;
+  dragonRot_ = dragonEndRot_;
+  isFinished_ = true;
+  text_->Stop();
+}
+
+void StageIntro::Stop() {
+  isFinished_ = true;
+  text_->Stop();
 }
 
 void StageIntro::Update() {
@@ -138,6 +163,10 @@ void StageIntro::UpdateDragon() {
     float horizontal = std::sqrt(tangent.x * tangent.x + tangent.z * tangent.z);
     float pathPitch = std::clamp(std::atan2(-tangent.y, horizontal),
                                  -maxTurnPitch_, maxTurnPitch_);
+    // 体の傾き：横（レールの右）へ進む割合に合わせて、進む側の翼を下げる（右へ進むと負）
+    float sideRatio = horizontal > 0.0f ? Dot(tangent, railRight_) / horizontal
+                                        : 0.0f;
+    float bankRoll = -turnBank_ * sideRatio;
 
     // 機首：止まっていたときの角度 → 進む向き → 終了時の角度
     const float kEnterRatio = 0.3f;  // 進む向きに合わせきるまでの割合
@@ -147,7 +176,8 @@ void StageIntro::UpdateDragon() {
         (progress - kSettleStart) / (1.0f - kSettleStart), 0.0f, 1.0f));
     float pitch = Lerp(Lerp(hoverPitch_, pathPitch, enter), dragonEndRot_.x,
                        settle);
-    dragonRot_ = {pitch, dragonEndRot_.y, Lerp(roll, dragonEndRot_.z, ease)};
+    float bank = Lerp(Lerp(roll, bankRoll, enter), dragonEndRot_.z, settle);
+    dragonRot_ = {pitch, dragonEndRot_.y, bank};
 
     if (progress >= 1.0f) {
       dragonPos_ = dragonEndPos_;
@@ -216,64 +246,71 @@ void StageIntro::UpdateCamera() {
 }
 
 void StageIntro::EmitCloudParticles() {
-  const float kTrailSec = 0.35f;              // 突き破ったあと、後ろに雲を引く時間（秒）
-  const float kTailDistance = 2.0f;           // ドラゴンの位置から雲を引く位置までの距離（下向き）
+  const float kTrailSec = 0.3f;     // 突き破ったあと、後ろに雲を引く時間（秒）
+  const float kTailDistance = 2.5f; // ドラゴンの位置から雲を引く位置までの距離（下向き）
   const float kFullTurn = 2.0f * std::numbers::pi_v<float>;
 
   float swellStartTime = burstTime_ - swellLeadSec_;
 
+  // 粒は小さく生んで広げる（不透明度は生まれたときが最大で、寿命に合わせて下がる）
+  // 速さには、カメラから遠ざかる向き（awayFromCamera_）を乱れの幅より大きく入れる
   ParticleEmitDesc desc{};
   desc.color = {puffColor_.x, puffColor_.y, puffColor_.z, 1.0f};
   desc.rotateRandom = {0.0f, 0.0f, kFullTurn};
 
   if (!hasBurst_ && timer_ >= burstTime_) {
     //===========================
-    // 突き破った瞬間：雲の粒をまわりへはね上げる
+    // 突き破った瞬間：雲の粒を奥と上へはね上げる
     //===========================
+    const float kAwaySpeed = 4.0f; // カメラから遠ざかる速さ
+    const float kUpSpeed = 6.0f;   // 上へ向かう速さ
     hasBurst_ = true;
     desc.position = burstPos_;
-    desc.count = 80;
-    desc.spawnRandom = {2.5f, 0.3f, 2.5f};
-    desc.baseVelocity = {0.0f, 9.0f, 0.0f};
-    desc.velocityRandom = {7.0f, 5.0f, 7.0f};
-    desc.lifeMin = 0.7f;
-    desc.lifeMax = 1.4f;
-    desc.baseScale = {2.5f, 2.5f, 2.5f};
-    desc.scaleRandom = {2.0f, 2.0f, 2.0f};
-    desc.scaleVelocity = {3.0f, 3.0f, 3.0f};
+    desc.count = 36;
+    desc.spawnRandom = {1.5f, 0.2f, 1.5f};
+    desc.baseVelocity = awayFromCamera_ * kAwaySpeed + kWorldUp * kUpSpeed;
+    desc.velocityRandom = {3.0f, 2.0f, 3.0f};
+    desc.lifeMin = 0.5f;
+    desc.lifeMax = 1.0f;
+    desc.baseScale = {0.4f, 0.4f, 0.4f};
+    desc.scaleRandom = {0.5f, 0.5f, 0.5f};
+    desc.scaleVelocity = {2.5f, 2.5f, 2.5f};
     cloudParticles_->Emit(desc);
   } else if (timer_ >= swellStartTime && timer_ < burstTime_) {
     //===========================
-    // S4 盛り上がり：突き破る点から雲の粒が立ちのぼり、だんだん広く・速くなる
+    // S4 盛り上がり：突き破る点から細い湯気が立ちのぼり、だんだん広く・速くなる
     //===========================
+    const float kAwaySpeed = 1.0f; // カメラから遠ざかる速さ
     float swell = (timer_ - swellStartTime) / swellLeadSec_;
-    float spread = 1.0f + 1.5f * swell;
+    float spread = 0.5f + 0.5f * swell;
     desc.position = burstPos_;
-    desc.count = 2;
+    desc.count = 1;
     desc.spawnRandom = {spread, 0.0f, spread};
-    desc.baseVelocity = {0.0f, 1.5f + 3.0f * swell, 0.0f};
-    desc.velocityRandom = {0.8f, 1.0f, 0.8f};
-    desc.lifeMin = 0.6f;
-    desc.lifeMax = 1.0f;
-    float scale = 1.5f + 1.5f * swell;
-    desc.baseScale = {scale, scale, scale};
-    desc.scaleRandom = {1.0f, 1.0f, 1.0f};
-    desc.scaleVelocity = {1.5f, 1.5f, 1.5f};
+    desc.baseVelocity =
+        awayFromCamera_ * kAwaySpeed + kWorldUp * (2.0f + 3.0f * swell);
+    desc.velocityRandom = {0.5f, 0.8f, 0.5f};
+    desc.lifeMin = 0.4f;
+    desc.lifeMax = 0.7f;
+    desc.baseScale = {0.4f, 0.4f, 0.4f};
+    desc.scaleRandom = {0.3f, 0.3f, 0.3f};
+    desc.scaleVelocity = {1.2f, 1.2f, 1.2f};
     cloudParticles_->Emit(desc);
   } else if (hasBurst_ && timer_ < burstTime_ + kTrailSec) {
     //===========================
     // 突き破った直後：上昇するドラゴンの後ろ（下側）に雲の粒を引く
     //===========================
+    const float kAwaySpeed = 1.5f; // カメラから遠ざかる速さ
+    const float kFallSpeed = 3.0f; // 下へ落ちる速さ
     desc.position = dragonPos_ - kWorldUp * kTailDistance;
-    desc.count = 4;
-    desc.spawnRandom = {0.8f, 0.8f, 0.8f};
-    desc.baseVelocity = {0.0f, -2.0f, 0.0f};
-    desc.velocityRandom = {1.0f, 1.0f, 1.0f};
-    desc.lifeMin = 0.4f;
-    desc.lifeMax = 0.7f;
-    desc.baseScale = {1.5f, 1.5f, 1.5f};
-    desc.scaleRandom = {1.0f, 1.0f, 1.0f};
-    desc.scaleVelocity = {2.0f, 2.0f, 2.0f};
+    desc.count = 2;
+    desc.spawnRandom = {0.5f, 0.5f, 0.5f};
+    desc.baseVelocity = awayFromCamera_ * kAwaySpeed - kWorldUp * kFallSpeed;
+    desc.velocityRandom = {0.8f, 0.8f, 0.8f};
+    desc.lifeMin = 0.3f;
+    desc.lifeMax = 0.5f;
+    desc.baseScale = {0.3f, 0.3f, 0.3f};
+    desc.scaleRandom = {0.3f, 0.3f, 0.3f};
+    desc.scaleVelocity = {1.0f, 1.0f, 1.0f};
     cloudParticles_->Emit(desc);
   }
 }
@@ -288,6 +325,18 @@ void StageIntro::UpdateParticles(const Matrix4x4 &viewMatrix,
 void StageIntro::DrawParticles() {
   if (cloudParticles_) {
     cloudParticles_->Draw();
+  }
+}
+
+void StageIntro::UpdateCaption() {
+  if (text_) {
+    text_->Update();
+  }
+}
+
+void StageIntro::DrawCaption() {
+  if (text_) {
+    text_->Draw();
   }
 }
 
@@ -347,6 +396,7 @@ void StageIntro::DrawImGui() {
   ImGui::SliderFloat("Rise Pitch", &risePitch_, -1.5f, 0.0f);
   ImGui::SliderFloat("Hover Pitch", &hoverPitch_, -0.5f, 0.5f);
   ImGui::SliderFloat("Max Turn Pitch", &maxTurnPitch_, 0.0f, 1.2f);
+  ImGui::SliderFloat("Turn Bank", &turnBank_, 0.0f, 1.5f);
   ImGui::DragFloat("Bob Height", &bobHeight_, 0.01f);
   ImGui::DragFloat("Bob Period", &bobPeriod_, 0.05f, 0.1f, 10.0f);
   ImGui::DragFloat("Bob Roll", &bobRoll_, 0.005f);
@@ -365,5 +415,6 @@ void StageIntro::DrawImGui() {
   ImGui::SliderFloat("End Wing Hover", &endWing_.hover, 0.0f, 1.0f);
   ImGui::SliderFloat("Dive Wing Ratio", &diveWingRatio_, 0.0f, 1.0f);
   ImGui::ColorEdit3("Puff Color", &puffColor_.x);
+  text_->DrawImGui();
 #endif
 }

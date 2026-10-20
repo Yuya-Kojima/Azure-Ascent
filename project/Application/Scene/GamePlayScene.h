@@ -79,6 +79,8 @@ private: // メンバ変数(ゲーム用)
   bool playIntroOnStart_ = true;
   // 雲海の面の高さの既定値（配置オブジェクトに雲海がないときに使う）
   static constexpr float kDefaultSeaHeight_ = -15.0f;
+  // 開始の合図（操作開始の瞬間に鳴らすドラゴンの吠え声）の音量
+  static constexpr float kRoarSeVolume_ = 1.0f;
   // 羽ばたきを進める1フレームの時間（秒）
   static constexpr float kWingDeltaTime_ = 1.0f / 60.0f;
 
@@ -177,6 +179,12 @@ public: // メンバ関数
   /// ヒットストップの要求（フレーム数指定、複数回呼ばれた場合は長い方を優先）
   /// </summary>
   void RequestHitStop(int frames);
+
+  /// <summary>
+  /// ステージで使う重い準備（敵のモデルを読んで割っておく、効果音・BGM を読む）
+  /// 済んでいればすぐ戻るので、起動時とシーンの初期化の両方で呼ぶ
+  /// </summary>
+  static void PreloadResources(EngineBase *engine);
 
   /// <summary>
   /// 初期化

@@ -7,6 +7,8 @@ class GameCamera;
 class ICamera;
 class RailCamera;
 class BillboardParticleEmitter;
+class SpriteRenderer;
+class StageIntroText;
 
 /// <summary>
 /// ステージ開始演出（絵コンテの S4〜S7）
@@ -19,9 +21,9 @@ public:
   ~StageIntro();
 
   /// <summary>
-  /// 初期化（雲の粒のパーティクルを作る）
+  /// 初期化（雲の粒のパーティクルと、目標カードを作る）
   /// </summary>
-  void Initialize();
+  void Initialize(SpriteRenderer *spriteRenderer);
 
   /// <summary>
   /// 演出を開始する
@@ -32,6 +34,16 @@ public:
   /// <param name="seaHeight">雲海の面の高さ（ワールドのY）</param>
   void Start(const RailCamera &railCamera, const Vector3 &dragonEndPos,
              const Vector3 &dragonEndRot, float seaHeight);
+
+  /// <summary>
+  /// 飛ばす（ドラゴンを操作開始の位置へ置き、目標カードを消す）
+  /// </summary>
+  void Skip();
+
+  /// <summary>
+  /// 止める（演出の途中で Play をやめたとき）
+  /// </summary>
+  void Stop();
 
   /// <summary>
   /// 更新（ドラゴンの位置・向き、演出カメラ、雲の粒の発生）
@@ -48,6 +60,16 @@ public:
   /// 雲の粒の描画
   /// </summary>
   void DrawParticles();
+
+  /// <summary>
+  /// 目標カードの更新
+  /// </summary>
+  void UpdateCaption();
+
+  /// <summary>
+  /// 目標カードの描画
+  /// </summary>
+  void DrawCaption();
 
   /// <summary>
   /// 調整用UI
@@ -93,6 +115,8 @@ private:
   std::unique_ptr<GameCamera> camera_;
   // 雲の粒
   std::unique_ptr<BillboardParticleEmitter> cloudParticles_;
+  // 目標カード
+  std::unique_ptr<StageIntroText> text_;
 
   // ステージに入ってからの経過時間（秒）
   float timer_ = 0.0f;
@@ -118,6 +142,7 @@ private:
   Vector3 railLookPos_ = {0.0f, 0.0f, 0.0f};     // レールカメラが見る点
   float railCameraFov_ = 0.0f;
   float riseStartTime_ = 0.0f;                   // 上昇を始める時刻（突き破る時刻から逆算）
+  Vector3 awayFromCamera_ = {0.0f, 0.0f, 1.0f};  // S4・S5 のカメラから遠ざかる水平の向き
 
   // 現在の状態
   Vector3 dragonPos_ = {0.0f, 0.0f, 0.0f};
@@ -133,7 +158,7 @@ private:
   float craneStartTime_ = 1.8f; // S6 でカメラが上がり始める時刻
   float craneSec_ = 1.1f;       // S6 でカメラが上がりきるまでの時間
   float craneLookDelay_ = 0.5f; // S6 のカメラの移動のうち、見る点を前方の空へ移し始める割合
-  float turnStartTime_ = 3.2f;  // S7 を始める時刻
+  float turnStartTime_ = 4.4f;  // S7 を始める時刻
   float turnSec_ = 1.4f;        // S7 にかける時間
 
   //===========================
@@ -153,7 +178,8 @@ private:
   //===========================
   float risePitch_ = -1.2f;      // 上昇中の機首の角度（ラジアン。負で上を向く）
   float hoverPitch_ = -0.1f;     // 止まっている間の機首の角度（ラジアン）
-  float maxTurnPitch_ = 0.5f;    // S7 で進む向きに合わせる機首の角度の上限（ラジアン）
+  float maxTurnPitch_ = 0.15f;   // S7 で進む向きに合わせる機首の角度の上限（ラジアン）
+  float turnBank_ = 0.6f;        // S7 で横へ進むときの体の傾き（真横へ進むときの角度。ラジアン）
   float bobHeight_ = 0.15f;      // 止まっている間の上下の揺れ幅
   float bobPeriod_ = 2.0f;       // 上下の揺れの周期（秒）
   float bobRoll_ = 0.06f;        // 止まっている間の体の傾きの大きさ（ラジアン）

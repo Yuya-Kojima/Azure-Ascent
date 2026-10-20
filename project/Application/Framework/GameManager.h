@@ -40,6 +40,12 @@ public:
     void SetPlayStartLevelName(const std::string& name) { playStartLevelName_ = name; }
     const std::string& GetPlayStartLevelName() const { return playStartLevelName_; }
 
+    // --- ステージ開始演出 ---
+    // 一度最後まで見たか（見たあとは、ボタンで飛ばせる）
+    bool hasSeenStageIntro_ = false;
+    void SetSeenStageIntro() { hasSeenStageIntro_ = true; }
+    bool HasSeenStageIntro() const { return hasSeenStageIntro_; }
+
     // --- スコア関連 ---
     int currentScore_ = 0;
     void AddScore(int score) { currentScore_ += score; }

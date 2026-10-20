@@ -135,15 +135,7 @@ void GamePlayScene::RequestHitStop(int frames) {
   hitStopCooldownTimer_ = frames + hitStopCooldown_;
 }
 
-void GamePlayScene::Initialize(EngineBase *engine) {
-
-  // 基底クラスの初期化 (PostProcessの初期化など)
-  BaseScene::Initialize(engine);
-
-  // シーン初期化時に前シーンの残留アクター（弾や古いプレイヤー）を全消去
-  ActorManager::GetInstance()->Clear();
-  CollisionManager::GetInstance()
-      ->Clear(); // コライダーの残留（ダングリングポインタ）を防ぐ
+void GamePlayScene::PreloadResources(EngineBase *engine) {
   PrefabManager::GetInstance()->Initialize(engine->GetObject3dRenderer());
 
   // ロード時に事前にモデルを割る
@@ -154,21 +146,12 @@ void GamePlayScene::Initialize(EngineBase *engine) {
         PrefabManager::GetInstance()->GetModelPath(prefabName);
     // そのモデルを読み込む（読み込み済みなら何もしない）
     ModelManager::GetInstance()->LoadModel(modelPath);
-    // 読み込んだモデルを探して、割っておく
+    // 読み込んだモデルを探して、割っておく（割ってあれば何もしない）
     FractureCache::GetInstance()->Prebuild(
         ModelManager::GetInstance()->FindModel(modelPath));
   }
 
-  // 参照をコピー
-  engine_ = engine;
-
-  //===========================
-  // テクスチャファイルの読み込み
-  //===========================
-
-  //===========================
-  // オーディオファイルの読み込み
-  //===========================
+  // 効果音・BGM（読み込み済みなら何もしない）
   SoundManager::GetInstance()->Load("boss_explosion",
                                     "resources/Sounds/explosion.mp3");
   SoundManager::GetInstance()->Load("laser_shot",
@@ -194,6 +177,31 @@ void GamePlayScene::Initialize(EngineBase *engine) {
                                     "resources/Sounds/boss_bgm.mp3");
   SoundManager::GetInstance()->Load("victory_jingle",
                                     "resources/Sounds/victory_jingle.mp3");
+  SoundManager::GetInstance()->Load("dragon_roar",
+                                    "resources/Sounds/dragon-cry2.mp3");
+}
+
+void GamePlayScene::Initialize(EngineBase *engine) {
+  // 基底クラスの初期化 (PostProcessの初期化など)
+  BaseScene::Initialize(engine);
+
+  // シーン初期化時に前シーンの残留アクター（弾や古いプレイヤー）を全消去
+  ActorManager::GetInstance()->Clear();
+  CollisionManager::GetInstance()
+      ->Clear(); // コライダーの残留（ダングリングポインタ）を防ぐ
+  // ステージで使う重い準備（起動時に済んでいれば、すぐ戻る）
+  PreloadResources(engine);
+
+  // 参照をコピー
+  engine_ = engine;
+
+  //===========================
+  // テクスチャファイルの読み込み
+  //===========================
+
+  //===========================
+  // BGM の再生（読み込みは PreloadResources）
+  //===========================
   SoundManager::GetInstance()->PlayBGM("stage_bgm");
 
   EffectManager::GetInstance()->Initialize();
@@ -266,9 +274,10 @@ void GamePlayScene::Initialize(EngineBase *engine) {
   // 空・ライト・霧（乗っ取られた暗い空）
   ApplySkyAndLighting();
 
+
   // ステージ開始演出
   stageIntro_ = std::make_unique<StageIntro>();
-  stageIntro_->Initialize();
+  stageIntro_->Initialize(engine_->GetSpriteRenderer());
 
   //===========================
   // プレイヤーの初期化
@@ -349,6 +358,8 @@ void GamePlayScene::Update() {
 
     // ゲーム状態のリセット
     gameState_ = GameState::Play;
+    stageIntro_->Stop();
+    player_->SetExternalWingState(std::nullopt);
     UIManager::GetInstance()->Load("resources/UI/GamePlayUI.json");
 
     // 残っている敵や弾をクリア
@@ -547,6 +558,11 @@ void GamePlayScene::Update() {
     if (!useDebugCamera_) {
       activeCamera = stageIntro_->GetCamera();
     }
+  }
+
+  // 目標カード
+  if (isPlayMode_ && !isPaused_) {
+    stageIntro_->UpdateCaption();
   }
 
   // ポストエフェクトとエフェクトマネージャーの更新
@@ -1890,6 +1906,9 @@ void GamePlayScene::Draw2D() {
   if (gameState_ != GameState::Intro) {
     UIManager::GetInstance()->Draw();
   }
+
+  // 目標カードは HUD より手前に出す
+  stageIntro_->DrawCaption();
 }
 
 void GamePlayScene::StartIntro() {
@@ -1920,6 +1939,15 @@ void GamePlayScene::StartIntro() {
 }
 
 void GamePlayScene::UpdateIntro() {
+  // 一度最後まで見ていれば、決定ボタンで飛ばせる
+  Input *input = engine_->GetInputManager();
+  if (GameManager::GetInstance()->HasSeenStageIntro() &&
+      (input->IsTriggerKey(DIK_RETURN) || input->IsTriggerKey(DIK_SPACE) ||
+       input->IsPadTrigger(PadButton::A) ||
+       input->IsPadTrigger(PadButton::Start))) {
+    stageIntro_->Skip();
+  }
+
   stageIntro_->Update();
 
   // 自機の位置・向きを演出側で決める
@@ -1930,9 +1958,12 @@ void GamePlayScene::UpdateIntro() {
 
   // 演出が終わったらレールを動かして操作を開始する（HUD と照準はこのあと現れる）
   if (stageIntro_->IsFinished()) {
+    GameManager::GetInstance()->SetSeenStageIntro();
     gameState_ = GameState::Play;
     player_->SetExternalWingState(std::nullopt);
     railCamera_->SetAutoMove(true);
+    // 開始の合図：ドラゴンの吠え声
+    SoundManager::GetInstance()->PlaySE("dragon_roar", kRoarSeVolume_);
   }
 }
 
