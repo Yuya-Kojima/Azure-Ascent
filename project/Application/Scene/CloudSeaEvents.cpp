@@ -95,10 +95,23 @@ void CloudSeaEvents::Apply(CloudSea *cloudSea) const {
   cloudSea->SetHeight(c.height);
   cloudSea->SetRelief(c.amplitude, c.blobSize);
   cloudSea->SetWind(c.wind);
-  cloudSea->SetValleyDarkness(c.valleyDarkness);
-  cloudSea->SetRim(c.rimStrength, c.rimPower);
-  cloudSea->SetColor(c.color);
-  cloudSea->SetTextureScale(c.textureScale);
+  CloudSeaLook look;
+  look.thickness = c.thickness;
+  look.edgeSoftness = c.edgeSoftness;
+  look.density = c.density;
+  look.color = c.color;
+  look.brightness = c.brightness;
+  look.powder = c.powder;
+  look.valleyDarkness = c.valleyDarkness;
+  look.forwardScatter = c.forwardScatter;
+  look.rimStrength = c.rimStrength;
+  look.rimPower = c.rimPower;
+  look.noiseSize = c.noiseSize;
+  look.detailSize = c.detailSize;
+  look.detailStrength = c.detailStrength;
+  look.jitter = c.jitter;
+  cloudSea->SetLook(look);
+  cloudSea->SetDebugView(CloudSea::DebugView(debugView_));
   cloudSea->ClearShapes();
 
   int shapeIndex = 0;
@@ -144,11 +157,20 @@ void CloudSeaEvents::LoadConfig() {
   ReadFloat(root, "amplitude", c.amplitude);
   ReadFloat(root, "blobSize", c.blobSize);
   ReadVector2(root, "wind", c.wind);
+  ReadFloat(root, "thickness", c.thickness);
+  ReadFloat(root, "edgeSoftness", c.edgeSoftness);
+  ReadFloat(root, "density", c.density);
+  ReadVector3(root, "color", c.color);
+  ReadFloat(root, "brightness", c.brightness);
+  ReadFloat(root, "powder", c.powder);
   ReadFloat(root, "valleyDarkness", c.valleyDarkness);
+  ReadFloat(root, "forwardScatter", c.forwardScatter);
   ReadFloat(root, "rimStrength", c.rimStrength);
   ReadFloat(root, "rimPower", c.rimPower);
-  ReadVector3(root, "color", c.color);
-  ReadFloat(root, "textureScale", c.textureScale);
+  ReadFloat(root, "noiseSize", c.noiseSize);
+  ReadFloat(root, "detailSize", c.detailSize);
+  ReadFloat(root, "detailStrength", c.detailStrength);
+  ReadFloat(root, "jitter", c.jitter);
 }
 
 void CloudSeaEvents::SaveConfig() const {
@@ -158,11 +180,20 @@ void CloudSeaEvents::SaveConfig() const {
   root["amplitude"] = c.amplitude;
   root["blobSize"] = c.blobSize;
   root["wind"] = {c.wind.x, c.wind.y};
+  root["thickness"] = c.thickness;
+  root["edgeSoftness"] = c.edgeSoftness;
+  root["density"] = c.density;
+  root["color"] = {c.color.x, c.color.y, c.color.z};
+  root["brightness"] = c.brightness;
+  root["powder"] = c.powder;
   root["valleyDarkness"] = c.valleyDarkness;
+  root["forwardScatter"] = c.forwardScatter;
   root["rimStrength"] = c.rimStrength;
   root["rimPower"] = c.rimPower;
-  root["color"] = {c.color.x, c.color.y, c.color.z};
-  root["textureScale"] = c.textureScale;
+  root["noiseSize"] = c.noiseSize;
+  root["detailSize"] = c.detailSize;
+  root["detailStrength"] = c.detailStrength;
+  root["jitter"] = c.jitter;
 
   if (!std::filesystem::exists(kConfigDirectory)) {
     std::filesystem::create_directories(kConfigDirectory);
@@ -177,16 +208,31 @@ void CloudSeaEvents::DrawImGui() {
 #ifdef USE_IMGUI
   Config &c = config_;
   if (ImGui::TreeNode("Sea Look")) {
+    ImGui::SeparatorText("Shape");
     ImGui::DragFloat("Height", &c.height, 0.1f);
     ImGui::SliderFloat("Amplitude", &c.amplitude, 0.0f, 8.0f);
     ImGui::SliderFloat("Blob Size", &c.blobSize, 5.0f, 100.0f);
+    ImGui::SliderFloat("Thickness", &c.thickness, 2.0f, 60.0f);
+    ImGui::SliderFloat("Edge Softness", &c.edgeSoftness, 0.1f, 4.0f);
+    ImGui::SliderFloat("Density", &c.density, 0.1f, 8.0f);
+    ImGui::SliderFloat("Noise Size", &c.noiseSize, 5.0f, 200.0f);
+    ImGui::SliderFloat("Detail Size", &c.detailSize, 1.0f, 30.0f);
+    ImGui::SliderFloat("Detail Strength", &c.detailStrength, 0.0f, 0.9f);
     ImGui::DragFloat2("Wind (X, Z)", &c.wind.x, 0.05f, -10.0f, 10.0f);
-    ImGui::SliderFloat("Valley Darkness", &c.valleyDarkness, 0.0f, 1.0f);
-    ImGui::SliderFloat("Rim Strength", &c.rimStrength, 0.0f, 1.0f);
-    ImGui::SliderFloat("Rim Power", &c.rimPower, 0.5f, 8.0f);
+    ImGui::SeparatorText("Light");
     ImGui::ColorEdit3("Color", &c.color.x,
                       ImGuiColorEditFlags_HDR | ImGuiColorEditFlags_Float);
-    ImGui::SliderFloat("Texture Scale", &c.textureScale, 0.001f, 0.1f);
+    ImGui::SliderFloat("Brightness", &c.brightness, 0.0f, 2.0f);
+    ImGui::SliderFloat("Powder", &c.powder, 0.0f, 1.0f);
+    ImGui::SliderFloat("Valley Darkness", &c.valleyDarkness, 0.0f, 1.0f);
+    ImGui::SliderFloat("Forward Scatter", &c.forwardScatter, 0.0f, 1.0f);
+    ImGui::SliderFloat("Rim Strength", &c.rimStrength, 0.0f, 1.0f);
+    ImGui::SliderFloat("Rim Power", &c.rimPower, 1.0f, 8.0f);
+    ImGui::SeparatorText("Debug");
+    ImGui::SliderFloat("Jitter", &c.jitter, 0.0f, 1.0f);
+    const char *const kDebugViews[] = {"Normal", "Sun Only", "Ambient Only",
+                                       "Density Only", "Step Count"};
+    ImGui::Combo("View", &debugView_, kDebugViews, IM_ARRAYSIZE(kDebugViews));
     ImGui::TreePop();
   }
   ImGui::Text("Event Time %.2f  Events %d", time_, int(events_.size()));

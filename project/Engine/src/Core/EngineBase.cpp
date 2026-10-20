@@ -70,7 +70,8 @@ void EngineBase::Initialize() {
   skyboxRenderer_->Initialize(dx12Core_.get());
 
   cloudSeaRenderer_ = std::make_unique<CloudSeaRenderer>();
-  cloudSeaRenderer_->Initialize(dx12Core_.get(), object3dRenderer_.get());
+  cloudSeaRenderer_->Initialize(dx12Core_.get(), object3dRenderer_.get(),
+                                srvManager_.get());
 
   // テクスチャマネージャーの初期化
   TextureManager::GetInstance()->Initialize(dx12Core_.get(), srvManager_.get());

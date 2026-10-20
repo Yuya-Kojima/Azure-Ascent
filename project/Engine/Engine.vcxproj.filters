@@ -24,6 +24,9 @@
     <ClCompile Include="src\Debug\Logger.cpp">
       <Filter>ソース ファイル</Filter>
     </ClCompile>
+    <ClCompile Include="src\Debug\GpuTimer.cpp">
+      <Filter>ソース ファイル</Filter>
+    </ClCompile>
     <ClCompile Include="src\Core\WindowSystem.cpp">
       <Filter>ソース ファイル</Filter>
     </ClCompile>
@@ -147,6 +150,9 @@
     <ClCompile Include="src\Render\CloudSea\CloudSea.cpp">
       <Filter>ソース ファイル</Filter>
     </ClCompile>
+    <ClCompile Include="src\Render\CloudSea\CloudNoise.cpp">
+      <Filter>ソース ファイル</Filter>
+    </ClCompile>
     <ClCompile Include="src\Render\Renderer\LineRenderer.cpp">
       <Filter>ソース ファイル</Filter>
     </ClCompile>
@@ -222,6 +228,9 @@
       <Filter>ヘッダー ファイル</Filter>
     </ClInclude>
     <ClInclude Include="include\Debug\Logger.h">
+      <Filter>ヘッダー ファイル</Filter>
+    </ClInclude>
+    <ClInclude Include="include\Debug\GpuTimer.h">
       <Filter>ヘッダー ファイル</Filter>
     </ClInclude>
     <ClInclude Include="include\Core\WindowSystem.h">
@@ -366,6 +375,9 @@
       <Filter>ヘッダー ファイル</Filter>
     </ClInclude>
     <ClInclude Include="include\Render\CloudSea\CloudSea.h">
+      <Filter>ヘッダー ファイル</Filter>
+    </ClInclude>
+    <ClInclude Include="include\Render\CloudSea\CloudNoise.h">
       <Filter>ヘッダー ファイル</Filter>
     </ClInclude>
     <ClInclude Include="include\Render\Renderer\LineRenderer.h">

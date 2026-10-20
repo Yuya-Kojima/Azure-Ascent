@@ -150,8 +150,10 @@
     <FxCompile Include="resources\shaders\Object3d.GS.hlsl" />
     <FxCompile Include="resources\shaders\Skybox.VS.hlsl" />
     <FxCompile Include="resources\shaders\Skybox.PS.hlsl" />
-    <FxCompile Include="resources\shaders\CloudSea.VS.hlsl" />
-    <FxCompile Include="resources\shaders\CloudSea.PS.hlsl" />
+    <FxCompile Include="resources\shaders\CloudNoise.CS.hlsl" />
+    <FxCompile Include="resources\shaders\CloudTopNoise.CS.hlsl" />
+    <FxCompile Include="resources\shaders\CloudSea.March.PS.hlsl" />
+    <FxCompile Include="resources\shaders\CloudSea.Composite.PS.hlsl" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Core\Game.h">

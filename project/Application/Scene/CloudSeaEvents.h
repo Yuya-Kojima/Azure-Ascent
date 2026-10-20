@@ -7,7 +7,7 @@ class CloudSea;
 /// <summary>
 /// 雲海を演出側から動かす。
 /// 時刻つきの出来事（盛り上がり・裂け目）を、今の時刻での形の数値に直して雲海へ渡す。
-/// 雲海の見た目の値（起伏・風・谷の暗さ・色など）も持ち、resources/config/CloudSeaConfig.json に保存する
+/// 雲海の見た目の値（起伏・風・濃さ・光など）も持ち、resources/config/CloudSeaConfig.json に保存する
 /// </summary>
 class CloudSeaEvents {
 public:
@@ -39,15 +39,24 @@ public:
 
   // 雲海の見た目の値
   struct Config {
-    float height = -15.0f;                        // 雲海の面の高さ（ワールドの Y）
-    float amplitude = 3.0f;                       // 起伏の高さ（面から上下へ）
-    float blobSize = 30.0f;                       // 雲の塊の大きさ
-    Vector2 wind = {0.3f, -1.5f};                 // 風で模様が流れる速さ（X, Z。1 秒あたり）
-    float valleyDarkness = 0.6f;                  // 谷を暗くする強さ
-    float rimStrength = 0.0f;                     // 逆光の縁の強さ（0 で無効）
-    float rimPower = 3.0f;                        // 逆光の縁の鋭さ
-    Vector3 color = {0.16f, 0.16f, 0.17f};        // 雲海の色
-    float textureScale = 0.01f;                   // 模様の繰り返しの細かさ（長さ 1 あたり）
+    float height = -15.0f;        // 雲の層の上の面の基準の高さ（ワールドの Y）
+    float amplitude = 3.0f;       // 上の面の起伏の高さ（基準から上下へ）
+    float blobSize = 30.0f;       // 上の面の塊の大きさ
+    Vector2 wind = {0.3f, -1.5f}; // 風で雲が流れる速さ（X, Z。1 秒あたり）
+    float thickness = 25.0f;      // 層の厚み（基準の高さから下へ）
+    float edgeSoftness = 0.8f;    // 上の面から濃さが 1 になるまでの深さ
+    float density = 1.6f;         // 濃さ 1 の所で、長さ 1 あたりに光が弱まる割合
+    Vector3 color = {0.16f, 0.16f, 0.17f}; // 雲の色（光を受けて返す割合）
+    float brightness = 1.0f;      // 雲が返す光の強さの倍率
+    float powder = 1.0f;          // 粉の暗さの強さ（0〜1）
+    float valleyDarkness = 0.3f;  // 低い所の環境光を暗くする強さ
+    float forwardScatter = 0.0f;  // 光の進む向きへ強く散る度合いの混ぜ具合（0〜1）
+    float rimStrength = 0.0f;     // 地平線の光が上の縁を透ける強さ（0 で無効）
+    float rimPower = 3.0f;        // 地平線の光の縁の鋭さ
+    float noiseSize = 40.0f;      // 大きなノイズ 1 枚のワールドの長さ
+    float detailSize = 6.0f;      // 細かいノイズ 1 枚のワールドの長さ
+    float detailStrength = 0.35f; // 細かいノイズで縁を削る強さ
+    float jitter = 1.0f;          // 視線の出発点を画素ごとにずらす量（0〜1）
   };
 
   /// <summary>
@@ -95,6 +104,8 @@ private:
   void SaveConfig() const;
 
   Config config_;
+  // 雲海の調べるための表示（CloudSea::DebugView の番号。保存しない）
+  int debugView_ = 0;
   std::vector<Event> events_;
   float time_ = 0.0f;
 };

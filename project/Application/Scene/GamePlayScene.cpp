@@ -278,8 +278,7 @@ void GamePlayScene::Initialize(EngineBase *engine) {
 
   // 雲海と、雲海を動かす出来事
   cloudSea_ = std::make_unique<CloudSea>();
-  cloudSea_->Initialize(engine_->GetCloudSeaRenderer(),
-                        "resources/sea_of_clouds/sea_of_clouds.png");
+  cloudSea_->Initialize(engine_->GetCloudSeaRenderer());
   cloudSeaEvents_ = std::make_unique<CloudSeaEvents>();
   cloudSeaEvents_->Initialize();
 
@@ -1608,6 +1607,10 @@ void GamePlayScene::DrawEditorUI() {
       mCurrentGizmoMode = ImGuizmo::WORLD;
     }
   }
+  // 雲海の描画に GPU でかかった時間（Play 中も見えるようにここに出す）
+  ImGui::SameLine();
+  ImGui::Text("  Cloud Sea GPU %.2f ms",
+              engine_->GetCloudSeaRenderer()->GetGpuMilliseconds());
   ImGui::End();
 
   if (!isPlayMode_) {
@@ -1790,9 +1793,6 @@ void GamePlayScene::Draw3D() {
     engine_->GetSkyboxRenderer()->Begin();
     skybox_->Draw();
 
-    // 雲海は空のあと、ほかの物の前に描く
-    cloudSea_->Draw();
-
     // 通常3Dへ戻す
     engine_->GetObject3dRenderer()->Begin();
   }
@@ -1818,6 +1818,12 @@ void GamePlayScene::Draw3D() {
 
   // アクター群（弾など）の描画
   ActorManager::GetInstance()->Draw3D();
+
+  // 雲海は不透明な物のあと、パーティクルなど半透明の物の前に描く（深度を読んで物の手前まで重ねる）
+  if (skybox_) {
+    cloudSea_->Draw();
+    engine_->GetObject3dRenderer()->Begin();
+  }
 
   // デバッグ用の線を描画
   const ICamera *activeCamera = GetActiveCamera();

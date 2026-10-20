@@ -141,6 +141,26 @@ public:
   void TransitionResource(ID3D12Resource* resource, D3D12_RESOURCE_STATES newState);
 
   /// <summary>
+  /// 3D を描く先（HDR の画面）の RTV を覚える。3D の描画を始めるときに設定する
+  /// </summary>
+  void SetSceneRenderTarget(D3D12_CPU_DESCRIPTOR_HANDLE rtvHandle) {
+    sceneRtvHandle_ = rtvHandle;
+  }
+  D3D12_CPU_DESCRIPTOR_HANDLE GetSceneRenderTarget() const {
+    return sceneRtvHandle_;
+  }
+
+  /// <summary>
+  /// 3D の途中で深度をシェーダーから読める状態にする（描画先は 3D の画面だけにする）
+  /// </summary>
+  void BeginSceneDepthRead();
+
+  /// <summary>
+  /// 深度を書き込める状態に戻し、描画先を 3D の画面と深度に戻す
+  /// </summary>
+  void EndSceneDepthRead();
+
+  /// <summary>
   /// リソースの初期状態を名簿に手動登録する
   /// </summary>
   void RegisterResourceState(ID3D12Resource* resource, D3D12_RESOURCE_STATES initialState) {
@@ -344,6 +364,9 @@ private:
   std::chrono::steady_clock::time_point reference_;
 
   bool set60FPS = false;
+
+  // 3D を描く先（HDR の画面）の RTV
+  D3D12_CPU_DESCRIPTOR_HANDLE sceneRtvHandle_{};
 
   // 全てのリソースの現在の状態を監視する名簿
   std::unordered_map<ID3D12Resource*, D3D12_RESOURCE_STATES> resourceStates_;

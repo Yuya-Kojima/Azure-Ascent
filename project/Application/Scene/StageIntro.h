@@ -297,7 +297,7 @@ private:
   float roarBodyLift_ = 0.25f;
   float launchBodyLift_ = 0.15f;
   float roarShake_ = 0.07f;      // 吠える間のカメラの揺れの大きさ
-  Vector3 puffColor_ = {0.95f, 0.95f, 1.0f}; // 雲の粒の色
+  Vector3 puffColor_ = {0.30f, 0.30f, 0.33f}; // 雲の粒の色（HDR）
 
   //===========================
   // 調整値：雲海の出来事

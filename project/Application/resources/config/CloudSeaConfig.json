@@ -1,15 +1,24 @@
 {
     "amplitude": 3.0,
     "blobSize": 30.0,
+    "brightness": 1.0,
     "color": [
         0.16,
         0.16,
         0.17
     ],
+    "density": 1.6,
+    "detailSize": 6.0,
+    "detailStrength": 0.35,
+    "edgeSoftness": 0.8,
+    "forwardScatter": 0.0,
     "height": -15.0,
+    "jitter": 1.0,
+    "noiseSize": 40.0,
+    "powder": 1.0,
     "rimPower": 3.0,
-    "rimStrength": 0.0,
-    "textureScale": 0.01,
+    "rimStrength": 0.15,
+    "thickness": 25.0,
     "valleyDarkness": 0.6,
     "wind": [
         0.3,

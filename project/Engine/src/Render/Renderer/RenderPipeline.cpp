@@ -39,6 +39,8 @@ void RenderPipeline::Begin3DPass(Dx12Core* dx12Core) {
   D3D12_CPU_DESCRIPTOR_HANDLE dsvHandle = dx12Core->GetDsvCpuDescriptorHandle();
   
   commandList->OMSetRenderTargets(1, &rtvHandle, false, &dsvHandle);
+  // 3D の途中で深度を読む描画（雲海）が、描画先を戻せるように覚えておく
+  dx12Core->SetSceneRenderTarget(rtvHandle);
   
   // 画面クリア
   mainRenderTexture_->Clear(dx12Core);
