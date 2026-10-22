@@ -33,10 +33,13 @@ void SrvManager::Initialize(Dx12Core *dx12Core) {
 
 SrvHandle SrvManager::Allocate() {
 
-  // 空きも新しい番号もなければ、どの構成でもログを出して止める
+  // 空きも新しい番号もなければ、使用数と上限をログとメッセージの窓に出して止める
   if (freeIndices_.empty() && useIndex_ >= kMaxSRVCount) {
-    Logger::Log(std::format("Out of SRV descriptors (used {} / capacity {})\n",
-                            usedCount_, kMaxSRVCount));
+    const std::string message =
+        std::format("Out of SRV descriptors (used {} / capacity {})\n",
+                    usedCount_, kMaxSRVCount);
+    Logger::Log(message);
+    MessageBoxA(nullptr, message.c_str(), "SRV Error", MB_OK | MB_ICONERROR);
     std::abort();
   }
 
