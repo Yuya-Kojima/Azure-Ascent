@@ -507,6 +507,11 @@ void Game::DrawWorldSettingsUI() {
 #ifdef USE_IMGUI
   ImGui::Begin("World Settings");
   
+  // SRV ヒープの番号の使用数・これまでの最大・上限
+  ImGui::Text("SRV  Used %u / Peak %u / Capacity %u",
+              srvManager_->GetUsedCount(), srvManager_->GetPeakCount(),
+              srvManager_->GetCapacity());
+
   if (ImGui::CollapsingHeader("Lighting", ImGuiTreeNodeFlags_DefaultOpen)) {
     auto* renderer = GetObject3dRenderer();
     if (renderer) {

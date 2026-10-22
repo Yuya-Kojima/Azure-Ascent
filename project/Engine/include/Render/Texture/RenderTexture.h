@@ -34,7 +34,7 @@ public:
   void TransitionToShaderResource(Dx12Core* dx12Core);
 
   // Getter
-  uint32_t GetSrvIndex() const { return srvIndex_; }
+  uint32_t GetSrvIndex() const { return srv_.Index(); }
   uint32_t GetRtvIndex() const { return rtvIndex_; }
   D3D12_CPU_DESCRIPTOR_HANDLE GetRtvHandle() const { return rtvHandle_; }
   ID3D12Resource* GetResource() const { return resource_.Get(); }
@@ -42,7 +42,7 @@ public:
 private:
   Microsoft::WRL::ComPtr<ID3D12Resource> resource_;
   uint32_t rtvIndex_ = 0;
-  uint32_t srvIndex_ = 0;
+  SrvHandle srv_;
   D3D12_CPU_DESCRIPTOR_HANDLE rtvHandle_{};
   Vector4 clearColor_;
 };

@@ -136,9 +136,9 @@ void EngineBase::Finalize() {
   input_.reset();
   object3dRenderer_.reset();
   spriteRenderer_.reset();
-  srvManager_.reset();
   skyboxRenderer_.reset();
   cloudSeaRenderer_.reset();
+  srvManager_.reset();
 
   dx12Core_.reset();
 

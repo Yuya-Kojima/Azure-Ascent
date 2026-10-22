@@ -25,7 +25,7 @@ void RenderTexture::Initialize(Dx12Core *dx12Core, SrvManager *srvManager,
                                                 rtvHandle_);
 
   // SRVの生成
-  srvIndex_ = srvManager->Allocate();
+  srv_ = srvManager->Allocate();
   D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc{};
   srvDesc.Format = format;
   srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
@@ -33,7 +33,7 @@ void RenderTexture::Initialize(Dx12Core *dx12Core, SrvManager *srvManager,
   srvDesc.Texture2D.MipLevels = 1;
 
   dx12Core->GetDevice()->CreateShaderResourceView(
-      resource_.Get(), &srvDesc, srvManager->GetCPUDescriptorHandle(srvIndex_));
+      resource_.Get(), &srvDesc, srvManager->GetCPUDescriptorHandle(srv_.Index()));
 }
 
 void RenderTexture::Clear(Dx12Core *dx12Core) {

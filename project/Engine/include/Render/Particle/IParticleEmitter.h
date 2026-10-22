@@ -105,7 +105,7 @@ public:
     ID3D12Resource* GetGPUParticleResource() const { return gpuParticleResource_.Get(); }
     ID3D12Resource* GetFreeListIndexResource() const { return freeListIndexResource_.Get(); }
     ID3D12Resource* GetFreeListResource() const { return freeListResource_.Get(); }
-    uint32_t GetGPUParticleUavIndex() const { return gpuParticleUavIndex_; }
+    uint32_t GetGPUParticleUavIndex() const { return gpuParticleUav_.Index(); }
 
     virtual void Update(const Matrix4x4& viewMatrix, const Matrix4x4& projectionMatrix) = 0;
     virtual void Draw();
@@ -144,8 +144,8 @@ protected:
     EmitterData* emitterData_ = nullptr;
 
     Microsoft::WRL::ComPtr<ID3D12Resource> gpuParticleResource_;
-    uint32_t gpuParticleSrvIndex_ = 0;
-    uint32_t gpuParticleUavIndex_ = 0;
+    SrvHandle gpuParticleSrv_;
+    SrvHandle gpuParticleUav_;
 
     Microsoft::WRL::ComPtr<ID3D12Resource> freeListIndexResource_;
     Microsoft::WRL::ComPtr<ID3D12Resource> freeListResource_;

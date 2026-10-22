@@ -26,8 +26,8 @@ void RenderPipeline::Initialize(Dx12Core* dx12Core, SrvManager* srvManager) {
   }
 
   // DepthTextureのSRV作成
-  depthTextureSrvIndex_ = srvManager->Allocate();
-  srvManager->CreateSRVforDepth(depthTextureSrvIndex_, dx12Core->GetDepthStencilResource());
+  depthTextureSrv_ = srvManager->Allocate();
+  srvManager->CreateSRVforDepth(depthTextureSrv_.Index(), dx12Core->GetDepthStencilResource());
 }
 
 void RenderPipeline::Begin3DPass(Dx12Core* dx12Core) {
@@ -89,7 +89,7 @@ void RenderPipeline::DrawPostProcess(Dx12Core* dx12Core, SrvManager* srvManager,
     // DepthBufferをSRVとして読み取るために状態遷移
     dx12Core->TransitionResource(dx12Core->GetDepthStencilResource(), D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
 
-    currentScenePostProcess->Draw(mainRenderTexture_->GetSrvIndex(), depthTextureSrvIndex_, srvManager);
+    currentScenePostProcess->Draw(mainRenderTexture_->GetSrvIndex(), depthTextureSrv_.Index(), srvManager);
     
     // DepthBufferを元のDEPTH_WRITEに戻す
     dx12Core->TransitionResource(dx12Core->GetDepthStencilResource(), D3D12_RESOURCE_STATE_DEPTH_WRITE);

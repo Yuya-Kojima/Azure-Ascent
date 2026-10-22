@@ -47,7 +47,7 @@ void CloudNoise::CreateTexture(NoiseTexture &texture, uint32_t size,
                                    D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
 
   // 読む用（ピクセルシェーダー）
-  texture.srvIndex = srvManager_->Allocate();
+  texture.srv = srvManager_->Allocate();
   D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc{};
   srvDesc.Format = resourceDesc.Format;
   srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
@@ -60,10 +60,10 @@ void CloudNoise::CreateTexture(NoiseTexture &texture, uint32_t size,
   }
   device->CreateShaderResourceView(
       texture.resource.Get(), &srvDesc,
-      srvManager_->GetCPUDescriptorHandle(texture.srvIndex));
+      srvManager_->GetCPUDescriptorHandle(texture.srv.Index()));
 
   // 書く用（計算シェーダー）
-  texture.uavIndex = srvManager_->Allocate();
+  texture.uav = srvManager_->Allocate();
   D3D12_UNORDERED_ACCESS_VIEW_DESC uavDesc{};
   uavDesc.Format = resourceDesc.Format;
   if (isVolume) {
@@ -74,7 +74,7 @@ void CloudNoise::CreateTexture(NoiseTexture &texture, uint32_t size,
   }
   device->CreateUnorderedAccessView(
       texture.resource.Get(), nullptr, &uavDesc,
-      srvManager_->GetCPUDescriptorHandle(texture.uavIndex));
+      srvManager_->GetCPUDescriptorHandle(texture.uav.Index()));
 }
 
 void CloudNoise::CreateRootSignature() {
@@ -162,7 +162,7 @@ void CloudNoise::Dispatch(const NoiseTexture &texture, uint32_t kind,
   commandList->SetComputeRoot32BitConstants(
       0, sizeof(ParamsForGPU) / sizeof(uint32_t), &params, 0);
   commandList->SetComputeRootDescriptorTable(
-      1, srvManager_->GetGPUDescriptorHandle(texture.uavIndex));
+      1, srvManager_->GetGPUDescriptorHandle(texture.uav.Index()));
 
   const UINT groups = (texture.size + groupSize - 1) / groupSize;
   commandList->Dispatch(groups, groups, isVolume ? groups : 1);
@@ -192,13 +192,13 @@ void CloudNoise::GenerateIfNeeded() {
 }
 
 D3D12_GPU_DESCRIPTOR_HANDLE CloudNoise::GetBaseSrvHandle() const {
-  return srvManager_->GetGPUDescriptorHandle(base_.srvIndex);
+  return srvManager_->GetGPUDescriptorHandle(base_.srv.Index());
 }
 
 D3D12_GPU_DESCRIPTOR_HANDLE CloudNoise::GetDetailSrvHandle() const {
-  return srvManager_->GetGPUDescriptorHandle(detail_.srvIndex);
+  return srvManager_->GetGPUDescriptorHandle(detail_.srv.Index());
 }
 
 D3D12_GPU_DESCRIPTOR_HANDLE CloudNoise::GetTopSrvHandle() const {
-  return srvManager_->GetGPUDescriptorHandle(top_.srvIndex);
+  return srvManager_->GetGPUDescriptorHandle(top_.srv.Index());
 }

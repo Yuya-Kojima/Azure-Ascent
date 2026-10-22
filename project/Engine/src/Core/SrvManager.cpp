@@ -1,9 +1,26 @@
 #include "Core/SrvManager.h"
+#include "Debug/Logger.h"
+#include <algorithm>
+#include <cassert>
+#include <cstdlib>
+#include <format>
 
 const uint32_t SrvManager::kMaxSRVCount = 2048;
 
+SrvManager::~SrvManager() {
+  // まだ返されていない番号があれば、その数をログに出す
+  if (usedCount_ != 0) {
+    Logger::Log(std::format(
+        "SrvManager destroyed with {} SRV descriptors still allocated\n",
+        usedCount_));
+  }
+}
+
 void SrvManager::Initialize(Dx12Core *dx12Core) {
   dx12Core_ = dx12Core;
+
+  isAllocated_.assign(kMaxSRVCount, false);
+  freeIndices_.reserve(kMaxSRVCount);
 
   // ディスクリプタヒープの生成
   descriptorHeap = dx12Core_->CreateDescriptorHeap(
@@ -14,18 +31,41 @@ void SrvManager::Initialize(Dx12Core *dx12Core) {
       D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
 }
 
-uint32_t SrvManager::Allocate() {
+SrvHandle SrvManager::Allocate() {
 
-  assert(useIndex_ < kMaxSRVCount);
+  // 空きも新しい番号もなければ、どの構成でもログを出して止める
+  if (freeIndices_.empty() && useIndex_ >= kMaxSRVCount) {
+    Logger::Log(std::format("Out of SRV descriptors (used {} / capacity {})\n",
+                            usedCount_, kMaxSRVCount));
+    std::abort();
+  }
 
-  // returnする番号を一旦記録しておく
-  int index = useIndex_;
+  uint32_t index = 0;
+  if (!freeIndices_.empty()) {
+    // 返された番号を使い回す
+    index = freeIndices_.back();
+    freeIndices_.pop_back();
+  } else {
+    // まだ使っていない番号を進める
+    index = useIndex_;
+    useIndex_++;
+  }
 
-  // 次回のために番号を1進める
-  useIndex_++;
+  isAllocated_[index] = true;
+  usedCount_++;
+  peakCount_ = (std::max)(peakCount_, usedCount_);
 
-  // 上で記録した番号をreturn
-  return index;
+  return SrvHandle(this, index);
+}
+
+void SrvManager::Free(uint32_t index) {
+  // 範囲外と二重返却を検出する
+  assert(index < useIndex_);
+  assert(isAllocated_[index]);
+
+  isAllocated_[index] = false;
+  freeIndices_.push_back(index);
+  usedCount_--;
 }
 
 D3D12_CPU_DESCRIPTOR_HANDLE SrvManager::GetCPUDescriptorHandle(uint32_t index) {
@@ -126,5 +166,3 @@ void SrvManager::SetGraphicsRootDescriptorTable(UINT rootParameterIndex,
   dx12Core_->GetCommandList()->SetGraphicsRootDescriptorTable(
       rootParameterIndex, GetGPUDescriptorHandle(srvIndex));
 }
-
-bool SrvManager::CanAllocate() { return useIndex_ < kMaxSRVCount; }

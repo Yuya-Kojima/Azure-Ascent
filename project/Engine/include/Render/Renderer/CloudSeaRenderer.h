@@ -1,5 +1,6 @@
 #pragma once
 #include "Core/Dx12Core.h"
+#include "Core/SrvHandle.h"
 #include "Debug/GpuTimer.h"
 #include "Render/CloudSea/CloudNoise.h"
 #include "Render/Texture/RenderTexture.h"
@@ -58,7 +59,7 @@ private:
 
   CloudNoise noise_;
   GpuTimer gpuTimer_;
-  uint32_t depthSrvIndex_ = 0;
+  SrvHandle depthSrv_;
   // 半分の解像度で描いた雲（rgb: 雲の光、a: 後ろの光が残る割合）
   std::unique_ptr<RenderTexture> cloudTexture_;
   uint32_t cloudWidth_ = 0;
