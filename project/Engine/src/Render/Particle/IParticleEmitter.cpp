@@ -28,14 +28,14 @@ void IParticleEmitter::CreateInstancingResource() {
     freeListIndexResource_ = dx12Core->CreateUAVBufferResource(sizeof(int32_t));
     freeListResource_ = dx12Core->CreateUAVBufferResource(sizeof(uint32_t) * kNumMaxInstance_);
 
-    gpuParticleSrvIndex_ = srvManager->Allocate();
+    gpuParticleSrv_ = srvManager->Allocate();
     srvManager->CreateSRVforStructuredBuffer(
-        gpuParticleSrvIndex_, gpuParticleResource_.Get(),
+        gpuParticleSrv_.Index(), gpuParticleResource_.Get(),
         kNumMaxInstance_, sizeof(ParticleCS));
 
-    gpuParticleUavIndex_ = srvManager->Allocate();
+    gpuParticleUav_ = srvManager->Allocate();
     srvManager->CreateUAVforStructuredBuffer(
-        gpuParticleUavIndex_, gpuParticleResource_.Get(),
+        gpuParticleUav_.Index(), gpuParticleResource_.Get(),
         kNumMaxInstance_, sizeof(ParticleCS));
 
     emitterResource_ = dx12Core->CreateBufferResource(sizeof(EmitterData));
@@ -155,7 +155,7 @@ void IParticleEmitter::Draw() {
 
     // 1: GPU Particle SRV (自身が持つSRVを使用)
     D3D12_GPU_DESCRIPTOR_HANDLE particleSrvHandleGPU =
-        srvManager->GetGPUDescriptorHandle(gpuParticleSrvIndex_);
+        srvManager->GetGPUDescriptorHandle(gpuParticleSrv_.Index());
     commandList->SetGraphicsRootDescriptorTable(1, particleSrvHandleGPU);
 
     // 2: Texture SRV

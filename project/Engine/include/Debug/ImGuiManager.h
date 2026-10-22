@@ -40,4 +40,6 @@ public:
 private:
   Dx12Core *dx12Core_ = nullptr;
   ID3D12DescriptorHeap *srvHeap_ = nullptr;
+  // フォントのテクスチャの SRV の番号
+  SrvHandle fontSrv_;
 };

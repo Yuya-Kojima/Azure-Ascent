@@ -15,7 +15,8 @@ SkinCluster CreateSkinCluster(Dx12Core* dx12Core, SrvManager* srvManager, const 
     skinCluster.mappedPalette = { mappedPalette, skeleton.joints.size() };
 
     // 2. palette用のsrvを作成 (StructuredBuffer)
-    uint32_t srvIndex = srvManager->Allocate();
+    skinCluster.paletteSrv = srvManager->Allocate();
+    uint32_t srvIndex = skinCluster.paletteSrv.Index();
     skinCluster.paletteSrvHandle.first = srvManager->GetCPUDescriptorHandle(srvIndex);
     skinCluster.paletteSrvHandle.second = srvManager->GetGPUDescriptorHandle(srvIndex);
     srvManager->CreateSRVforStructuredBuffer(srvIndex, skinCluster.paletteResource.Get(), static_cast<UINT>(skeleton.joints.size()), sizeof(WellForGPU));
@@ -28,7 +29,8 @@ SkinCluster CreateSkinCluster(Dx12Core* dx12Core, SrvManager* srvManager, const 
     skinCluster.mappedInfluence = { mappedInfluence, modelData.vertices.size() };
 
     // 4. Influence用のSRVを作成
-    uint32_t influenceSrvIndex = srvManager->Allocate();
+    skinCluster.influenceSrv = srvManager->Allocate();
+    uint32_t influenceSrvIndex = skinCluster.influenceSrv.Index();
     skinCluster.influenceSrvHandle.first = srvManager->GetCPUDescriptorHandle(influenceSrvIndex);
     skinCluster.influenceSrvHandle.second = srvManager->GetGPUDescriptorHandle(influenceSrvIndex);
     srvManager->CreateSRVforStructuredBuffer(influenceSrvIndex, skinCluster.influenceResource.Get(), static_cast<UINT>(modelData.vertices.size()), sizeof(VertexInfluence));
@@ -60,7 +62,8 @@ SkinCluster CreateSkinCluster(Dx12Core* dx12Core, SrvManager* srvManager, const 
     }
 
     // 7. 入力頂点用のSRVを作成 (ModelのVertexResourceを利用)
-    uint32_t inputVertexSrvIndex = srvManager->Allocate();
+    skinCluster.inputVertexSrv = srvManager->Allocate();
+    uint32_t inputVertexSrvIndex = skinCluster.inputVertexSrv.Index();
     skinCluster.inputVertexSrvHandle.first = srvManager->GetCPUDescriptorHandle(inputVertexSrvIndex);
     skinCluster.inputVertexSrvHandle.second = srvManager->GetGPUDescriptorHandle(inputVertexSrvIndex);
     srvManager->CreateSRVforStructuredBuffer(inputVertexSrvIndex, model->GetVertexResource(), static_cast<UINT>(modelData.vertices.size()), sizeof(Model::VertexData));
@@ -69,7 +72,8 @@ SkinCluster CreateSkinCluster(Dx12Core* dx12Core, SrvManager* srvManager, const 
     skinCluster.skinnedVertexResource = dx12Core->CreateUAVBufferResource(sizeof(Model::VertexData) * modelData.vertices.size());
 
     // 9. 出力頂点用のUAVを作成
-    uint32_t skinnedVertexUavIndex = srvManager->Allocate();
+    skinCluster.skinnedVertexUav = srvManager->Allocate();
+    uint32_t skinnedVertexUavIndex = skinCluster.skinnedVertexUav.Index();
     skinCluster.skinnedVertexUavHandle.first = srvManager->GetCPUDescriptorHandle(skinnedVertexUavIndex);
     skinCluster.skinnedVertexUavHandle.second = srvManager->GetGPUDescriptorHandle(skinnedVertexUavIndex);
     srvManager->CreateUAVforStructuredBuffer(skinnedVertexUavIndex, skinCluster.skinnedVertexResource.Get(), static_cast<UINT>(modelData.vertices.size()), sizeof(Model::VertexData));

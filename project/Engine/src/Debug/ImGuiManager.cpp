@@ -68,7 +68,8 @@ void ImGuiManager::Initialize([[maybe_unused]] WindowSystem *winApp,
 
   ImGui_ImplWin32_Init(winApp->GetHwnd());
 
-  uint32_t srvIndex = srvManager->Allocate();
+  fontSrv_ = srvManager->Allocate();
+  uint32_t srvIndex = fontSrv_.Index();
 
   D3D12_CPU_DESCRIPTOR_HANDLE cpuHandle =
       srvManager->GetCPUDescriptorHandle(srvIndex);
@@ -96,6 +97,8 @@ void ImGuiManager::Finalize() {
   ImGui_ImplDX12_Shutdown();
   ImGui_ImplWin32_Shutdown();
   ImGui::DestroyContext();
+
+  fontSrv_.Reset();
 
 #endif // USE_IMGUI
 }

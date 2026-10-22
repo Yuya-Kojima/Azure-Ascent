@@ -1,5 +1,6 @@
 #pragma once
 #include "Core/Dx12Core.h"
+#include "Core/SrvHandle.h"
 #include <cstdint>
 #include <wrl.h>
 
@@ -27,8 +28,8 @@ private:
   struct NoiseTexture {
     Microsoft::WRL::ComPtr<ID3D12Resource> resource;
     uint32_t size = 0;
-    uint32_t srvIndex = 0;
-    uint32_t uavIndex = 0;
+    SrvHandle srv;
+    SrvHandle uav;
   };
 
   // 作り方の指示（シェーダーの NoiseParams と同じ並び）

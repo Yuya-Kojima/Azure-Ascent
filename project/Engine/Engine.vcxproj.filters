@@ -39,6 +39,9 @@
     <ClCompile Include="src\Core\Dx12Core.cpp">
       <Filter>ソース ファイル</Filter>
     </ClCompile>
+    <ClCompile Include="src\Core\SrvHandle.cpp">
+      <Filter>ソース ファイル</Filter>
+    </ClCompile>
     <ClCompile Include="src\Core\SrvManager.cpp">
       <Filter>ソース ファイル</Filter>
     </ClCompile>
@@ -243,6 +246,9 @@
       <Filter>ヘッダー ファイル</Filter>
     </ClInclude>
     <ClInclude Include="include\Core\Dx12Core.h">
+      <Filter>ヘッダー ファイル</Filter>
+    </ClInclude>
+    <ClInclude Include="include\Core\SrvHandle.h">
       <Filter>ヘッダー ファイル</Filter>
     </ClInclude>
     <ClInclude Include="include\Core\SrvManager.h">

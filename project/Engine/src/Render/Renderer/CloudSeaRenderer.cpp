@@ -14,8 +14,8 @@ void CloudSeaRenderer::Initialize(Dx12Core *dx12Core,
   noise_.Initialize(dx12Core_, srvManager_);
   gpuTimer_.Initialize(dx12Core_);
 
-  depthSrvIndex_ = srvManager_->Allocate();
-  srvManager_->CreateSRVforDepth(depthSrvIndex_,
+  depthSrv_ = srvManager_->Allocate();
+  srvManager_->CreateSRVforDepth(depthSrv_.Index(),
                                  dx12Core_->GetDepthStencilResource());
 
   // 半分の解像度の雲のテクスチャ（何もない所は 雲の光 0・後ろが全部残る）
@@ -242,7 +242,7 @@ void CloudSeaRenderer::Begin(D3D12_GPU_VIRTUAL_ADDRESS paramsAddress) {
       2, object3dRenderer_->GetFogResource()->GetGPUVirtualAddress());
 
   commandList->SetGraphicsRootDescriptorTable(
-      3, srvManager_->GetGPUDescriptorHandle(depthSrvIndex_));
+      3, srvManager_->GetGPUDescriptorHandle(depthSrv_.Index()));
   commandList->SetGraphicsRootDescriptorTable(4, noise_.GetBaseSrvHandle());
   commandList->SetGraphicsRootDescriptorTable(5, noise_.GetDetailSrvHandle());
   commandList->SetGraphicsRootDescriptorTable(6, noise_.GetTopSrvHandle());

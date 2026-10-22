@@ -1,5 +1,6 @@
 #pragma once
 #include "Core/Dx12Core.h"
+#include "Core/SrvHandle.h"
 #include "DirectXTex.h"
 #include <d3d12.h>
 #include <string>
@@ -54,7 +55,7 @@ private:
   struct TextureData {
     DirectX::TexMetadata metadata;
     Microsoft::WRL::ComPtr<ID3D12Resource> resource;
-    uint32_t srvIndex;
+    SrvHandle srv;
     D3D12_CPU_DESCRIPTOR_HANDLE srvHandleCPU;
     D3D12_GPU_DESCRIPTOR_HANDLE srvHandleGPU;
   };

@@ -38,8 +38,6 @@ void TextureManager::LoadTexture(const std::string &filePath) {
     return;
   }
 
-  assert(srvManager_->CanAllocate());
-
   DirectX::ScratchImage image{};
   DirectX::ScratchImage mipImages{};
   std::wstring filePathW = StringUtil::ConvertString(filePath);
@@ -96,11 +94,11 @@ void TextureManager::LoadTexture(const std::string &filePath) {
   intermediateResources_.push_back(
       dx12Core_->UploadTextureData(textureData.resource, mipImages));
 
-  textureData.srvIndex = srvManager_->Allocate();
+  textureData.srv = srvManager_->Allocate();
   textureData.srvHandleCPU =
-      srvManager_->GetCPUDescriptorHandle(textureData.srvIndex);
+      srvManager_->GetCPUDescriptorHandle(textureData.srv.Index());
   textureData.srvHandleGPU =
-      srvManager_->GetGPUDescriptorHandle(textureData.srvIndex);
+      srvManager_->GetGPUDescriptorHandle(textureData.srv.Index());
 
   D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc{};
   srvDesc.Format = textureData.metadata.format;
@@ -132,8 +130,6 @@ void TextureManager::LoadTextureFromMemory(const std::string &name, const uint8_
     return;
   }
 
-  assert(srvManager_->CanAllocate());
-
   DirectX::ScratchImage image{};
   HRESULT hr = image.Initialize2D(DXGI_FORMAT_R8G8B8A8_UNORM, width, height, 1, 1);
   assert(SUCCEEDED(hr));
@@ -155,9 +151,9 @@ void TextureManager::LoadTextureFromMemory(const std::string &name, const uint8_
   intermediateResources_.push_back(
       dx12Core_->UploadTextureData(textureData.resource, image));
 
-  textureData.srvIndex = srvManager_->Allocate();
-  textureData.srvHandleCPU = srvManager_->GetCPUDescriptorHandle(textureData.srvIndex);
-  textureData.srvHandleGPU = srvManager_->GetGPUDescriptorHandle(textureData.srvIndex);
+  textureData.srv = srvManager_->Allocate();
+  textureData.srvHandleCPU = srvManager_->GetCPUDescriptorHandle(textureData.srv.Index());
+  textureData.srvHandleGPU = srvManager_->GetGPUDescriptorHandle(textureData.srv.Index());
 
   D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc{};
   srvDesc.Format = textureData.metadata.format;
@@ -209,5 +205,5 @@ uint32_t TextureManager::GetSrvIndex(const std::string &filePath) const {
   assert(textureDatas.contains(filePath));
 
   const TextureData &textureData = textureDatas.at(filePath);
-  return textureData.srvIndex;
+  return textureData.srv.Index();
 }
