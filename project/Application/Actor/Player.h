@@ -28,6 +28,8 @@ public:
   void UpdateTransform() override;
   void ForceSnapToCamera();
   void TakeDamage(int damage);
+  // 無敵時間を無視して HP を 0 にする
+  void Kill();
   void Draw3D() override;
   void Draw2D() override;
   void OnCollision(class Collider *other) override;
@@ -74,6 +76,16 @@ public:
   /// 羽ばたきに重ねる姿勢（開始演出の吠える姿など）。毎フレーム渡す
   /// </summary>
   void SetWingGesture(const DragonWingAnimator::Gesture &gesture);
+
+  /// <summary>
+  /// 片方の翼が今打ち下ろしている強さ（0〜1）。ドラゴンのモデルがなければ 0
+  /// </summary>
+  float GetWingPush(bool isRight) const;
+
+  /// <summary>
+  /// 片方の翼の付け根を今上げている角度（度）。ドラゴンのモデルがなければ 0
+  /// </summary>
+  float GetWingRootAngle(bool isRight) const;
   void SetHitStopCallback(std::function<void(int)> callback) {
     hitStopCallback_ = callback;
   }

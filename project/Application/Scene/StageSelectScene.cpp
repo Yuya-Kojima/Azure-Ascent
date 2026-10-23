@@ -11,6 +11,7 @@
 #include "Renderer/Object3dRenderer.h"
 #include "Renderer/SpriteRenderer.h"
 #include "Scene/SceneManager.h"
+#include "Scene/StageSelectReturn.h"
 #include "Texture/TextureManager.h"
 
 #ifdef USE_IMGUI
@@ -78,7 +79,21 @@ void StageSelectScene::Initialize(EngineBase *engine) {
                                     "resources/Sounds/ui_decide.wav");
   SoundManager::GetInstance()->Load("title_bgm",
                                     "resources/Sounds/title_bgm.mp3");
-  SoundManager::GetInstance()->PlayBGM("title_bgm");
+
+  // ゲームオーバーから戻ったときは、倒れたドラゴンが起き上がる演出から始め、BGM は UI が出てから流す
+  returnSequence_ = std::make_unique<StageSelectReturn>();
+  returnSequence_->Initialize(engine_->GetSpriteRenderer());
+  GameManager *gameManager = GameManager::GetInstance();
+  if (gameManager->IsReturningFromGameOver()) {
+    gameManager->ClearGameOverReturn();
+    gloom_ = 1.0f;
+    isBgmPending_ = true;
+    returnSequence_->Start(dragonPos_, dragonRot_, cameraPos_, cameraRot_,
+                           gameManager->GetGameOverProgress());
+    UIManager::GetInstance()->SetGlobalAlpha(0.0f);
+  } else {
+    SoundManager::GetInstance()->PlayBGM("title_bgm");
+  }
 }
 
 void StageSelectScene::Finalize() {}
@@ -88,11 +103,11 @@ void StageSelectScene::Update() {
   // Sound更新
   SoundManager::GetInstance()->Update();
 
-  // スプライト（UI）の更新。出撃演出中はメニューを操作させない
-  Input *input =
-      GameManager::GetInstance()->IsGlobalPlayMode() && !isLaunching_
-          ? engine_->GetInputManager()
-          : nullptr;
+  // スプライト（UI）の更新。出撃演出中と、ゲームオーバーから戻ったときの演出中はメニューを操作させない
+  Input *input = GameManager::GetInstance()->IsGlobalPlayMode() &&
+                         !isLaunching_ && !returnSequence_->IsActive()
+                     ? engine_->GetInputManager()
+                     : nullptr;
   UIManager::GetInstance()->Update(input);
 
   // デバッグカメラ切り替え
@@ -104,8 +119,14 @@ void StageSelectScene::Update() {
     }
   }
 
+  // ゲームオーバーから戻ったときの演出と UI
+  if (returnSequence_->IsActive()) {
+    UpdateReturn();
+  }
+
   // 決定キー（エンターキーまたはパッドのAボタン）の処理
-  if (GameManager::GetInstance()->IsGlobalPlayMode() && !isLaunching_) {
+  if (GameManager::GetInstance()->IsGlobalPlayMode() && !isLaunching_ &&
+      !returnSequence_->IsActive()) {
     if (engine_->GetInputManager()->IsTriggerKey(DIK_RETURN) ||
         engine_->GetInputManager()->IsPadTrigger(PadButton::A)) {
       SoundManager::GetInstance()->PlaySE("ui_decide");
@@ -140,6 +161,11 @@ void StageSelectScene::Update() {
   ApplyBaseLayout();
   if (isLaunching_) {
     UpdateLaunch();
+  } else if (returnSequence_->IsDrivingDragon()) {
+    dragonObject_->SetTranslation(returnSequence_->GetDragonPosition());
+    dragonObject_->SetRotation(returnSequence_->GetDragonRotation());
+    camera_->SetTranslate(returnSequence_->GetCameraPosition());
+    camera_->SetRotate(returnSequence_->GetCameraRotation());
   }
 
   //=======================
@@ -164,25 +190,63 @@ void StageSelectScene::Update() {
   UpdateSky(activeCamera);
   groundObject_->Update();
 
-  // 羽ばたき：待機 → かがむ → 飛び立ち
-  if (!isLaunching_) {
+  // 羽ばたき：待機 → かがむ → 飛び立ち。戻ったときの演出の間は演出が決める
+  if (!isLaunching_ && returnSequence_->IsDrivingDragon()) {
+    dragonModel_->SetWingState(returnSequence_->GetWingState());
+  } else if (!isLaunching_) {
     dragonModel_->SetWingState(idleWing_);
   } else if (launchTimer_ < crouchSec_ + crouchHoldSec_) {
     dragonModel_->SetWingState(crouchWing_);
   } else {
     dragonModel_->SetWingState(leapWing_);
   }
+  dragonModel_->GetWingAnimator().SetGesture(
+      returnSequence_->IsActive() ? returnSequence_->GetGesture()
+                                  : DragonWingAnimator::Gesture{});
   dragonModel_->Update(kWingDeltaTime_);
+}
+
+void StageSelectScene::UpdateReturn() {
+  Input *input = GameManager::GetInstance()->IsGlobalPlayMode() && !isLaunching_
+                     ? engine_->GetInputManager()
+                     : nullptr;
+  returnSequence_->Update(input);
+
+  if (isBgmPending_ && returnSequence_->IsMenuShown()) {
+    SoundManager::GetInstance()->PlayBGM("title_bgm");
+    isBgmPending_ = false;
+  }
+
+  switch (returnSequence_->ConsumeChoice()) {
+  case StageSelectReturn::Choice::Retry:
+    // 同じステージへ、いつもの出撃演出で飛び立つ
+    SoundManager::GetInstance()->PlaySE("ui_decide");
+    StartLaunch();
+    break;
+  case StageSelectReturn::Choice::Stay:
+    SoundManager::GetInstance()->PlaySE("ui_decide");
+    break;
+  case StageSelectReturn::Choice::None:
+    break;
+  }
+
+  // 拠点に残ると決めてカメラが戻りきったら、いつものメニューを出す
+  if (!returnSequence_->IsActive() && !isLaunching_) {
+    UIManager::GetInstance()->SetGlobalAlpha(1.0f);
+  }
 }
 
 void StageSelectScene::UpdateSky(const ICamera *activeCamera) {
   // タイトルの「昼」と同じ空。頭上に雲がかかるよう雲量はタイトルより多め
-  const Vector3 kZenith = {0.04f, 0.24f, 0.74f};
-  const Vector3 kHorizon = {0.36f, 0.62f, 0.96f};
+  // gloom_ の分だけ、ゲームオーバーから戻ったときの暗い空へ寄せる
+  const Vector3 kZenith =
+      Lerp(Vector3{0.04f, 0.24f, 0.74f}, gloomZenith_, gloom_);
+  const Vector3 kHorizon =
+      Lerp(Vector3{0.36f, 0.62f, 0.96f}, gloomHorizon_, gloom_);
   const Vector3 kSunDir = {-0.35f, 0.62f, 0.70f};
   const Vector3 kSunColor = {1.00f, 0.97f, 0.90f};
-  const float kSunIntensity = 0.70f;
-  const float kCloudAmount = 0.6f;
+  const float kSunIntensity = Lerp(0.70f, gloomSunIntensity_, gloom_);
+  const float kCloudAmount = Lerp(0.6f, gloomCloudAmount_, gloom_);
   const float kSkyTimeStep = 1.0f / 60.0f;
 
   skyTimer_ += kSkyTimeStep;
@@ -196,7 +260,7 @@ void StageSelectScene::UpdateSky(const ICamera *activeCamera) {
   if (auto *dl = engine_->GetObject3dRenderer()->GetDirectionalLightData()) {
     dl->direction = Normalize({0.55f, -0.45f, 0.65f});
     dl->color = {1.0f, 1.0f, 1.0f, 1.0f};
-    dl->intensity = 1.05f;
+    dl->intensity = Lerp(1.05f, gloomLightIntensity_, gloom_);
   }
 
   // フォグ：地面の端を地平線の色に溶かして、空との境目を消す
@@ -221,6 +285,9 @@ void StageSelectScene::ApplyBaseLayout() {
 }
 
 void StageSelectScene::StartLaunch() {
+  // 今映しているカメラから出撃演出を始める
+  launchCameraPos_ = camera_->GetTranslate();
+  launchCameraRot_ = camera_->GetRotate();
   isLaunching_ = true;
   launchTimer_ = 0.0f;
   hasRequestedSceneChange_ = false;
@@ -232,7 +299,9 @@ void StageSelectScene::UpdateLaunch() {
 
   // メニュー：薄くして消す
   float menuFade = (std::min)(launchTimer_ / menuFadeSec_, 1.0f);
-  UIManager::GetInstance()->SetGlobalAlpha(1.0f - menuFade);
+  // 消えているメニューは出さない
+  UIManager::GetInstance()->SetGlobalAlpha(
+      (std::min)(UIManager::GetInstance()->GetGlobalAlpha(), 1.0f - menuFade));
 
   //===========================
   // S1 かがむ：沈み込みながら機首を下げ、少し止まってためる
@@ -247,9 +316,10 @@ void StageSelectScene::UpdateLaunch() {
   float crouchTotalSec = crouchSec_ + crouchHoldSec_;
   float dollyEase =
       EaseInOutQuad((std::min)(launchTimer_ / crouchTotalSec, 1.0f));
-  Vector3 toDragon = Normalize(dragonPos_ - cameraPos_);
-  Vector3 cameraPos = cameraPos_ + toDragon * (dollyDistance_ * dollyEase);
-  Vector3 cameraRot = cameraRot_;
+  Vector3 toDragon = Normalize(dragonPos_ - launchCameraPos_);
+  Vector3 cameraPos =
+      launchCameraPos_ + toDragon * (dollyDistance_ * dollyEase);
+  Vector3 cameraRot = launchCameraRot_;
 
   float flightTime = launchTimer_ - crouchTotalSec;
   if (flightTime > 0.0f) {
@@ -279,8 +349,8 @@ void StageSelectScene::UpdateLaunch() {
     Vector3 lookTarget =
         dragonPos - Vector3{0.0f, lookBelowDragon_ * turnEase, 0.0f};
     Vector3 lookRot = LookRotation(cameraPos, lookTarget);
-    cameraRot.x = LerpAngle(cameraRot_.x, lookRot.x, turnEase);
-    cameraRot.y = LerpAngle(cameraRot_.y, lookRot.y, turnEase);
+    cameraRot.x = LerpAngle(launchCameraRot_.x, lookRot.x, turnEase);
+    cameraRot.y = LerpAngle(launchCameraRot_.y, lookRot.y, turnEase);
 
     // 跳ねた瞬間の揺れ：2つの周波数のsinでずらし、残り時間の2乗で弱める
     float shakeRemain =
@@ -327,6 +397,7 @@ void StageSelectScene::Draw3D() {
 void StageSelectScene::Draw2D() {
   // ここから下で2DオブジェクトのDrawを呼ぶ
   UIManager::GetInstance()->Draw();
+  returnSequence_->Draw();
 }
 
 void StageSelectScene::DrawEditorUI() {
@@ -370,6 +441,25 @@ void StageSelectScene::DrawEditorUI() {
   ImGui::DragFloat("Leap Shake", &leapShake_, 0.01f);
   ImGui::DragFloat("Leap Shake Sec", &leapShakeSec_, 0.01f, 0.01f, 2.0f);
   ImGui::DragFloat("Cloud Fade Sec", &cloudFadeSec_, 0.05f, 0.1f, 3.0f);
+
+  ImGui::SeparatorText("Game Over Return");
+  if (ImGui::Button("Replay Return") && !isLaunching_) {
+    const float kPreviewProgress = 0.62f;
+    gloom_ = 1.0f;
+    returnSequence_->Start(dragonPos_, dragonRot_, cameraPos_, cameraRot_,
+                           kPreviewProgress);
+    UIManager::GetInstance()->SetGlobalAlpha(0.0f);
+  }
+  ImGui::SliderFloat("Gloom", &gloom_, 0.0f, 1.0f);
+  ImGui::ColorEdit3("Gloom Zenith", &gloomZenith_.x);
+  ImGui::ColorEdit3("Gloom Horizon", &gloomHorizon_.x);
+  ImGui::DragFloat("Gloom Sun Intensity", &gloomSunIntensity_, 0.01f, 0.0f,
+                   2.0f);
+  ImGui::DragFloat("Gloom Cloud Amount", &gloomCloudAmount_, 0.01f, 0.0f,
+                   1.0f);
+  ImGui::DragFloat("Gloom Light Intensity", &gloomLightIntensity_, 0.01f,
+                   0.0f, 2.0f);
+  returnSequence_->DrawImGui();
   ImGui::End();
 #endif
 }

@@ -15,6 +15,7 @@ class DebugCamera;
 class InputKeyState;
 class Skybox;
 class ICamera;
+class StageSelectReturn;
 
 class StageSelectScene : public BaseScene {
 
@@ -78,6 +79,11 @@ private: // メンバ関数
   /// </summary>
   void UpdateLaunch();
 
+  /// <summary>
+  /// ゲームオーバーから戻ったときの演出の更新（選んだものに合わせて、出撃するか拠点のメニューへ戻す）
+  /// </summary>
+  void UpdateReturn();
+
 private: // メンバ変数(システム用)
   // カメラ
   std::unique_ptr<GameCamera> camera_ = nullptr;
@@ -116,7 +122,23 @@ private: // メンバ変数(拠点)
   Vector3 cameraPos_ = {0.0f, 0.8f, -6.0f};
   Vector3 cameraRot_ = {-0.12f, 0.0f, 0.0f};
 
+private: // メンバ変数(ゲームオーバーから戻ったとき)
+  std::unique_ptr<StageSelectReturn> returnSequence_;
+  // 空の暗さ（0: いつもの昼の空 〜 1: ゲームオーバーから戻ったときの暗い空）
+  float gloom_ = 0.0f;
+  // 戻ったときの演出で、UI が出るまで BGM を待っているか
+  bool isBgmPending_ = false;
+  // 暗い空の色・太陽・雲量・ライトの強さ
+  Vector3 gloomZenith_ = {0.05f, 0.07f, 0.14f};
+  Vector3 gloomHorizon_ = {0.22f, 0.24f, 0.32f};
+  float gloomSunIntensity_ = 0.15f;
+  float gloomCloudAmount_ = 0.85f;
+  float gloomLightIntensity_ = 0.55f;
+
 private: // メンバ変数(出撃演出)
+  // 出撃演出を始めたときのカメラの位置・向き（ここからかがみ、飛び立ちを追う）
+  Vector3 launchCameraPos_{};
+  Vector3 launchCameraRot_{};
   bool isLaunching_ = false;
   // 出撃を押してからの経過時間（秒）
   float launchTimer_ = 0.0f;

@@ -18,6 +18,7 @@ class PostProcess;
 class BillboardParticleEmitter;
 class MeshParticleEmitter;
 class StageIntro;
+class GameOverSequence;
 class StageLighting;
 class RoarDistortion;
 class CloudSea;
@@ -85,6 +86,11 @@ private: // メンバ変数(ゲーム用)
   static constexpr float kRoarSeVolume_ = 1.0f;
   // 羽ばたきを進める1フレームの時間（秒）
   static constexpr float kWingDeltaTime_ = 1.0f / 60.0f;
+
+  // ゲームオーバーの空中の演出
+  std::unique_ptr<GameOverSequence> gameOverSequence_;
+  // ゲームオーバーの間、世界の時間の速さを足していき、1 を超えたフレームだけ世界を進める
+  float worldTimeCarry_ = 0.0f;
 
   // 開始演出のあと、HUD と照準が現れるまでの時間（秒）
   float hudFadeSec_ = 0.3f;
@@ -242,6 +248,16 @@ private:
   /// 開始演出から操作へ移る間、演出が決める自機の位置・向きと操作の位置・向きを混ぜる
   /// </summary>
   void BlendPlayerWithIntro();
+
+  /// <summary>
+  /// ゲームオーバーの空中の演出を始める（レール・BGM を止める）
+  /// </summary>
+  void StartGameOver();
+
+  /// <summary>
+  /// ゲームオーバーの空中の演出の更新（自機の位置・向き・翼を渡し、合図で拠点へ雲の遷移を始める）
+  /// </summary>
+  void UpdateGameOver();
 
   /// <summary>
   /// 空・雲海・光・霧・ポストエフェクトを設定する

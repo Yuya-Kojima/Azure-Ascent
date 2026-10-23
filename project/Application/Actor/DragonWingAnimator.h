@@ -27,6 +27,10 @@ public:
     float asymmetry = 0.0f; // 左右差（-1 〜 1）。正で左の翼を強く打つ（右へ曲がるとき）
     float pose = 1.0f;      // 姿勢（0: 地上の立ち姿勢 〜 1: 飛行姿勢）
     float hover = 0.0f;     // 飛行姿勢の形（0: 滑空の姿勢 〜 1: 体を起こした羽ばたきの姿勢）
+    float sideLag = 0.0f;   // 右の翼が左より遅れて打つ割合（1周期に対して、0〜0.5）
+    float buckle = 0.0f;    // 翼の張りが保てない度合い（0〜1）。打ち下ろしの途中で腕・手首が折れ、先ほど遅れてついてくる
+    float flail = 0.0f;     // 体が羽ばたきに振り回される度合い（0〜1）。尾と体の前後の揺れを大きくする
+    float response = 0.0f;  // 今の状態が目標へ近づく速さ（1/秒）。0 なら Config::stateResponse を使う
   };
 
   /// <summary>
@@ -38,6 +42,9 @@ public:
     float roar = 0.0f;    // 吠える（首を空へ立て、翼を張る）
     float launch = 0.0f;  // 飛び出しの一打ち（翼を打ち下ろす）
     float tremble = 0.0f; // 首と翼の先の震えの大きさ
+    float collapse = 0.0f; // 倒れる（首を地面へ下ろし、翼を畳む）
+    float lookUp = 0.0f;   // 見上げる（首を立てて空を見上げ、翼を少し開く）
+    float headThrow = 0.0f; // 首をあおる（-1〜1、正で頭が上がる）。重みの合計には数えず、羽ばたきを弱めない
   };
 
   /// <summary>
@@ -138,6 +145,22 @@ public:
                             5.0f, 0.0f, 0.0f, -20.0f, 14.0f};
     GesturePose launchPose = {2.0f, 3.0f, 0.0f, 0.0f, -40.0f, 0.0f,
                               -10.0f, 0.0f, -10.0f, 0.0f, 6.0f};
+    GesturePose collapsePose = {3.0f, 12.0f, 10.0f, -4.0f, -20.0f, 25.0f,
+                                -5.0f, 20.0f, 0.0f, 30.0f, -10.0f};
+    GesturePose lookUpPose = {-6.0f, -14.0f, -8.0f, 3.0f, 5.0f, 5.0f,
+                              0.0f, 0.0f, 0.0f, 0.0f, 4.0f};
+
+    // 翼が折れる（State::buckle が 1 のとき）
+    float buckleArmBend = 25.0f;  // 打ち下ろしの途中で腕を下へ折る角度（度）
+    float buckleHandBend = 35.0f; // 打ち下ろしの途中で手首を下へ折る角度（度）
+    float buckleLagGain = 1.5f;   // 腕・手首・指の遅れに、この割合を掛けて足す
+
+    // 振り回される（State::flail が 1 のとき、元の振れ幅に掛けて足す割合）
+    float flailTailGain = 6.0f;
+    float flailBodyPitchGain = 3.0f;
+
+    // 首をあおる（Gesture::headThrow が 1 のときの、首の骨1本あたりの角度、度。負で頭が上がる）
+    float headThrowNeck = -8.0f;
 
     // 震え（Gesture::tremble が 1 のときの振れ幅、度）
     float trembleFrequency = 14.0f; // 1秒あたりの回数
@@ -183,6 +206,19 @@ public:
   void SaveConfig() const;
 
   const State &GetCurrentState() const { return currentState_; }
+
+  /// <summary>
+  /// 片方の翼が今打ち下ろしている強さ（0〜1。打ち上げの間は 0）
+  /// </summary>
+  /// <param name="isRight">右の翼なら true</param>
+  float GetDownstrokePush(bool isRight) const;
+
+  /// <summary>
+  /// 片方の翼の付け根を今上げている角度（度。正で上、負で下）
+  /// </summary>
+  float GetRootAngle(bool isRight) const {
+    return isRight ? rightRootAngle_ : leftRootAngle_;
+  }
   const Config &GetConfig() const { return config_; }
 
 private:
@@ -236,7 +272,9 @@ private:
   float BeatJitter(BeatJitterKind kind) const;
 
   void UpdatePose() const;
-  void UpdateWing(const Wing &wing, float gain) const;
+  // gain は振れ幅に掛ける割合、wingLag はこの翼だけの遅れ（1周期に対する割合）
+  // 戻り値は付け根を上げた角度（度）
+  float UpdateWing(const Wing &wing, float gain, float wingLag) const;
   void UpdateTail() const;
   void UpdateBody() const;
   void UpdateHead(const Matrix4x4 &worldMatrix) const;
@@ -274,6 +312,8 @@ private:
   float gestureWeight_ = 0.0f; // 重ねる姿勢の重みの合計（0〜1）
   float flapScale_ = 1.0f;     // 羽ばたきの強さに掛ける割合（1 - gestureWeight_）
   float trembleTime_ = 0.0f;   // 震えの経過時間（秒）
+  float leftRootAngle_ = 0.0f;  // 左の翼の付け根を上げた角度（度）
+  float rightRootAngle_ = 0.0f; // 右の翼の付け根を上げた角度（度）
 
   Wing leftWing_;
   Wing rightWing_;

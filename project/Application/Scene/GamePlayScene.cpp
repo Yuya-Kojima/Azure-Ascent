@@ -35,6 +35,7 @@
 #include "Scene/SceneManager.h"
 #include "Sprite/Sprite.h"
 #include "StageIntro.h"
+#include "GameOverSequence.h"
 #include "Texture/TextureManager.h"
 #include <filesystem>
 #include <fstream>
@@ -292,6 +293,7 @@ void GamePlayScene::Initialize(EngineBase *engine) {
   // ステージ開始演出
   stageIntro_ = std::make_unique<StageIntro>();
   stageIntro_->Initialize(engine_->GetSpriteRenderer(), cloudSeaEvents_.get());
+  gameOverSequence_ = std::make_unique<GameOverSequence>();
 
   //===========================
   // プレイヤーの初期化
@@ -377,6 +379,7 @@ void GamePlayScene::Update() {
     // ゲーム状態のリセット
     gameState_ = GameState::Play;
     stageIntro_->Stop();
+    gameOverSequence_->Stop();
     railCamera_->SetSpeedScale(1.0f);
     player_->SetExternalWingState(std::nullopt);
     player_->SetWingGesture({});
@@ -482,10 +485,7 @@ void GamePlayScene::Update() {
   //=======================
   if (gameState_ == GameState::Play) {
     if (player_ && player_->IsDead()) {
-      gameState_ = GameState::GameOver;
-      if (railCamera_)
-        railCamera_->SetAutoMove(false);
-      UIManager::GetInstance()->Load("resources/UI/GameOverUI.json");
+      StartGameOver();
     } else if (railCamera_ && railCamera_->IsFinished()) {
       // ボスが生きている場合はレールが終わってもクリアにしない
       bool isBossActive = false;
@@ -505,22 +505,15 @@ void GamePlayScene::Update() {
         UIManager::GetInstance()->Load("resources/UI/ClearUI.json");
       }
     }
-  } else if (gameState_ == GameState::Clear ||
-             gameState_ == GameState::GameOver) {
-    // リザルト画面でEnterキーを押したらステージセレクト（またはタイトル）へ戻る
+  } else if (gameState_ == GameState::Clear) {
+    // リザルト画面でEnterキーを押したらステージセレクト（雲の下の拠点）へ戻るので、雲を抜けて降下する
     if (engine_->GetInputManager()->IsTriggerKey(DIK_RETURN)) {
-      if (gameState_ == GameState::Clear) {
-        // ステージセレクト（雲の下の拠点）へ戻るので、雲を抜けて降下する
-        const float kCloudTransitionSec = 1.0f;
-        const Vector4 kCloudColor = {1.0f, 1.0f, 1.0f, 1.0f};
-        SceneManager::GetInstance()->SetNextTransitionFade(
-            kCloudTransitionSec, Fade::FadeType::CloudDescend, kCloudColor,
-            Fade::EasingType::Linear);
-        SceneManager::GetInstance()->ChangeScene("STAGE_SELECT");
-      } else {
-        SceneManager::GetInstance()->SetNextTransitionFade(0.5f);
-        SceneManager::GetInstance()->ChangeScene("TITLE");
-      }
+      const float kCloudTransitionSec = 1.0f;
+      const Vector4 kCloudColor = {1.0f, 1.0f, 1.0f, 1.0f};
+      SceneManager::GetInstance()->SetNextTransitionFade(
+          kCloudTransitionSec, Fade::FadeType::CloudDescend, kCloudColor,
+          Fade::EasingType::Linear);
+      SceneManager::GetInstance()->ChangeScene("STAGE_SELECT");
     }
   }
 
@@ -535,6 +528,16 @@ void GamePlayScene::Update() {
   bool shouldUpdateWorld =
       ((isPlayMode_ && !isPaused_ && hitStopTimer_ <= 0) || doStep_) &&
       gameState_ != GameState::Intro;
+
+  // ゲームオーバーの間は、世界の時間の速さに合わせて、進めるフレームを間引く
+  if (shouldUpdateWorld && gameState_ == GameState::GameOver) {
+    worldTimeCarry_ += gameOverSequence_->GetTimeScale();
+    if (worldTimeCarry_ >= 1.0f) {
+      worldTimeCarry_ -= 1.0f;
+    } else {
+      shouldUpdateWorld = false;
+    }
+  }
 
   if (doStep_) {
     doStep_ = false;
@@ -582,6 +585,16 @@ void GamePlayScene::Update() {
     }
     if (!useDebugCamera_) {
       activeCamera = stageIntro_->GetCamera();
+    }
+  }
+
+  // ゲームオーバー：自機の位置・翼を動かし、演出カメラで映す
+  if (gameState_ == GameState::GameOver && gameOverSequence_->IsActive()) {
+    if (isPlayMode_ && !isPaused_) {
+      UpdateGameOver();
+    }
+    if (!useDebugCamera_) {
+      activeCamera = gameOverSequence_->GetCamera();
     }
   }
 
@@ -836,9 +849,18 @@ void GamePlayScene::Update() {
       player_->UpdateTransform();
     }
     // 羽ばたきは開始演出中も進め、ポーズ・ヒットストップ中は止める
-    const bool isWingMoving =
-        shouldUpdateWorld || gameState_ == GameState::Intro;
-    player_->UpdateWing(isWingMoving ? kWingDeltaTime_ : 0.0f);
+    // ゲームオーバーの間は、演出の時間の速さで進める
+    float wingDeltaTime =
+        (shouldUpdateWorld || gameState_ == GameState::Intro) ? kWingDeltaTime_
+                                                              : 0.0f;
+    if (gameState_ == GameState::GameOver) {
+      player_->UpdateTransform();
+      const bool isSequenceMoving = isPlayMode_ && !isPaused_;
+      wingDeltaTime = isSequenceMoving
+                          ? kWingDeltaTime_ * gameOverSequence_->GetTimeScale()
+                          : 0.0f;
+    }
+    player_->UpdateWing(wingDeltaTime);
   }
 
   // アクター群の更新
@@ -1626,6 +1648,17 @@ void GamePlayScene::DrawEditorUI() {
               engine_->GetCloudSeaRenderer()->GetGpuMilliseconds());
   ImGui::End();
 
+  //=========================
+  // ゲームオーバー演出の調整（Play 中も出す）
+  //=========================
+  ImGui::Begin("Game Over");
+  if (isPlayMode_ && gameState_ == GameState::Play && player_ &&
+      ImGui::Button("Kill Player")) {
+    player_->Kill();
+  }
+  gameOverSequence_->DrawImGui();
+  ImGui::End();
+
   if (!isPlayMode_) {
     ImGuizmo::SetDrawlist();
     ImGuizmo::SetRect(vMin.x, vMin.y, vMax.x - vMin.x, vMax.y - vMin.y);
@@ -2048,6 +2081,54 @@ void GamePlayScene::BlendPlayerWithIntro() {
   playerTransform.rotate = Lerp(stageIntro_->GetDragonRotation(),
                                 playerTransform.rotate, control);
   player_->UpdateTransform();
+}
+
+void GamePlayScene::StartGameOver() {
+  gameState_ = GameState::GameOver;
+  railCamera_->SetAutoMove(false);
+  SoundManager::GetInstance()->StopBGM();
+  worldTimeCarry_ = 0.0f;
+  gameOverSequence_->Start(*railCamera_, player_->GetTransform().translate,
+                           player_->GetTransform().rotate,
+                           cloudSea_->GetHeight());
+}
+
+void GamePlayScene::UpdateGameOver() {
+  Input *input = engine_->GetInputManager();
+  const bool isSkipPressed = input->IsTriggerKey(DIK_RETURN) ||
+                             input->IsPadTrigger(PadButton::A) ||
+                             input->IsPadTrigger(PadButton::Start);
+  // 翼の打ち下ろしを渡し、体の浮き・揺れ・首のあおりに使う
+  gameOverSequence_->SetWingPush(player_->GetWingPush(false),
+                                 player_->GetWingPush(true));
+  gameOverSequence_->RecordWingAngle(player_->GetWingRootAngle(false),
+                                     player_->GetWingRootAngle(true));
+  gameOverSequence_->Update(isSkipPressed);
+
+  // 自機の位置・向き・翼は演出が決める
+  Transform &playerTransform = player_->GetTransform();
+  playerTransform.translate = gameOverSequence_->GetDragonPosition();
+  playerTransform.rotate = gameOverSequence_->GetDragonRotation();
+  player_->SetExternalWingState(gameOverSequence_->GetWingState());
+  player_->SetWingGesture(gameOverSequence_->GetGesture());
+
+  // HUD は被弾から消していく
+  UIManager::GetInstance()->SetGlobalAlpha(gameOverSequence_->GetHudAlpha());
+
+  // 合図で、到達度（レールの進んだ割合）を拠点へ渡し、雲を抜けて地上の拠点へ降りる遷移を始める
+  if (gameOverSequence_->ConsumeTransitionCue()) {
+    const size_t kMinWaypointCount = 2;
+    const float lastIndex = static_cast<float>(
+        (std::max)(railCamera_->GetWaypoints().size(), kMinWaypointCount) - 1);
+    GameManager::GetInstance()->SetGameOverReturn(
+        std::clamp(railCamera_->GetT() / lastIndex, 0.0f, 1.0f));
+    const float kCloudTransitionSec = 1.0f;
+    const Vector4 kCloudColor = {1.0f, 1.0f, 1.0f, 1.0f};
+    SceneManager::GetInstance()->SetNextTransitionFade(
+        kCloudTransitionSec, Fade::FadeType::CloudDescend, kCloudColor,
+        Fade::EasingType::Linear);
+    SceneManager::GetInstance()->ChangeScene("STAGE_SELECT");
+  }
 }
 
 void GamePlayScene::ApplySkyAndLighting() {

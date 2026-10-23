@@ -111,6 +111,12 @@ const ConfigItem kConfigItems[] = {
     {"trembleFrequency", &Config::trembleFrequency, 0.0f, 30.0f},
     {"neckTremble", &Config::neckTremble, 0.0f, 10.0f},
     {"fingerTremble", &Config::fingerTremble, 0.0f, 10.0f},
+    {"buckleArmBend", &Config::buckleArmBend, 0.0f, 90.0f},
+    {"buckleHandBend", &Config::buckleHandBend, 0.0f, 90.0f},
+    {"buckleLagGain", &Config::buckleLagGain, 0.0f, 5.0f},
+    {"flailTailGain", &Config::flailTailGain, 0.0f, 20.0f},
+    {"flailBodyPitchGain", &Config::flailBodyPitchGain, 0.0f, 10.0f},
+    {"headThrowNeck", &Config::headThrowNeck, -30.0f, 30.0f},
 };
 
 // 重ねる姿勢の各部の JSON のキー
@@ -140,6 +146,8 @@ const GesturePoseSlot kGesturePoseSlots[] = {
     {"crouchPose", &Config::crouchPose},
     {"roarPose", &Config::roarPose},
     {"launchPose", &Config::launchPose},
+    {"collapsePose", &Config::collapsePose},
+    {"lookUpPose", &Config::lookUpPose},
 };
 
 // 向きベクトルを行列で変換する（平行移動は無視し、長さ 1 に戻す）
@@ -343,8 +351,11 @@ void DragonWingAnimator::Update(float deltaTime,
     return;
   }
 
-  // 今の状態を、残りの差の一定割合ずつ目標へ近づける
-  const float t = 1.0f - std::exp(-config_.stateResponse * deltaTime);
+  // 今の状態を、残りの差の一定割合ずつ目標へ近づける（目標が速さを決めていればそれを使う）
+  const float response = targetState_.response > 0.0f
+                             ? targetState_.response
+                             : config_.stateResponse;
+  const float t = 1.0f - std::exp(-response * deltaTime);
   currentState_.strength =
       Approach(currentState_.strength, targetState_.strength, t);
   currentState_.frequency =
@@ -354,6 +365,10 @@ void DragonWingAnimator::Update(float deltaTime,
       Approach(currentState_.asymmetry, targetState_.asymmetry, t);
   currentState_.pose = Approach(currentState_.pose, targetState_.pose, t);
   currentState_.hover = Approach(currentState_.hover, targetState_.hover, t);
+  currentState_.sideLag =
+      Approach(currentState_.sideLag, targetState_.sideLag, t);
+  currentState_.buckle = Approach(currentState_.buckle, targetState_.buckle, t);
+  currentState_.flail = Approach(currentState_.flail, targetState_.flail, t);
 
   // 位相は「1秒あたりの回数 × 経過時間」を足していく。1周したら次の1回ぶんの揺らぎを引く
   const float frequency =
@@ -367,7 +382,9 @@ void DragonWingAnimator::Update(float deltaTime,
 
   // 重ねる姿勢の重みの合計の分だけ、羽ばたきを弱める
   gestureWeight_ = std::clamp(
-      gesture_.crouch + gesture_.roar + gesture_.launch, 0.0f, 1.0f);
+      gesture_.crouch + gesture_.roar + gesture_.launch + gesture_.collapse +
+          gesture_.lookUp,
+      0.0f, 1.0f);
   flapScale_ = 1.0f - gestureWeight_;
   trembleTime_ += deltaTime;
 
@@ -383,14 +400,19 @@ void DragonWingAnimator::Update(float deltaTime,
       (currentState_.asymmetry +
        config_.beatAsymmetryJitter * BeatJitter(kBeatAsymmetry)) *
       config_.asymmetryGain;
-  UpdateWing(leftWing_, (std::max)(0.0f, 1.0f + asymmetry));
-  UpdateWing(rightWing_, (std::max)(0.0f, 1.0f - asymmetry));
+  // 右の翼は sideLag だけ遅れて打つ
+  leftRootAngle_ =
+      UpdateWing(leftWing_, (std::max)(0.0f, 1.0f + asymmetry), 0.0f);
+  rightRootAngle_ = UpdateWing(rightWing_, (std::max)(0.0f, 1.0f - asymmetry),
+                               currentState_.sideLag);
   UpdateTail();
   UpdateSpine();
 
   // 体を羽ばたきで前後に傾けて上下させ、そのあとで頭をその揺れから切り離す
-  bodyPitch_ = config_.bodyPitchAmplitude * kDegToRad *
-               currentState_.strength * flapScale_ *
+  // 振り回されるほど大きく傾ける
+  bodyPitch_ = config_.bodyPitchAmplitude *
+               (1.0f + config_.flailBodyPitchGain * currentState_.flail) *
+               kDegToRad * currentState_.strength * flapScale_ *
                Stroke(config_.bodyPitchLag);
   UpdateBody();
   UpdateHead(worldMatrix);
@@ -432,6 +454,12 @@ float DragonWingAnimator::StrokeVelocity(float lag) const {
   }
   // 打ち上げ: 途中で最も速く上へ動く
   return -std::sin(kPi * (u - down) / (1.0f - down));
+}
+
+float DragonWingAnimator::GetDownstrokePush(bool isRight) const {
+  const float lag = isRight ? currentState_.sideLag : 0.0f;
+  return (std::max)(StrokeVelocity(lag), 0.0f) *
+         std::clamp(currentState_.strength, 0.0f, 1.0f) * flapScale_;
 }
 
 float DragonWingAnimator::UpstrokeWeight(float lag) const {
@@ -495,13 +523,24 @@ void DragonWingAnimator::UpdateSprings(float deltaTime,
   }
 }
 
-void DragonWingAnimator::UpdateWing(const Wing &wing, float gain) const {
+float DragonWingAnimator::UpdateWing(const Wing &wing, float gain,
+                                     float wingLag) const {
   const float strength =
       currentState_.strength * gain * flapScale_ *
       (1.0f + config_.beatAmplitudeJitter * BeatJitter(kBeatAmplitude));
   const float rootBias =
       config_.rootBias + config_.beatBiasJitter * BeatJitter(kBeatBias);
   const float fold = currentState_.fold;
+  const float buckle = currentState_.buckle;
+  // 腕より先の遅れ：張りが保てないほど遅れ、この翼だけの遅れを足す
+  const float lagScale = 1.0f + config_.buckleLagGain * buckle;
+  auto lagOf = [&](float lag) { return lag * lagScale + wingLag; };
+  const float armLag = lagOf(config_.armLag);
+  const float handLag = lagOf(config_.handLag);
+  // 打ち下ろしの途中ほど 1 に近い重み（打ち上げの間は 0）
+  auto downstrokeWeight = [&](float lag) {
+    return (std::max)(StrokeVelocity(lag), 0.0f);
+  };
 
   // 翼を上げるのは前後の軸まわり、後ろへ畳むのは上下の軸まわり。
   // 骨は翼端へ向いているので、骨の向きまわりの正のねじれは、右の翼で前縁が下がり左の翼で上がる。どれも左右で向きが逆になる
@@ -518,28 +557,29 @@ void DragonWingAnimator::UpdateWing(const Wing &wing, float gain) const {
   };
 
   // 付け根: 翼全体を上下に打つ（重ねる姿勢の角度を足す）
-  apply(wing.root,
-        rootBias + config_.rootAmplitude * strength * Stroke(0.0f) +
-            GestureAngle(&GesturePose::wingUp),
-        GestureAngle(&GesturePose::wingBack));
+  const float rootUp = rootBias +
+                       config_.rootAmplitude * strength * Stroke(wingLag) +
+                       GestureAngle(&GesturePose::wingUp);
+  apply(wing.root, rootUp, GestureAngle(&GesturePose::wingBack));
 
   // 腕・手首: 少し遅れて打ち、打ち上げの途中と畳むときに後ろへ回す
+  // 張りが保てないときは、打ち下ろしの途中で下へ折れる
   apply(wing.arm,
-        config_.armAmplitude * strength * Stroke(config_.armLag) +
-            GestureAngle(&GesturePose::armUp),
+        config_.armAmplitude * strength * Stroke(armLag) +
+            GestureAngle(&GesturePose::armUp) -
+            config_.buckleArmBend * buckle * downstrokeWeight(armLag),
         config_.foldArmSweep * fold +
-            config_.upstrokeArmSweep * strength *
-                UpstrokeWeight(config_.armLag) +
+            config_.upstrokeArmSweep * strength * UpstrokeWeight(armLag) +
             GestureAngle(&GesturePose::armBack),
-        kArmTwistRatio * twist(config_.armLag));
+        kArmTwistRatio * twist(armLag));
   apply(wing.hand,
-        config_.handAmplitude * strength * Stroke(config_.handLag) +
-            GestureAngle(&GesturePose::handUp),
+        config_.handAmplitude * strength * Stroke(handLag) +
+            GestureAngle(&GesturePose::handUp) -
+            config_.buckleHandBend * buckle * downstrokeWeight(handLag),
         config_.foldHandSweep * fold +
-            config_.upstrokeHandSweep * strength *
-                UpstrokeWeight(config_.handLag) +
+            config_.upstrokeHandSweep * strength * UpstrokeWeight(handLag) +
             GestureAngle(&GesturePose::handBack),
-        twist(config_.handLag));
+        twist(handLag));
 
   // 指: 先の節ほど遅れて打ち、根元より先の節は打ち上げと畳みで下へ曲げる
   for (int finger = 0; finger < kFingerCount_; ++finger) {
@@ -548,7 +588,8 @@ void DragonWingAnimator::UpdateWing(const Wing &wing, float gain) const {
     // 重ねる姿勢で指を開く向き（-1: 根元側の指を前へ 〜 1: 翼端側の指を後ろへ）
     const float spreadSign = fanWeight * 2.0f - 1.0f;
     for (int joint = 0; joint < kFingerJointCount_; ++joint) {
-      const float lag = config_.fingerLag + config_.fingerJointLag * joint;
+      const float lag =
+          lagOf(config_.fingerLag + config_.fingerJointLag * joint);
       // 震えは指と節ごとに位相をずらして足す
       float up = config_.fingerAmplitude * strength * Stroke(lag) +
                  config_.fingerTremble *
@@ -564,14 +605,17 @@ void DragonWingAnimator::UpdateWing(const Wing &wing, float gain) const {
       apply(wing.fingers[finger][joint], up, back);
     }
   }
+  return rootUp;
 }
 
 void DragonWingAnimator::UpdateTail() const {
   // 尾は後ろを向いているので、左右の軸まわりの正の回転で上がり、上下の軸まわりの正の回転で左へ曲がる
   for (size_t i = 0; i < tail_.size(); ++i) {
     const float lag = config_.tailLag + config_.tailJointLag * float(i);
-    float up = config_.tailAmplitude * currentState_.strength * flapScale_ *
-               Stroke(lag);
+    // 振り回されるほど大きく振れる
+    float up = config_.tailAmplitude *
+               (1.0f + config_.flailTailGain * currentState_.flail) *
+               currentState_.strength * flapScale_ * Stroke(lag);
     if (i < kGestureTailJointCount_) {
       up += GestureAngle(&GesturePose::tail);
     }
@@ -591,7 +635,9 @@ void DragonWingAnimator::UpdateSpine() const {
 float DragonWingAnimator::GestureAngle(float GesturePose::*part) const {
   return gesture_.crouch * (config_.crouchPose.*part) +
          gesture_.roar * (config_.roarPose.*part) +
-         gesture_.launch * (config_.launchPose.*part);
+         gesture_.launch * (config_.launchPose.*part) +
+         gesture_.collapse * (config_.collapsePose.*part) +
+         gesture_.lookUp * (config_.lookUpPose.*part);
 }
 
 float DragonWingAnimator::TrembleWave(float phaseOffset) const {
@@ -704,7 +750,8 @@ void DragonWingAnimator::UpdateHead(const Matrix4x4 &worldMatrix) const {
   // 重ねる姿勢の首の角度（震えを含む）。首の4本を同じ角度で曲げ、頭蓋はその合計に自分の角度を足して回す
   const float gestureNeck =
       (GestureAngle(&GesturePose::neck) +
-       config_.neckTremble * TrembleWave(0.0f)) *
+       config_.neckTremble * TrembleWave(0.0f) +
+       config_.headThrowNeck * gesture_.headThrow) *
       kDegToRad;
   const float gestureHead = gestureNeck * float(neck_.size()) +
                             GestureAngle(&GesturePose::head) * kDegToRad;
@@ -796,6 +843,8 @@ void DragonWingAnimator::DrawImGui() {
   ImGui::Text("gesture: crouch %.2f / roar %.2f / launch %.2f / tremble %.2f",
               gesture_.crouch, gesture_.roar, gesture_.launch,
               gesture_.tremble);
+  ImGui::Text("gesture: collapse %.2f / lookUp %.2f", gesture_.collapse,
+              gesture_.lookUp);
   for (const GesturePoseSlot &slot : kGesturePoseSlots) {
     if (ImGui::TreeNode(slot.key)) {
       for (const GesturePoseItem &item : kGesturePoseItems) {
