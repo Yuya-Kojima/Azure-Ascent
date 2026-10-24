@@ -3,7 +3,7 @@
 使い方（Blender のバックグラウンド実行）:
     blender -b --factory-startup --python fix_dragon_rig.py -- <入力.glb> [--export <出力フォルダ>] [--preview <出力フォルダ>]
 
-    --export   .gltf + .bin + テクスチャと、飛行姿勢（滑空・羽ばたき。骨だけ）の .gltf + .bin を書き出す
+    --export   .gltf + .bin + テクスチャと、姿勢（滑空・羽ばたき・伏せ・胸を起こした伏せ。骨だけ）の .gltf + .bin を書き出す
     --preview  翼・尾・首の骨を回した姿勢をレンダリングし、確認用の .blend を保存する
 
 処理の流れ:
@@ -114,10 +114,50 @@ kHoverPose = [("Root", 'X', -30.0)] + kFlightBasePose + [
     ("HindLeg_{S}_1", 'X', 20.0),
     ("HindLeg_{S}_2", 'X', 50.0),
 ]
-# 飛行姿勢を書き出すファイルの名前（拡張子なし）、アニメーションの名前、姿勢
+# 伏せて休む姿勢で共通の部分：後脚を腹の下へ畳み、首を前へ倒してあごを地面の近くに置き、尾を体の右へ巻き、
+# 翼は付け根から下ろして少し後ろへ寄せ、膜を地面へ垂らす（翼端が地面に着く）
+# 腹の下端は元の姿勢より 0.134 上にあるので、エンジンでその分沈める
+kLieBasePose = [
+    ("Wing_{S}_Root", 'Y', 30.0),
+    ("Wing_{S}_Root", 'Z', 25.0),
+    ("Spine_2", 'X', 5.0),
+    ("Spine_3", 'X', 5.0),
+    ("HindLeg_{S}_0", 'X', -80.0),
+    ("HindLeg_{S}_1", 'X', 130.0),
+    ("HindLeg_{S}_2", 'X', -50.0),
+    ("Neck", 'X', 30.0),
+    ("Head_0", 'X', 25.0),
+    ("Head_1", 'X', 20.0),
+    ("Head_2", 'X', 10.0),
+    ("Head_3", 'X', -35.0),
+    ("Tail_00", 'X', 5.0),
+    ("Tail_01", 'Z', -15.0),
+    ("Tail_02", 'Z', -18.0),
+    ("Tail_03", 'Z', -22.0),
+    ("Tail_04", 'Z', -25.0),
+    ("Tail_05", 'Z', -25.0),
+    ("Tail_06", 'Z', -25.0),
+    ("Tail_07", 'Z', -25.0),
+    ("Tail_08", 'Z', -20.0),
+]
+# 伏せ：前脚の肘を後ろへ上げ、前腕を胸の下で前へ寝かせる
+kLiePose = kLieBasePose + [
+    ("FrontLeg_{S}_1", 'X', 65.0),
+    ("FrontLeg_{S}_2", 'X', -140.0),
+    ("FrontLeg_{S}_3", 'X', 70.0),
+]
+# 伏せたまま胸を起こす：胸から前を持ち上げ、前脚を斜めに伸ばして支える
+kLieChestPose = [("Spine_1", 'X', -14.0)] + kLieBasePose + [
+    ("FrontLeg_{S}_1", 'X', 30.0),
+    ("FrontLeg_{S}_2", 'X', -90.0),
+    ("FrontLeg_{S}_3", 'X', 60.0),
+]
+# 姿勢を書き出すファイルの名前（拡張子なし）、アニメーションの名前、姿勢
 kFlightPoseOutputs = [
     ("player_dragon_glide_pose", "GlidePose", kGlidePose),
     ("player_dragon_hover_pose", "HoverPose", kHoverPose),
+    ("player_dragon_lie_pose", "LiePose", kLiePose),
+    ("player_dragon_lie_chest_pose", "LieChestPose", kLieChestPose),
 ]
 
 
@@ -553,6 +593,8 @@ kPreviewPoses = [
                                  PoseSweepBack(a, "hand", 35.0), PoseFingerCurl(a, 20.0))),
     ("glide_fold", lambda a: (PoseSweepBack(a, "arm", 20.0), PoseSweepBack(a, "hand", 45.0))),
     ("tail_neck", lambda a: (PoseTailSwing(a, 6.0), PoseNeckRaise(a, 6.0))),
+    ("lie", lambda a: ApplyFlightPose(a, kLiePose)),
+    ("lie_chest", lambda a: ApplyFlightPose(a, kLieChestPose)),
 ]
 
 

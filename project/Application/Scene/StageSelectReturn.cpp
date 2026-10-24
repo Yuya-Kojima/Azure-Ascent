@@ -207,30 +207,24 @@ Vector3 StageSelectReturn::ToWorld(const Vector3 &offset) const {
 
 void StageSelectReturn::UpdateWake() {
   //===========================
-  // 倒れている → 頭を上げる → 前脚をついて起き上がる → 首を立てて空を見上げる
+  // 伏せて休む → 首を持ち上げて空を見上げる → 見上げたまま止まり、翼が少し動く
   //===========================
-  const float headUp = EaseInOutCubic(
-      Progress(timer_, headUpTime_, riseTime_ - headUpTime_));
-  const float rise =
-      EaseInOutCubic(Progress(timer_, riseTime_, lookUpTime_ - riseTime_));
   const float lookUp =
-      EaseInOutCubic(Progress(timer_, lookUpTime_, menuTime_ - lookUpTime_));
+      EaseInOutCubic(Progress(timer_, lookUpTime_, lookUpSec_));
+  const float lookUpEnd = lookUpTime_ + lookUpSec_;
+  const float stir =
+      EaseInOutCubic(Progress(timer_, lookUpEnd, menuTime_ - lookUpEnd));
 
-  // 倒れている間は沈めて、前へ傾け、横へ傾ける。起き上がるにつれて戻す
-  const float lying = 1.0f - rise;
-  dragonPos_ = basePos_ - kWorldUp * (lieDepth_ * lying);
-  dragonRot_ = {baseRot_.x + liePitch_ * lying, baseRot_.y,
-                baseRot_.z + lieRoll_ * lying};
+  // 伏せの姿勢は腹が浮くので、その分沈める
+  dragonPos_ = basePos_ - kWorldUp * lieDepth_;
+  dragonRot_ = baseRot_;
 
   gesture_ = {};
-  gesture_.collapse = Lerp(1.0f, headUpCollapse_, headUp) * lying;
+  gesture_.lie = 1.0f;
+  gesture_.lieChest = chestRaise_ * lookUp;
   gesture_.lookUp = lookUp;
 
-  if (timer_ < lookUpTime_) {
-    wingState_ = LerpWing(lieWing_, riseWing_, rise);
-  } else {
-    wingState_ = LerpWing(riseWing_, standWing_, lookUp);
-  }
+  wingState_ = LerpWing(lieWing_, stirWing_, wingMotion_ * stir);
 }
 
 Vector3 StageSelectReturn::SampleCameraKeys(Vector3 CameraKey::*offset) const {
@@ -286,9 +280,14 @@ Vector3 StageSelectReturn::SampleCameraKeys(Vector3 CameraKey::*offset) const {
 }
 
 void StageSelectReturn::UpdateCamera() {
-  cameraPos_ = ToWorld(SampleCameraKeys(&CameraKey::cameraOffset));
-  const Vector3 lookPos = ToWorld(SampleCameraKeys(&CameraKey::lookOffset));
-  cameraRot_ = LookRotation(cameraPos_, lookPos);
+  Vector3 cameraOffset = SampleCameraKeys(&CameraKey::cameraOffset);
+  Vector3 lookOffset = SampleCameraKeys(&CameraKey::lookOffset);
+  if (isCameraMirrored_) {
+    cameraOffset.x = -cameraOffset.x;
+    lookOffset.x = -lookOffset.x;
+  }
+  cameraPos_ = ToWorld(cameraOffset);
+  cameraRot_ = LookRotation(cameraPos_, ToWorld(lookOffset));
 }
 
 void StageSelectReturn::UpdateMenu(Input *input) {
@@ -311,7 +310,8 @@ void StageSelectReturn::UpdateMenu(Input *input) {
     pendingChoice_ = focused_;
     phase_ = (focused_ == Choice::Retry) ? Phase::Retry : Phase::Stay;
     phaseTimer_ = 0.0f;
-    leaveLookUp_ = gesture_.lookUp;
+    leaveGesture_ = gesture_;
+    leaveWing_ = wingState_;
     leaveCameraPos_ = cameraPos_;
     leaveCameraRot_ = cameraRot_;
   }
@@ -319,15 +319,18 @@ void StageSelectReturn::UpdateMenu(Input *input) {
 
 void StageSelectReturn::UpdateLeave() {
   //===========================
-  // UI と見上げる姿勢を消す。拠点に残るときは、カメラをいつもの位置へ戻す
+  // UI を消し、伏せて見上げる姿勢から立ち姿勢へ戻す。拠点に残るときは、カメラをいつもの位置へ戻す
   //===========================
   const float fade = Progress(phaseTimer_, 0.0f, leaveSec_);
   uiAlpha_ = 1.0f - fade;
+  const float remain = 1.0f - EaseInOutQuad(fade);
   gesture_ = {};
-  gesture_.lookUp = leaveLookUp_ * (1.0f - EaseInOutQuad(fade));
-  dragonPos_ = basePos_;
+  gesture_.lie = leaveGesture_.lie * remain;
+  gesture_.lieChest = leaveGesture_.lieChest;
+  gesture_.lookUp = leaveGesture_.lookUp * remain;
+  dragonPos_ = basePos_ - kWorldUp * (lieDepth_ * gesture_.lie);
   dragonRot_ = baseRot_;
-  wingState_ = standWing_;
+  wingState_ = LerpWing(leaveWing_, standWing_, 1.0f - remain);
 
   float endSec = leaveSec_;
   if (phase_ == Phase::Stay) {
@@ -421,9 +424,8 @@ void StageSelectReturn::DrawImGui() {
     }
   }
   ImGui::SeparatorText("Timing");
-  ImGui::DragFloat("Head Up Time", &headUpTime_, 0.01f, 0.0f, 10.0f);
-  ImGui::DragFloat("Rise Time", &riseTime_, 0.01f, 0.0f, 10.0f);
   ImGui::DragFloat("Look Up Time", &lookUpTime_, 0.01f, 0.0f, 10.0f);
+  ImGui::DragFloat("Look Up Sec", &lookUpSec_, 0.01f, 0.01f, 5.0f);
   ImGui::DragFloat("Menu Time", &menuTime_, 0.01f, 0.0f, 10.0f);
   ImGui::DragFloat("Menu Fade Sec", &menuFadeSec_, 0.01f, 0.01f, 3.0f);
   ImGui::DragFloat("Bar Fill Sec", &barFillSec_, 0.01f, 0.01f, 3.0f);
@@ -431,14 +433,14 @@ void StageSelectReturn::DrawImGui() {
   ImGui::DragFloat("Stay Camera Sec", &stayCameraSec_, 0.01f, 0.01f, 3.0f);
   ImGui::SeparatorText("Dragon");
   ImGui::DragFloat("Lie Depth", &lieDepth_, 0.01f, 0.0f, 3.0f);
-  ImGui::SliderAngle("Lie Pitch", &liePitch_, -60.0f, 60.0f);
-  ImGui::SliderAngle("Lie Roll", &lieRoll_, -60.0f, 60.0f);
-  ImGui::SliderFloat("Head Up Collapse", &headUpCollapse_, 0.0f, 1.0f);
+  ImGui::SliderFloat("Chest Raise", &chestRaise_, 0.0f, 1.0f);
+  ImGui::SliderFloat("Wing Motion", &wingMotion_, 0.0f, 1.0f);
   ImGui::DragFloat4("Lie Wing", &lieWing_.strength, 0.01f, 0.0f, 4.0f);
-  ImGui::DragFloat4("Rise Wing", &riseWing_.strength, 0.01f, 0.0f, 4.0f);
+  ImGui::DragFloat4("Stir Wing", &stirWing_.strength, 0.01f, 0.0f, 4.0f);
   ImGui::DragFloat4("Stand Wing", &standWing_.strength, 0.01f, 0.0f, 4.0f);
   ImGui::SeparatorText("Camera Keys (right, up, forward)");
   ImGui::SliderFloat("Descent Start Speed", &descentStartSpeed_, 0.0f, 3.0f);
+  ImGui::Checkbox("Mirror Camera", &isCameraMirrored_);
   for (size_t i = 0; i < cameraKeys_.size(); ++i) {
     ImGui::PushID(static_cast<int>(i));
     ImGui::Text("Key %d", static_cast<int>(i));

@@ -309,12 +309,42 @@ void DragonWingAnimator::SetupFlightPoses(const Animation *glidePose,
       posedJoints_.push_back(joint.index);
     }
   }
+  lieRotations_.clear();
+  lieChestRotations_.clear();
+}
+
+void DragonWingAnimator::SetLiePoses(const Animation *liePose,
+                                     const Animation *lieChestPose) {
+  const std::vector<Joint> &joints = skinned_->GetSkeleton().joints;
+  lieRotations_.clear();
+  lieChestRotations_.clear();
+  for (const Joint &joint : joints) {
+    const Quaternion &rest = restRotations_[joint.index];
+    lieRotations_.push_back(PoseRotation(liePose, joint.name, rest));
+    lieChestRotations_.push_back(PoseRotation(
+        lieChestPose ? lieChestPose : liePose, joint.name, rest));
+    // 飛行姿勢では動かないが伏せでは動く関節も、毎フレーム姿勢を書き込む
+    const bool isPosed =
+        std::find(posedJoints_.begin(), posedJoints_.end(), joint.index) !=
+        posedJoints_.end();
+    if (!isPosed && (!IsSameRotation(rest, lieRotations_.back()) ||
+                     !IsSameRotation(rest, lieChestRotations_.back()))) {
+      posedJoints_.push_back(joint.index);
+    }
+  }
 }
 
 Quaternion DragonWingAnimator::BaseRotation(int32_t jointIndex) const {
+  Quaternion ground = restRotations_[jointIndex];
+  if (!lieRotations_.empty() && gesture_.lie > 0.0f) {
+    const Quaternion lie =
+        Slerp(lieRotations_[jointIndex], lieChestRotations_[jointIndex],
+              std::clamp(gesture_.lieChest, 0.0f, 1.0f));
+    ground = Slerp(ground, lie, std::clamp(gesture_.lie, 0.0f, 1.0f));
+  }
   const Quaternion flight = Slerp(glideRotations_[jointIndex],
                                   hoverRotations_[jointIndex], hoverWeight_);
-  return Slerp(restRotations_[jointIndex], flight, currentState_.pose);
+  return Slerp(ground, flight, currentState_.pose);
 }
 
 DragonWingAnimator::Wing

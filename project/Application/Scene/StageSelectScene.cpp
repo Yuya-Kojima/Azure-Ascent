@@ -460,6 +460,9 @@ void StageSelectScene::DrawEditorUI() {
   ImGui::DragFloat("Gloom Light Intensity", &gloomLightIntensity_, 0.01f,
                    0.0f, 2.0f);
   returnSequence_->DrawImGui();
+  if (ImGui::CollapsingHeader("Dragon Wing Config")) {
+    dragonModel_->GetWingAnimator().DrawImGui();
+  }
   ImGui::End();
 #endif
 }

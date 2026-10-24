@@ -12,6 +12,9 @@ const char *const kModelFile = "player_dragon.gltf";
 // 飛行姿勢（骨だけのファイル。先頭の姿勢を使う）
 const char *const kGlidePoseFile = "player_dragon_glide_pose.gltf";
 const char *const kHoverPoseFile = "player_dragon_hover_pose.gltf";
+// 伏せの姿勢（骨だけのファイル。先頭の姿勢を使う）
+const char *const kLiePoseFile = "player_dragon_lie_pose.gltf";
+const char *const kLieChestPoseFile = "player_dragon_lie_chest_pose.gltf";
 
 // 翼端の指の最後の骨
 const char *const kLeftTipJoint = "Wing_L_Finger3_2";
@@ -39,6 +42,10 @@ void DragonModel::Initialize(Object3dRenderer *object3dRenderer,
   const Animation glidePose = LoadAnimationFile(kModelDirectory, kGlidePoseFile);
   const Animation hoverPose = LoadAnimationFile(kModelDirectory, kHoverPoseFile);
   wing_.Initialize(skinned_.get(), &glidePose, &hoverPose);
+  const Animation liePose = LoadAnimationFile(kModelDirectory, kLiePoseFile);
+  const Animation lieChestPose =
+      LoadAnimationFile(kModelDirectory, kLieChestPoseFile);
+  wing_.SetLiePoses(&liePose, &lieChestPose);
 
   leftTipJoint_ = skinned_->FindJoint(kLeftTipJoint).value_or(-1);
   rightTipJoint_ = skinned_->FindJoint(kRightTipJoint).value_or(-1);

@@ -10,9 +10,8 @@ class SpriteRenderer;
 
 /// <summary>
 /// ゲームオーバーで拠点へ戻ったときの演出と UI
-/// 雲が晴れると拠点の真上の空 → 倒れたドラゴンへ降りていく → 頭を上げ、カメラは斜め後ろへ回り込む
-/// → 起き上がり、カメラは背中の後ろへ → 首を立てて暗い空を見上げ、カメラは背中越しに空を見上げる
-/// → 到達度と「再出撃」「拠点に残る」を出す
+/// 雲が晴れると拠点の真上の空 → 伏せて休むドラゴンの横へ降りていく → 横から見たまま首を持ち上げて空を見上げる
+/// → カメラは背中を回り込んで斜め後ろの低い位置から見上げる → 到達度と「再出撃」「拠点に残る」を出す
 /// 位置はすべて、拠点のドラゴンの位置と向き（水平な右・上・前）を基準に求める
 /// </summary>
 class StageSelectReturn {
@@ -141,41 +140,43 @@ private:
   DragonWingAnimator::Gesture gesture_;
   Vector3 cameraPos_{};
   Vector3 cameraRot_{};
-  // 選んだ瞬間の見上げる重みとカメラ（ここから消す・戻す）
-  float leaveLookUp_ = 0.0f;
+  // 選んだ瞬間の姿勢の重みと翼とカメラ（ここから消す・戻す）
+  DragonWingAnimator::Gesture leaveGesture_;
+  DragonWingAnimator::State leaveWing_;
   Vector3 leaveCameraPos_{};
   Vector3 leaveCameraRot_{};
 
   //---- 時間 ----
-  float headUpTime_ = 1.5f;   // 頭を上げ始める時刻（秒）
-  float riseTime_ = 2.5f;     // 起き上がり始める時刻（秒）
-  float lookUpTime_ = 3.5f;   // 見上げ始める時刻（秒）
-  float menuTime_ = 4.5f;     // UI を出し始める時刻（秒）
+  float lookUpTime_ = 2.5f;   // 首を持ち上げ始める時刻（秒）
+  float lookUpSec_ = 1.2f;    // 首を持ち上げきるまでの時間（秒）。そのあとは見上げたまま止まる
+  float menuTime_ = 5.2f;     // UI を出し始める時刻（秒）
   float skipLockSec_ = 0.3f;  // 始めてから飛ばせるようになるまでの時間（秒）
   float menuFadeSec_ = 0.6f;  // UI が現れきるまでの時間（秒）
   float barFillSec_ = 0.8f;   // 到達度のバーが伸びきるまでの時間（UI が現れてから、秒）
-  float leaveSec_ = 0.3f;     // 選んだあと、UI と見上げる姿勢が消えるまでの時間（秒）
+  float leaveSec_ = 0.3f;     // 選んだあと、UI が消え、伏せて見上げる姿勢から立ち姿勢へ戻るまでの時間（秒）
   float stayCameraSec_ = 1.2f; // 拠点に残るとき、カメラがいつもの位置へ戻るまでの時間（秒）
 
   //---- ドラゴン ----
-  float lieDepth_ = 0.35f;  // 倒れているときに沈める深さ
-  float liePitch_ = 0.3f;   // 倒れているときの機首の下がり（ラジアン）
-  float lieRoll_ = 0.25f;   // 倒れているときの横の傾き（ラジアン）
-  float headUpCollapse_ = 0.4f; // 頭を上げきったときの、倒れる姿勢の重み
+  // 伏せの姿勢で沈める深さ。伏せると腹の下端がモデルの単位で 0.134 上がるので、その分 × 大きさ 1.7
+  float lieDepth_ = 0.23f;
+  float chestRaise_ = 0.2f; // 見上げきったときに胸を起こす量（0: 首と頭だけ 〜 1: 前脚で胸を起こす）
+  float wingMotion_ = 0.3f; // 見上げきったあとの翼の動き（0: 動かない 〜 1: 地面の上で小さく打つ）
   // 羽ばたき（強さ, 1秒あたりの回数, 畳み具合, 左右差, 姿勢, 羽ばたきの姿勢の割合）
-  DragonWingAnimator::State lieWing_ = {0.0f, 0.4f, 1.0f, 0.0f, 0.0f, 0.0f};   // 倒れている
-  DragonWingAnimator::State riseWing_ = {0.15f, 0.8f, 0.3f, 0.0f, 0.0f, 0.0f}; // 翼を少し開いて支える
-  DragonWingAnimator::State standWing_ = {0.05f, 0.4f, 0.5f, 0.0f, 0.0f, 0.0f}; // 見上げる
+  // 伏せの姿勢の翼（地面へ垂らす）をそのまま使うので、畳まない
+  DragonWingAnimator::State lieWing_ = {0.0f, 0.4f, 0.0f, 0.0f, 0.0f, 0.0f};
+  DragonWingAnimator::State stirWing_ = {0.08f, 0.5f, 0.0f, 0.0f, 0.0f, 0.0f}; // 翼の動きが 1 のとき（地面の上で小さく動く）
+  DragonWingAnimator::State standWing_ = {0.05f, 0.4f, 0.5f, 0.0f, 0.0f, 0.0f}; // 選んだあとの立ち姿勢
 
   //---- カメラ ----
   // 最初の節目を出るときの速さ（最初の区間の平均の速さに対する倍率。3 を超えると行き過ぎることがある）
   float descentStartSpeed_ = 2.0f;
+  bool isCameraMirrored_ = false; // カメラの節目の右を左に入れ替える（ドラゴンの左側から撮る）
   std::array<CameraKey, 5> cameraKeys_ = {{
-      {0.0f, {2.0f, 28.0f, -3.0f}, {0.0f, 0.0f, 0.0f}}, // 拠点の真上の空
-      {1.5f, {4.5f, 2.2f, 2.5f}, {0.0f, 0.6f, 0.0f}},   // 倒れたドラゴンの横
-      {2.5f, {3.0f, 1.8f, -3.5f}, {0.0f, 1.0f, 0.5f}},  // 斜め後ろ
-      {3.5f, {1.2f, 1.5f, -4.5f}, {0.0f, 1.5f, 2.0f}},  // 背中の後ろ
-      {4.5f, {0.9f, 0.3f, -7.0f}, {0.0f, 3.3f, 10.0f}}, // 背中越しに空を見上げる
+      {0.0f, {2.0f, 28.0f, -3.0f}, {0.0f, 0.0f, 0.0f}},  // 拠点の真上の空
+      {1.5f, {3.2f, 0.8f, 0.4f}, {0.0f, 0.2f, 0.2f}},    // 伏せたドラゴンの横の低い位置
+      {3.7f, {3.0f, 0.5f, 0.9f}, {0.0f, 0.55f, 0.5f}},   // 横のまま少し下がり、持ち上がる首を見る
+      {4.0f, {2.95f, 0.5f, 0.8f}, {0.0f, 0.6f, 0.5f}},   // 見上げきった横顔
+      {5.2f, {-1.4f, 0.25f, -5.0f}, {0.85f, 1.66f, 4.74f}}, // 背中を回り込んだ左斜め後ろの低い位置から、頭と空を 8 度見上げる（体と翼まで入る）
   }};
 
   //---- UI（画面の位置は 1280x720 の px）----

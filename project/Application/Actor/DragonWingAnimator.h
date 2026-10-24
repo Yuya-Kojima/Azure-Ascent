@@ -43,8 +43,12 @@ public:
     float launch = 0.0f;  // 飛び出しの一打ち（翼を打ち下ろす）
     float tremble = 0.0f; // 首と翼の先の震えの大きさ
     float collapse = 0.0f; // 倒れる（首を地面へ下ろし、翼を畳む）
-    float lookUp = 0.0f;   // 見上げる（首を立てて空を見上げ、翼を少し開く）
+    float lookUp = 0.0f;   // 見上げる（伏せた姿勢から首を立てて空を見上げる）
     float headThrow = 0.0f; // 首をあおる（-1〜1、正で頭が上がる）。重みの合計には数えず、羽ばたきを弱めない
+    // 地上の土台の姿勢を、立ち姿勢から伏せの姿勢へ寄せる割合（0〜1）。重みの合計には数えない
+    float lie = 0.0f;
+    // 伏せの姿勢を、胸を起こした伏せへ寄せる割合（0〜1）。重みの合計には数えない
+    float lieChest = 0.0f;
   };
 
   /// <summary>
@@ -147,8 +151,9 @@ public:
                               -10.0f, 0.0f, -10.0f, 0.0f, 6.0f};
     GesturePose collapsePose = {3.0f, 12.0f, 10.0f, -4.0f, -20.0f, 25.0f,
                                 -5.0f, 20.0f, 0.0f, 30.0f, -10.0f};
-    GesturePose lookUpPose = {-6.0f, -14.0f, -8.0f, 3.0f, 5.0f, 5.0f,
-                              0.0f, 0.0f, 0.0f, 0.0f, 4.0f};
+    // 伏せの姿勢から首を起こし（真上より少し前に傾けたまま）、鼻先をおよそ 30 度上へ向ける（首 4 本で -104 度、頭蓋で -8 度）
+    GesturePose lookUpPose = {0.0f, -26.0f, -8.0f, 3.0f, 0.0f, 0.0f,
+                              0.0f, 0.0f, 0.0f, 0.0f, 0.0f};
 
     // 翼が折れる（State::buckle が 1 のとき）
     float buckleArmBend = 25.0f;  // 打ち下ろしの途中で腕を下へ折る角度（度）
@@ -175,6 +180,13 @@ public:
   /// <param name="hoverPose">羽ばたきの飛行姿勢（先頭の姿勢を使う）。nullptr なら滑空の姿勢を使う</param>
   void Initialize(SkinnedObject *skinned, const Animation *glidePose = nullptr,
                   const Animation *hoverPose = nullptr);
+
+  /// <summary>
+  /// 伏せの姿勢を読み込む（Initialize のあとに呼ぶ）。Gesture::lie・lieChest で立ち姿勢から寄せる
+  /// </summary>
+  /// <param name="liePose">伏せの姿勢（先頭の姿勢を使う）</param>
+  /// <param name="lieChestPose">胸を起こした伏せの姿勢（先頭の姿勢を使う）。nullptr なら伏せの姿勢を使う</param>
+  void SetLiePoses(const Animation *liePose, const Animation *lieChestPose);
 
   /// <summary>
   /// 目標の状態を渡す（今の状態は Config::stateResponse の速さで近づく）
@@ -249,7 +261,7 @@ private:
   DrivenJoint MakeJoint(const char *name) const;
   void SetupFlightPoses(const Animation *glidePose, const Animation *hoverPose);
 
-  // 立ち姿勢と飛行姿勢を、今の姿勢の割合で混ぜた回転（羽ばたきはこの上に重ねる）
+  // 立ち姿勢（伏せの割合で伏せの姿勢へ寄せたもの）と飛行姿勢を、今の姿勢の割合で混ぜた回転（羽ばたきはこの上に重ねる）
   Quaternion BaseRotation(int32_t jointIndex) const;
   Wing MakeWing(const char *sidePrefix, float side) const;
 
@@ -305,6 +317,9 @@ private:
   std::vector<Quaternion> restRotations_;
   std::vector<Quaternion> glideRotations_;
   std::vector<Quaternion> hoverRotations_;
+  // 関節ごとの伏せ・胸を起こした伏せの回転（SetLiePoses を呼ぶまでは空）
+  std::vector<Quaternion> lieRotations_;
+  std::vector<Quaternion> lieChestRotations_;
   std::vector<int32_t> posedJoints_;
   float hoverWeight_ = 0.0f; // 飛行姿勢のうち羽ばたきの割合（0: 滑空 〜 1: 羽ばたき）
   float bodyPitch_ = 0.0f;   // 羽ばたきでの体の前後の傾き（ラジアン、モデルの左右の軸まわり）
