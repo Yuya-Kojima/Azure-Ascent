@@ -24,9 +24,8 @@ void SceneManager::Initialize(EngineBase *engine) {
 
 void SceneManager::Finalize() {
 
-  // 予約が残ってたら解放
+  // 予約が残ってたら解放（予約だけのシーンは Initialize していないので、Finalize は呼ばない）
   if (nextScene_) {
-    nextScene_->Finalize();
     nextScene_.reset();
   }
 
