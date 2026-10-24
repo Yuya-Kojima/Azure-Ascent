@@ -294,6 +294,7 @@ void GamePlayScene::Initialize(EngineBase *engine) {
   stageIntro_ = std::make_unique<StageIntro>();
   stageIntro_->Initialize(engine_->GetSpriteRenderer(), cloudSeaEvents_.get());
   gameOverSequence_ = std::make_unique<GameOverSequence>();
+  gameOverSequence_->Initialize(engine_->GetSpriteRenderer());
 
   //===========================
   // プレイヤーの初期化
@@ -2002,6 +2003,11 @@ void GamePlayScene::Draw2D() {
 
   // 目標カードは HUD より手前に出す
   stageIntro_->DrawCaption();
+
+  // ゲームオーバーの黒い幕と「GAME OVER」のカードも HUD より手前に出す
+  if (gameState_ == GameState::GameOver) {
+    gameOverSequence_->Draw();
+  }
 }
 
 void GamePlayScene::StartIntro() {
@@ -2115,18 +2121,24 @@ void GamePlayScene::UpdateGameOver() {
   // HUD は被弾から消していく
   UIManager::GetInstance()->SetGlobalAlpha(gameOverSequence_->GetHudAlpha());
 
-  // 合図で、到達度（レールの進んだ割合）を拠点へ渡し、雲を抜けて地上の拠点へ降りる遷移を始める
+  // 合図で、到達度（レールの進んだ割合）を拠点へ渡し、拠点へ切り替える
+  // ドラゴンが沈んだ雲海と同じ暗い灰青の雲が、黒い画面を下から覆い、拠点で下から晴れる
   if (gameOverSequence_->ConsumeTransitionCue()) {
     const size_t kMinWaypointCount = 2;
     const float lastIndex = static_cast<float>(
         (std::max)(railCamera_->GetWaypoints().size(), kMinWaypointCount) - 1);
     GameManager::GetInstance()->SetGameOverReturn(
         std::clamp(railCamera_->GetT() / lastIndex, 0.0f, 1.0f));
-    const float kCloudTransitionSec = 1.0f;
-    const Vector4 kCloudColor = {1.0f, 1.0f, 1.0f, 1.0f};
+    const float kDarkCloudTransitionSec = 0.8f;
+    // 雲の本体（日の当たる面）・影・縁の光の色（sRGB）。見下ろしの雲海に近い暗い灰青
+    const Vector4 kDarkCloudColor = {0.36f, 0.38f, 0.45f, 1.0f};
+    const Vector4 kDarkCloudShadowColor = {0.10f, 0.11f, 0.15f, 1.0f};
+    const Vector4 kDarkCloudGlowColor = {0.55f, 0.58f, 0.66f, 1.0f};
     SceneManager::GetInstance()->SetNextTransitionFade(
-        kCloudTransitionSec, Fade::FadeType::CloudDescend, kCloudColor,
-        Fade::EasingType::Linear);
+        kDarkCloudTransitionSec, Fade::FadeType::CloudDescend,
+        kDarkCloudColor, Fade::EasingType::Linear);
+    SceneManager::GetInstance()->SetNextTransitionCloudShade(
+        kDarkCloudShadowColor, kDarkCloudGlowColor);
     SceneManager::GetInstance()->ChangeScene("STAGE_SELECT");
   }
 }

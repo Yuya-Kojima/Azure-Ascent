@@ -9,7 +9,7 @@ class ICamera;
 class RailCamera;
 class BillboardParticleEmitter;
 class SpriteRenderer;
-class StageIntroText;
+class CaptionCard;
 
 /// <summary>
 /// ステージ開始演出（絵コンテの S4〜S7）
@@ -183,7 +183,7 @@ private:
   // 雲の粒
   std::unique_ptr<BillboardParticleEmitter> cloudParticles_;
   // 目標カード
-  std::unique_ptr<StageIntroText> text_;
+  std::unique_ptr<CaptionCard> text_;
   // 雲海の出来事の登録先
   CloudSeaEvents *cloudSeaEvents_ = nullptr;
 

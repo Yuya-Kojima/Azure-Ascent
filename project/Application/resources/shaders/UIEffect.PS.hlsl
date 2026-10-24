@@ -24,6 +24,8 @@ struct UIEffectParams {
 	float dissolveFlip; // ディゾルブの縦方向を反転するか（0 or 1）
 	float glowStrength; // ディゾルブの縁の光の強さ 0〜1
 	float dissolveDescend; // ディゾルブの縦の動きを上下逆にするか（0 = 上から, 1 = 下から）
+	float4 cloudShadowColor; // 雲の影の色（rgb、画面で見える値 sRGB）
+	float4 cloudGlowColor; // 雲の縁の光の色（rgb、画面で見える値 sRGB）
 };
 ConstantBuffer<UIEffectParams> gUIEffect : register(b1);
 
@@ -292,13 +294,13 @@ PixelShaderOutput main(VertexShaderOutput input) {
 
 		// 色は画面で見える値（sRGB）で書き、出力先が sRGB なので線形に直して使う
 		const float kGamma = 2.2f;
-		// 縁の光の色：日差しを受けた温かい白
-		const float3 kGlowColorSRGB = float3(1.0f, 0.97f, 0.88f);
+		// 縁の光の色
+		const float3 kGlowColorSRGB = gUIEffect.cloudGlowColor.rgb;
 		// 雲本体の明るさ。縁がいちばん明るく見えるよう、少し落としておく
 		const float kCloudBodyBrightness = 0.9f;
 		float3 bodyColorSRGB = gMaterial.color.rgb * kCloudBodyBrightness;
-		// 影の色：青空を映した青灰色
-		const float3 kCloudShadowColorSRGB = float3(0.74f, 0.80f, 0.91f);
+		// 影の色
+		const float3 kCloudShadowColorSRGB = gUIEffect.cloudShadowColor.rgb;
 		// 光の向きによる陰影をどれだけ使うか（残りはノイズの濃淡をそのまま明るさにする）
 		const float kDirectionalWeight = 0.85f;
 

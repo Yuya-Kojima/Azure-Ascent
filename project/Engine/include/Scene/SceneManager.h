@@ -26,6 +26,8 @@ private:
   Vector4 transitionColor_ = Vector4{0.0f, 0.0f, 0.0f, 1.0f};
   Fade::FadeType transitionFadeType_ = Fade::FadeType::Solid;
   Fade::EasingType transitionEasing_ = Fade::EasingType::EaseOutCubic;
+  Vector4 transitionCloudShadowColor_ = Fade::kDefaultCloudShadowColor;
+  Vector4 transitionCloudGlowColor_ = Fade::kDefaultCloudGlowColor;
 
   float holdSec_ = 0.0f;
   float holdDurationSec_ = 0.20f;
@@ -74,6 +76,12 @@ public:
       float durationSec, Fade::FadeType type = Fade::FadeType::Solid,
       const Vector4 &color = Vector4{0.0f, 0.0f, 0.0f, 1.0f},
       Fade::EasingType easing = Fade::EasingType::EaseOutCubic);
+
+  /// <summary>
+  /// 次の遷移が雲のときの、影の色と縁の光の色（SetNextTransitionFade と一緒に呼ぶ。遷移が終わると既定に戻る）
+  /// </summary>
+  void SetNextTransitionCloudShade(const Vector4 &shadowColor,
+                                   const Vector4 &glowColor);
 
   PostProcess* GetCurrentScenePostProcess() const;
 

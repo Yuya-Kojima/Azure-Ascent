@@ -4,20 +4,29 @@
 #include <array>
 #include <memory>
 
+class CaptionCard;
 class GameCamera;
 class ICamera;
 class RailCamera;
+class Sprite;
+class SpriteRenderer;
 
 /// <summary>
 /// ゲームオーバーの空中の演出
 /// 被弾して時間がゆっくりになる → カメラがレールを離れてドラゴンの横に並ぶ → 翼でもがくが、打つたびに弱くなる
-/// → 翼が畳まれて力が抜ける → カメラが上へ引き、ドラゴンが雲海へ沈む → 下りの雲の遷移の合図
+/// → 翼が畳まれて力が抜ける → カメラが上へ引き、ドラゴンが雲海へ沈む
+/// → 見下ろしに「GAME OVER」のカードが出て、その後ろで場面が黒い幕で暗くなる → カードが閉じたら拠点への遷移の合図
 /// 位置はすべて、Start の時点のドラゴンの位置と、レールの水平な右・前の向きを基準に求める
 /// </summary>
 class GameOverSequence {
 public:
   GameOverSequence();
   ~GameOverSequence();
+
+  /// <summary>
+  /// 初期化（黒い幕と文字カードのスプライトを作る）
+  /// </summary>
+  void Initialize(SpriteRenderer *spriteRenderer);
 
   /// <summary>
   /// 演出を始める
@@ -37,8 +46,13 @@ public:
   /// <summary>
   /// 更新（ドラゴンの位置・向き・翼、カメラ）
   /// </summary>
-  /// <param name="isSkipPressed">決定キーが押されたか（押されたら、すぐ雲の遷移の合図を出す）</param>
+  /// <param name="isSkipPressed">決定キーが押されたか（押されたら、すぐ拠点への遷移の合図を出す）</param>
   void Update(bool isSkipPressed);
+
+  /// <summary>
+  /// 黒い幕と文字カードの描画（HUD より手前）
+  /// </summary>
+  void Draw();
 
   /// <summary>
   /// 演出中か
@@ -46,7 +60,7 @@ public:
   bool IsActive() const { return isActive_; }
 
   /// <summary>
-  /// 雲の遷移を始める合図（一度だけ true を返す）
+  /// 拠点への遷移を始める合図（一度だけ true を返す）
   /// </summary>
   bool ConsumeTransitionCue();
 
@@ -104,6 +118,8 @@ private:
   void UpdateDragon();
   void UpdateWing();
   void UpdateCamera();
+  // 黒い幕と文字カード
+  void UpdateScreen();
 
   // 今の時刻に打っている一打ち
   const StruggleBeat &CurrentBeat() const;
@@ -118,6 +134,9 @@ private:
   float MotionTimeAt(float time) const;
 
   std::unique_ptr<GameCamera> camera_;
+  std::unique_ptr<Sprite> curtain_;   // 場面を暗くする黒い幕（画面全体）
+  std::unique_ptr<CaptionCard> card_; // 「GAME OVER」と「第一空域　奪還ならず」
+  float curtainAlpha_ = 0.0f;         // 黒い幕の不透明度
 
   bool isActive_ = false;
   bool isTransitionCued_ = false; // 合図を出したか
@@ -166,7 +185,9 @@ private:
   float limpStartTime_ = 2.2f;      // 翼が畳まれ始める時刻（秒）
   float limpEndTime_ = 2.6f;        // 力が抜けきる時刻（秒）
   float pullStartTime_ = 2.5f;      // カメラが上へ引き始める時刻（秒）
-  float transitionTime_ = 3.3f;     // 雲の遷移を始める時刻（秒）
+  float sinkTime_ = 3.3f;           // ドラゴンが雲海の面から sinkDepth_ だけ沈みきる時刻（秒）
+  float darkenStartTime_ = 3.1f;    // 黒い幕が下り始める時刻（秒）
+  float darkenSec_ = 0.8f;          // 黒い幕で真っ黒になるまでの時間（秒）
   float skipLockSec_ = 0.5f;        // 被弾してから飛ばせるようになるまでの時間（秒）
   float hudFadeSec_ = 0.3f;         // HUD が消えるまでの時間（秒）
 
@@ -177,7 +198,7 @@ private:
   float driftSpeed_ = 6.0f;         // 被弾した瞬間の前へ進む速さ（単位/秒）
   float driftDecaySec_ = 0.8f;      // 前へ進む勢いが落ちる速さ（指数関数の時定数、秒）
   float fallAccelSec_ = 1.0f;       // 落ちる速さが上限に届くまでの動きの時間（秒）
-  float sinkDepth_ = 6.0f;          // 雲の遷移を始める時刻に、雲海の面から沈んでいる深さ
+  float sinkDepth_ = 6.0f;          // sinkTime_ に、雲海の面から沈んでいる深さ
   float minFallDistance_ = 20.0f;   // 落ちる距離の下限（雲海が近いときに使う）
   float hitRoll_ = 0.7f;            // 弾かれて傾く角度（ラジアン）
   float limpRoll_ = 0.35f;          // 力が抜けたあとの傾き（ラジアン）

@@ -63,6 +63,31 @@ bool IsDecidePressed(Input *input) {
   return input->IsTriggerKey(DIK_RETURN) || input->IsTriggerKey(DIK_SPACE) ||
          input->IsPadTrigger(PadButton::A);
 }
+
+/// <summary>
+/// 前の区間の傾き a と次の区間の傾き b から、節目での傾きを決める
+/// 向きが変わる節目では 0、同じ向きなら調和平均（どちらの傾きの 2 倍も超えない）
+/// </summary>
+float KeySlope(float a, float b) {
+  if (a * b <= 0.0f) {
+    return 0.0f;
+  }
+  return 2.0f * a * b / (a + b);
+}
+
+/// <summary>
+/// 3次エルミート曲線（両端の値 p0・p1、両端の傾き m0・m1、区間の長さ span、区間の中の割合 t）
+/// </summary>
+float Hermite(float p0, float p1, float m0, float m1, float span, float t) {
+  const float t2 = t * t;
+  const float t3 = t2 * t;
+  return (2.0f * t3 - 3.0f * t2 + 1.0f) * p0 +
+         (t3 - 2.0f * t2 + t) * span * m0 + (-2.0f * t3 + 3.0f * t2) * p1 +
+         (t3 - t2) * span * m1;
+}
+
+// 区間の長さの下限（秒）。節目の時刻が同じでも 0 で割らないため
+const float kMinKeySpan = 0.01f;
 } // namespace
 
 StageSelectReturn::StageSelectReturn() = default;
@@ -208,26 +233,61 @@ void StageSelectReturn::UpdateWake() {
   }
 }
 
-void StageSelectReturn::UpdateCamera() {
+Vector3 StageSelectReturn::SampleCameraKeys(Vector3 CameraKey::*offset) const {
   //===========================
-  // 節目の間を順に移る（最初の降りる所は速く入って止まり、ほかは加速 → 減速）
+  // 節目を通る一本の曲線（右・上・前それぞれ3次エルミート曲線でつなぐ）
+  // 途中の節目では止まらず、最初の節目は速く出て、最後の節目で止まる
   //===========================
-  const CameraKey *from = &cameraKeys_.back();
-  const CameraKey *to = &cameraKeys_.back();
-  float ease = 1.0f;
-  for (size_t i = 0; i + 1 < cameraKeys_.size(); ++i) {
-    if (timer_ < cameraKeys_[i + 1].time) {
-      from = &cameraKeys_[i];
-      to = &cameraKeys_[i + 1];
-      float t = Progress(timer_, from->time, to->time - from->time);
-      ease = (i == 0) ? EaseOutCubic(t) : EaseInOutCubic(t);
-      break;
-    }
+  const size_t last = cameraKeys_.size() - 1;
+  if (timer_ <= cameraKeys_[0].time) {
+    return cameraKeys_[0].*offset;
   }
-  cameraPos_ =
-      Lerp(ToWorld(from->cameraOffset), ToWorld(to->cameraOffset), ease);
-  Vector3 lookPos =
-      Lerp(ToWorld(from->lookOffset), ToWorld(to->lookOffset), ease);
+  if (timer_ >= cameraKeys_[last].time) {
+    return cameraKeys_[last].*offset;
+  }
+  size_t seg = 0;
+  while (timer_ >= cameraKeys_[seg + 1].time) {
+    ++seg;
+  }
+
+  // 区間 i の長さ（秒）
+  auto span = [this](size_t i) {
+    return (std::max)(cameraKeys_[i + 1].time - cameraKeys_[i].time,
+                      kMinKeySpan);
+  };
+  // 区間 i の平均の傾き（1秒あたりの変化）
+  auto slope = [&](size_t i, float Vector3::*axis) {
+    return ((cameraKeys_[i + 1].*offset).*axis -
+            (cameraKeys_[i].*offset).*axis) /
+           span(i);
+  };
+  // 節目 k での傾き
+  auto keySlope = [&](size_t k, float Vector3::*axis) {
+    if (k == 0) {
+      return slope(0, axis) * descentStartSpeed_;
+    }
+    if (k == last) {
+      return 0.0f;
+    }
+    return KeySlope(slope(k - 1, axis), slope(k, axis));
+  };
+
+  const float segSpan = span(seg);
+  const float t = std::clamp((timer_ - cameraKeys_[seg].time) / segSpan,
+                             0.0f, 1.0f);
+  Vector3 result{};
+  for (float Vector3::*axis : {&Vector3::x, &Vector3::y, &Vector3::z}) {
+    result.*axis = Hermite((cameraKeys_[seg].*offset).*axis,
+                           (cameraKeys_[seg + 1].*offset).*axis,
+                           keySlope(seg, axis), keySlope(seg + 1, axis),
+                           segSpan, t);
+  }
+  return result;
+}
+
+void StageSelectReturn::UpdateCamera() {
+  cameraPos_ = ToWorld(SampleCameraKeys(&CameraKey::cameraOffset));
+  const Vector3 lookPos = ToWorld(SampleCameraKeys(&CameraKey::lookOffset));
   cameraRot_ = LookRotation(cameraPos_, lookPos);
 }
 
@@ -378,6 +438,7 @@ void StageSelectReturn::DrawImGui() {
   ImGui::DragFloat4("Rise Wing", &riseWing_.strength, 0.01f, 0.0f, 4.0f);
   ImGui::DragFloat4("Stand Wing", &standWing_.strength, 0.01f, 0.0f, 4.0f);
   ImGui::SeparatorText("Camera Keys (right, up, forward)");
+  ImGui::SliderFloat("Descent Start Speed", &descentStartSpeed_, 0.0f, 3.0f);
   for (size_t i = 0; i < cameraKeys_.size(); ++i) {
     ImGui::PushID(static_cast<int>(i));
     ImGui::Text("Key %d", static_cast<int>(i));

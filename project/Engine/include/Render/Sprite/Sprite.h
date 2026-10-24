@@ -44,7 +44,9 @@ class Sprite {
     float dissolveFlip; // ディゾルブの縦方向を反転するか（0 = しない、1 = する）
     float glowStrength; // ディゾルブの縁の光の強さ 0〜1
     float dissolveDescend; // ディゾルブの縦の動きを上下逆にするか（0 = 上から, 1 = 下から）
-    float padding[3];      // 定数バッファは 16 バイト単位で読まれるので、サイズをそろえる
+    float padding[3];      // 次の Vector4 を 16 バイトの区切りから始めるための詰め物
+    Vector4 cloudShadowColor; // 雲ディゾルブの影の色（rgb、画面で見える値 sRGB）
+    Vector4 cloudGlowColor;   // 雲ディゾルブの縁の光の色（rgb、画面で見える値 sRGB）
   };
 
 public:
@@ -79,6 +81,11 @@ public:
   /// </summary>
   void SetDissolveParams(float progress, float edgeWidth, bool flip = false,
                          float glowStrength = 1.0f, bool descend = false);
+
+  /// <summary>
+  /// 雲ディゾルブの影の色と縁の光の色を設定する（rgb、画面で見える値 sRGB）
+  /// </summary>
+  void SetCloudShadeColors(const Vector4 &shadowColor, const Vector4 &glowColor);
 
 private:
   SpriteRenderer *spriteRenderer_ = nullptr;

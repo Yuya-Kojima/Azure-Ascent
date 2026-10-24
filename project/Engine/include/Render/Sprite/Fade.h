@@ -19,6 +19,11 @@ public:
     CloudDescend, // Cloud の上下逆。雲が下から覆い、下から晴れる（雲を抜けて降下する演出）
   };
 
+  // 雲の遷移の影の色と縁の光の色の既定値（rgb、画面で見える値 sRGB）
+  // 影は青空を映した青灰色、縁の光は日差しを受けた温かい白
+  static inline const Vector4 kDefaultCloudShadowColor = {0.74f, 0.80f, 0.91f, 1.0f};
+  static inline const Vector4 kDefaultCloudGlowColor = {1.0f, 0.97f, 0.88f, 1.0f};
+
   enum class EasingType {
     Linear,
     EaseOutCubic,
@@ -45,6 +50,14 @@ public:
 
   void StartFadeIn(float durationSec, FadeType type, const Vector4 &color,
                    EasingType easing);
+
+  /// <summary>
+  /// 雲の遷移の影の色と縁の光の色を設定する（雲の本体の色は Start の color）
+  /// </summary>
+  void SetCloudShade(const Vector4 &shadowColor, const Vector4 &glowColor) {
+    cloudShadowColor_ = shadowColor;
+    cloudGlowColor_ = glowColor;
+  }
 
   bool IsPlaying() const { return state_ != State::Idle; }
   bool IsFinished() const { return state_ == State::Idle; }
@@ -92,6 +105,9 @@ private:
   // 縁の光の強さ（覆うとき / 晴れるとき）
   float cloudGlowCovering_ = 1.0f;
   float cloudGlowClearing_ = 1.0f;
+  // 影の色と縁の光の色
+  Vector4 cloudShadowColor_ = kDefaultCloudShadowColor;
+  Vector4 cloudGlowColor_ = kDefaultCloudGlowColor;
   // 雲を流すための経過時間（秒）。雲が見えている間だけ進める
   float cloudTime_ = 0.0f;
 

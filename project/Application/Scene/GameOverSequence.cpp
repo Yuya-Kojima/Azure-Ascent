@@ -1,6 +1,9 @@
 #include "GameOverSequence.h"
+#include "CaptionCard.h"
 #include "Camera/GameCamera.h"
 #include "Camera/RailCamera.h"
+#include "Core/WindowSystem.h"
+#include "Sprite/Sprite.h"
 #include <algorithm>
 #include <cmath>
 #include <numbers>
@@ -14,6 +17,29 @@ namespace {
 const float kFrameSec = 1.0f / 60.0f;
 // 真上
 const Vector3 kWorldUp = {0.0f, 1.0f, 0.0f};
+// UV は画像全体をそのまま使う
+const Transform kUvTransform = {
+    {1.0f, 1.0f, 1.0f}, {0.0f, 0.0f, 0.0f}, {0.0f, 0.0f, 0.0f}};
+
+/// <summary>
+/// 「GAME OVER」のカードの時刻と置き場所（時刻は被弾からの秒）
+/// 翼が畳まれきった所で見下ろしに出て、黒い幕が下りたあとも黒の上に出たまま読ませる
+/// 縦の位置は、雲海へ沈むドラゴン（画面の高さの 0.45〜0.5）より上
+/// </summary>
+CaptionCard::Settings MakeGameOverCardSettings() {
+  CaptionCard::Settings settings;
+  settings.upperPath = "resources/UI/GameOver/gameover_title.png";
+  settings.lowerPath = "resources/UI/GameOver/gameover_result.png";
+  settings.cardInTime = 2.6f;
+  settings.cardOutTime = 5.4f;
+  settings.lineY = 240.0f;
+  settings.lineWidth = 590.0f;
+  settings.upperY = 186.0f;
+  settings.lowerY = 280.0f;
+  // 横線は下の言葉と同じ、くすんだ金色
+  settings.lineColor = {0.71f, 0.65f, 0.51f, 1.0f};
+  return settings;
+}
 
 /// <summary>
 /// 時刻 time が start から sec かけて進む割合（0〜1）
@@ -64,6 +90,18 @@ GameOverSequence::GameOverSequence()
 
 GameOverSequence::~GameOverSequence() = default;
 
+void GameOverSequence::Initialize(SpriteRenderer *spriteRenderer) {
+  curtain_ = std::make_unique<Sprite>();
+  curtain_->Initialize(spriteRenderer, "resources/white1x1.png");
+  curtain_->SetAnchorPoint({0.0f, 0.0f});
+  curtain_->SetPosition({0.0f, 0.0f});
+  curtain_->SetSize({static_cast<float>(WindowSystem::kClientWidth),
+                     static_cast<float>(WindowSystem::kClientHeight)});
+
+  card_ = std::make_unique<CaptionCard>();
+  card_->Initialize(spriteRenderer, MakeGameOverCardSettings());
+}
+
 void GameOverSequence::Start(const RailCamera &railCamera,
                              const Vector3 &dragonPos,
                              const Vector3 &dragonRot, float seaHeight) {
@@ -93,11 +131,11 @@ void GameOverSequence::Start(const RailCamera &railCamera,
   railLookPos_ = railCameraPos_ + Normalize(railLookDir) * kRailLookDistance;
   railCameraFov_ = railCamera.GetFov();
 
-  // 雲の遷移を始める時刻に、雲海の面から sinkDepth_ だけ沈んでいるように、落ちる速さの上限を決める
+  // sinkTime_ に、雲海の面から sinkDepth_ だけ沈んでいるように、落ちる速さの上限を決める
   float fallDistance =
       (std::max)(dragonPos.y - (seaHeight - sinkDepth_), minFallDistance_);
   float unitDistance =
-      UnitFallDistance(MotionTimeAt(transitionTime_), fallAccelSec_);
+      UnitFallDistance(MotionTimeAt(sinkTime_), fallAccelSec_);
   fallSpeed_ = fallDistance / (std::max)(unitDistance, kFrameSec);
 
   wingState_ = hitWing_;
@@ -106,6 +144,8 @@ void GameOverSequence::Start(const RailCamera &railCamera,
   rightPush_ = 0.0f;
   lift_ = 0.0f;
   beatAngles_ = {};
+  curtainAlpha_ = 0.0f;
+  card_->Start();
   UpdateCamera();
 }
 
@@ -113,6 +153,8 @@ void GameOverSequence::Stop() {
   isActive_ = false;
   isCueReady_ = false;
   gesture_ = {};
+  curtainAlpha_ = 0.0f;
+  card_->Stop();
 }
 
 void GameOverSequence::Update(bool isSkipPressed) {
@@ -126,6 +168,7 @@ void GameOverSequence::Update(bool isSkipPressed) {
     UpdateDragon();
     UpdateWing();
     UpdateCamera();
+    UpdateScreen();
     return;
   }
 
@@ -138,9 +181,9 @@ void GameOverSequence::Update(bool isSkipPressed) {
   lift_ += liftSpeed_ * CurrentBeat().lift * push * motionDelta;
   lift_ *= std::exp(-motionDelta / liftReturnSec_);
 
-  // 決まった時刻か、決定キーで、雲の遷移の合図を出す
+  // カードが閉じきった時刻か、決定キーで、拠点への遷移の合図を出す
   const bool canSkip = isSkipPressed && timer_ >= skipLockSec_;
-  if (!isTransitionCued_ && (timer_ >= transitionTime_ || canSkip)) {
+  if (!isTransitionCued_ && (timer_ >= card_->GetEndTime() || canSkip)) {
     isTransitionCued_ = true;
     isCueReady_ = true;
   }
@@ -148,6 +191,30 @@ void GameOverSequence::Update(bool isSkipPressed) {
   UpdateDragon();
   UpdateWing();
   UpdateCamera();
+  UpdateScreen();
+}
+
+void GameOverSequence::UpdateScreen() {
+  //===========================
+  // 黒い幕：カードが出たあと、その後ろで場面が暗くなっていき、真っ黒のまま
+  //===========================
+  curtainAlpha_ =
+      EaseInOutQuad(Progress(timer_, darkenStartTime_, darkenSec_));
+  curtain_->SetColor({0.0f, 0.0f, 0.0f, curtainAlpha_});
+  curtain_->Update(kUvTransform);
+
+  // カードは演出の時計に合わせる（止めてつまみで時刻を動かしても同じ姿になる）
+  card_->SetTime(timer_);
+}
+
+void GameOverSequence::Draw() {
+  if (!isActive_) {
+    return;
+  }
+  if (curtainAlpha_ > 0.0f) {
+    curtain_->Draw();
+  }
+  card_->Draw();
 }
 
 bool GameOverSequence::ConsumeTransitionCue() {
@@ -231,7 +298,7 @@ void GameOverSequence::UpdateDragon() {
   const float struggleToLimp = EaseInOutQuad(
       Progress(timer_, struggleStartTime, limpEndTime_ - struggleStartTime));
   const float limpToSink = EaseInOutQuad(
-      Progress(timer_, limpEndTime_, transitionTime_ - limpEndTime_));
+      Progress(timer_, limpEndTime_, sinkTime_ - limpEndTime_));
 
   float roll = hitRoll_ * hitPush;
   float pitch = Lerp(startRot_.x, hitPitch_, hitPush);
@@ -337,7 +404,9 @@ void GameOverSequence::UpdateCamera() {
         EaseOutCubic(Progress(timer_, pullStartTime_, pullSec_));
     cameraPos = Lerp(pullStartCameraPos,
                      ToWorld(pullAnchorPos, pullCameraOffset_), pullEase);
-    lookPos = dragonPos_;
+    // 沈みきったあとは、沈みきった所を見たまま止める（雲海の下へ落ち続けるのを追わない）
+    const float lookMotionTime = (std::min)(motionTime_, MotionTimeAt(sinkTime_));
+    lookPos = DragonPositionAt(lookMotionTime) + kWorldUp * lift_;
   }
 
   // 被弾の瞬間の揺れ：3つの周波数の sin でずらし、残り時間の2乗で弱める
@@ -359,11 +428,11 @@ void GameOverSequence::UpdateCamera() {
 void GameOverSequence::DrawImGui() {
 #ifdef USE_IMGUI
   ImGui::Text("Time %.2f / %.2f (motion %.2f, scale %.2f)", timer_,
-              transitionTime_, motionTime_, GetTimeScale());
+              card_->GetEndTime(), motionTime_, GetTimeScale());
   // 止めて、つまみで時刻を動かし、その時刻の構図を見る
   ImGui::Checkbox("Pause", &isPaused_);
   if (isPaused_) {
-    ImGui::SliderFloat("Scrub Time", &timer_, 0.0f, transitionTime_);
+    ImGui::SliderFloat("Scrub Time", &timer_, 0.0f, card_->GetEndTime());
   }
   ImGui::SeparatorText("Timing");
   ImGui::DragFloat("Slow Sec", &slowSec_, 0.01f, 0.0f, 2.0f);
@@ -372,7 +441,9 @@ void GameOverSequence::DrawImGui() {
   ImGui::DragFloat("Limp Start", &limpStartTime_, 0.01f, 0.0f, 5.0f);
   ImGui::DragFloat("Limp End", &limpEndTime_, 0.01f, 0.0f, 5.0f);
   ImGui::DragFloat("Pull Start", &pullStartTime_, 0.01f, 0.0f, 5.0f);
-  ImGui::DragFloat("Transition Time", &transitionTime_, 0.01f, 0.1f, 8.0f);
+  ImGui::DragFloat("Sink Time", &sinkTime_, 0.01f, 0.1f, 8.0f);
+  ImGui::DragFloat("Darken Start", &darkenStartTime_, 0.01f, 0.0f, 10.0f);
+  ImGui::DragFloat("Darken Sec", &darkenSec_, 0.01f, 0.01f, 3.0f);
   ImGui::DragFloat("Skip Lock Sec", &skipLockSec_, 0.01f, 0.0f, 3.0f);
   ImGui::SeparatorText("Dragon");
   ImGui::DragFloat("Hit Push Distance", &hitPushDistance_, 0.05f, 0.0f, 10.0f);
@@ -430,5 +501,7 @@ void GameOverSequence::DrawImGui() {
   ImGui::DragFloat("Pull Sec", &pullSec_, 0.01f, 0.05f, 3.0f);
   ImGui::DragFloat("Hit Shake", &hitShake_, 0.01f, 0.0f, 2.0f);
   ImGui::DragFloat("Hit Shake Sec", &hitShakeSec_, 0.01f, 0.01f, 2.0f);
+  ImGui::SeparatorText("Game Over Card");
+  card_->DrawImGui();
 #endif
 }

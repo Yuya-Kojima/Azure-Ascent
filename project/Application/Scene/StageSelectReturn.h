@@ -108,6 +108,9 @@ private:
   // ドラゴンの位置から、ドラゴンの水平な右・上・前の向きで offset だけ動かした位置
   Vector3 ToWorld(const Vector3 &offset) const;
 
+  // 今の時刻での、節目を通る曲線の上のオフセット（offset は節目のどのオフセットを使うか）
+  Vector3 SampleCameraKeys(Vector3 CameraKey::*offset) const;
+
   void UpdateWake();
   void UpdateCamera();
   void UpdateMenu(Input *input);
@@ -165,6 +168,8 @@ private:
   DragonWingAnimator::State standWing_ = {0.05f, 0.4f, 0.5f, 0.0f, 0.0f, 0.0f}; // 見上げる
 
   //---- カメラ ----
+  // 最初の節目を出るときの速さ（最初の区間の平均の速さに対する倍率。3 を超えると行き過ぎることがある）
+  float descentStartSpeed_ = 2.0f;
   std::array<CameraKey, 5> cameraKeys_ = {{
       {0.0f, {2.0f, 28.0f, -3.0f}, {0.0f, 0.0f, 0.0f}}, // 拠点の真上の空
       {1.5f, {4.5f, 2.2f, 2.5f}, {0.0f, 0.6f, 0.0f}},   // 倒れたドラゴンの横
