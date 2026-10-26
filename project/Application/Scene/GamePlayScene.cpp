@@ -384,6 +384,7 @@ void GamePlayScene::Update() {
     railCamera_->SetSpeedScale(1.0f);
     player_->SetExternalWingState(std::nullopt);
     player_->SetWingGesture({});
+    player_->SetDirectWingRoot(nullptr);
     UIManager::GetInstance()->Load("resources/UI/GamePlayUI.json");
 
     // 残っている敵や弾をクリア
@@ -850,16 +851,14 @@ void GamePlayScene::Update() {
       player_->UpdateTransform();
     }
     // 羽ばたきは開始演出中も進め、ポーズ・ヒットストップ中は止める
-    // ゲームオーバーの間は、演出の時間の速さで進める
+    // ゲームオーバーの間は、時間がゆっくりになっても翼は普通の速さで進める
     float wingDeltaTime =
         (shouldUpdateWorld || gameState_ == GameState::Intro) ? kWingDeltaTime_
                                                               : 0.0f;
     if (gameState_ == GameState::GameOver) {
       player_->UpdateTransform();
       const bool isSequenceMoving = isPlayMode_ && !isPaused_;
-      wingDeltaTime = isSequenceMoving
-                          ? kWingDeltaTime_ * gameOverSequence_->GetTimeScale()
-                          : 0.0f;
+      wingDeltaTime = isSequenceMoving ? kWingDeltaTime_ : 0.0f;
     }
     player_->UpdateWing(wingDeltaTime);
   }
@@ -2097,6 +2096,13 @@ void GamePlayScene::StartGameOver() {
   gameOverSequence_->Start(*railCamera_, player_->GetTransform().translate,
                            player_->GetTransform().rotate,
                            cloudSea_->GetHeight());
+  // 翼の付け根の角度は、被弾した瞬間の角度から、演出の一打ちの表で決める
+  gameOverSequence_->SetStartWingRootAngles(player_->GetWingRootAngle(false),
+                                            player_->GetWingRootAngle(true));
+  const GameOverSequence *sequence = gameOverSequence_.get();
+  player_->SetDirectWingRoot([sequence](bool isRight, float delaySec) {
+    return sequence->WingRootAngle(isRight, delaySec);
+  });
 }
 
 void GamePlayScene::UpdateGameOver() {

@@ -64,6 +64,9 @@ DragonWingAnimator::State LerpWing(const DragonWingAnimator::State &a,
   result.asymmetry = Lerp(a.asymmetry, b.asymmetry, t);
   result.pose = Lerp(a.pose, b.pose, t);
   result.hover = Lerp(a.hover, b.hover, t);
+  result.sideLag = Lerp(a.sideLag, b.sideLag, t);
+  result.buckle = Lerp(a.buckle, b.buckle, t);
+  result.flail = Lerp(a.flail, b.flail, t);
   return result;
 }
 
@@ -339,38 +342,86 @@ void GameOverSequence::RecordWingAngle(float left, float right) {
   range.rightMax = (std::max)(range.rightMax, right);
 }
 
-const GameOverSequence::StruggleBeat &GameOverSequence::CurrentBeat() const {
+const GameOverSequence::StruggleBeat &
+GameOverSequence::BeatAt(float time) const {
   // 始める時刻を過ぎた一打ちのうち、最後のもの（もがき始める前は最初の一打ち）
   const StruggleBeat *current = &beats_.front();
   for (const StruggleBeat &beat : beats_) {
-    if (timer_ >= beat.time) {
+    if (time >= beat.time) {
       current = &beat;
     }
   }
   return *current;
 }
 
-void GameOverSequence::UpdateWing() {
-  //===========================
-  // 被弾 → 一打ちごとに決めた状態で打つ（だんだん弱く、崩れていく） → 畳まれて力が抜ける
-  //===========================
-  const StruggleBeat &beat = CurrentBeat();
-  const float limp =
-      Progress(timer_, limpStartTime_, limpEndTime_ - limpStartTime_);
-  if (timer_ < beats_.front().time) {
-    wingState_ = hitWing_;
-  } else {
-    wingState_ = LerpWing(beat.wing, limpWing_, EaseInOutQuad(limp));
-    // もがく間は一打ちの値へすぐ移り、畳まれ始めたら普段の速さで近づく
-    wingState_.response = (timer_ < limpStartTime_) ? struggleResponse_ : 0.0f;
+float GameOverSequence::WingRootAngle(bool isRight, float delaySec) const {
+  float time = timer_ - delaySec;
+  // 右の翼は、その時刻に打っている一打ちの遅れの分だけ前の角度にする
+  if (isRight) {
+    time -= BeatAt(time).rightDelay;
+  }
+  return RootAngleAt(isRight, time);
+}
+
+float GameOverSequence::RootAngleAt(bool isRight, float time) const {
+  if (time < limpStartTime_) {
+    return StruggleRootAngleAt(isRight, time);
+  }
+  // 畳まれる：もがき終わった角度から、畳まれたときの角度へ
+  const float limp = EaseInOutQuad(
+      Progress(time, limpStartTime_, limpEndTime_ - limpStartTime_));
+  return Lerp(StruggleRootAngleAt(isRight, limpStartTime_), foldRootAngle_,
+              limp);
+}
+
+float GameOverSequence::StruggleRootAngleAt(bool isRight, float time) const {
+  // 被弾：弾かれて上げきりまで跳ね上がる。速く出て、最初の一打ちの始まりで上げきる（被弾の前は被弾した瞬間の角度）
+  if (time < beats_.front().time) {
+    const float startAngle = isRight ? startRightRoot_ : startLeftRoot_;
+    return Lerp(startAngle, hitUpAngle_,
+                EaseOutQuad(Progress(time, 0.0f, hitRiseSec_)));
   }
 
-  // 打ち下ろしで首があおられ、力が抜けると首が垂れる
+  // 一打ち：前の一打ちの上げきりから下ろしきりへ打ち下ろし、上げきりへ打ち上げて止まる
+  // どちらも始めと終わりがゆっくりの曲線でつなぐ
+  const StruggleBeat &beat = BeatAt(time);
+  const size_t index = static_cast<size_t>(&beat - beats_.data());
+  auto upAngleOf = [isRight](const StruggleBeat &b) {
+    return isRight ? b.rightUpAngle : b.leftUpAngle;
+  };
+  const float topAngle =
+      (index == 0) ? hitUpAngle_ : upAngleOf(beats_[index - 1]);
+  const float downEnd = beat.time + beat.downSec;
+  if (time < downEnd) {
+    return Lerp(topAngle, beat.downAngle,
+                EaseInOutQuad(Progress(time, beat.time, beat.downSec)));
+  }
+  return Lerp(beat.downAngle, upAngleOf(beat),
+              EaseInOutQuad(Progress(time, downEnd, beat.upSec)));
+}
+
+void GameOverSequence::UpdateWing() {
+  //===========================
+  // 付け根の角度は WingRootAngle が一打ちの表から決める。ここでは畳み具合・折れ・振り回され・首を決める
+  // 被弾 → 一打ちごとに折れ・振り回されが変わる → 畳まれて体の力が抜ける
+  //===========================
+  const StruggleBeat &beat = CurrentBeat();
+  const float limp = EaseInOutQuad(
+      Progress(timer_, limpStartTime_, limpEndTime_ - limpStartTime_));
+  DragonWingAnimator::State struggle = hitWing_;
+  if (timer_ >= beats_.front().time) {
+    struggle = struggleWing_;
+    struggle.buckle = beat.buckle;
+    struggle.flail = beat.flail;
+  }
+  wingState_ = LerpWing(struggle, limpWing_, limp);
+  wingState_.response = struggleResponse_;
+
+  // 打ち下ろしで首があおられ、力が抜けると首だけを空へ伸ばす
   gesture_ = {};
   if (timer_ >= beats_.front().time) {
     const float push = 0.5f * (leftPush_ + rightPush_);
-    gesture_.headThrow = beat.headThrow * push * (1.0f - limp);
-    gesture_.collapse = limpCollapse_ * EaseInOutQuad(limp);
+    gesture_.headThrow = Lerp(beat.headThrow * push, reachHeadThrow_, limp);
   }
 }
 
@@ -474,23 +525,33 @@ void GameOverSequence::DrawImGui() {
     }
   }
   ImGui::SeparatorText("Wing");
-  ImGui::TextUnformatted(
-      "strength / frequency / fold / asymmetry, sideLag / buckle / flail");
-  ImGui::DragFloat4("Hit Wing", &hitWing_.strength, 0.01f, -1.0f, 5.0f);
-  ImGui::DragFloat4("Limp Wing", &limpWing_.strength, 0.01f, -1.0f, 5.0f);
+  // 付け根の角度（度。正で上）。一打ちの表から求めた今の値
+  ImGui::Text("root L %.0f / R %.0f", WingRootAngle(false, 0.0f),
+              WingRootAngle(true, 0.0f));
+  ImGui::DragFloat("Hit Rise Sec", &hitRiseSec_, 0.01f, 0.01f, 1.0f);
+  ImGui::DragFloat("Hit Up Angle", &hitUpAngle_, 0.5f, -90.0f, 90.0f);
   for (size_t i = 0; i < beats_.size(); ++i) {
     StruggleBeat &beat = beats_[i];
     ImGui::PushID(static_cast<int>(i));
     ImGui::Text("Beat %d", static_cast<int>(i + 1));
     ImGui::DragFloat("Time", &beat.time, 0.01f, 0.0f, 5.0f);
-    ImGui::DragFloat4("Wing", &beat.wing.strength, 0.01f, -1.0f, 5.0f);
-    ImGui::DragFloat3("Lag / Buckle / Flail", &beat.wing.sideLag, 0.01f, 0.0f,
-                      1.0f);
+    ImGui::DragFloat2("Down Sec / Angle", &beat.downSec, 0.01f, -90.0f, 90.0f);
+    ImGui::DragFloat3("Up Sec / L / R", &beat.upSec, 0.01f, -90.0f, 90.0f);
+    ImGui::DragFloat("Right Delay", &beat.rightDelay, 0.005f, 0.0f, 0.5f);
+    ImGui::DragFloat2("Buckle / Flail", &beat.buckle, 0.01f, 0.0f, 1.0f);
     ImGui::SliderFloat("Lift", &beat.lift, 0.0f, 1.0f);
     ImGui::SliderFloat("Head Throw", &beat.headThrow, 0.0f, 1.0f);
     ImGui::PopID();
   }
-  ImGui::SliderFloat("Limp Collapse", &limpCollapse_, 0.0f, 1.0f);
+  ImGui::DragFloat("Fold Root Angle", &foldRootAngle_, 0.5f, -90.0f, 90.0f);
+  ImGui::DragFloat("Reach Head Throw", &reachHeadThrow_, 0.05f, -1.0f, 5.0f);
+  // 畳み具合と、羽ばたきの姿勢の割合（0: 滑空 〜 1: 体を起こす）
+  ImGui::DragFloat("Hit Fold", &hitWing_.fold, 0.01f, 0.0f, 1.0f);
+  ImGui::DragFloat("Hit Hover", &hitWing_.hover, 0.01f, 0.0f, 1.0f);
+  ImGui::DragFloat("Struggle Fold", &struggleWing_.fold, 0.01f, 0.0f, 1.0f);
+  ImGui::DragFloat("Struggle Hover", &struggleWing_.hover, 0.01f, 0.0f, 1.0f);
+  ImGui::DragFloat("Limp Fold", &limpWing_.fold, 0.01f, 0.0f, 1.0f);
+  ImGui::DragFloat("Limp Hover", &limpWing_.hover, 0.01f, 0.0f, 1.0f);
   ImGui::DragFloat("Struggle Response", &struggleResponse_, 0.1f, 0.0f, 60.0f);
   ImGui::SeparatorText("Camera");
   ImGui::DragFloat("Side Move Start", &sideMoveStartTime_, 0.01f, 0.0f, 3.0f);

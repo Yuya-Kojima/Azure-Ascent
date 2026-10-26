@@ -14,7 +14,7 @@ class SpriteRenderer;
 /// <summary>
 /// ゲームオーバーの空中の演出
 /// 被弾して時間がゆっくりになる → カメラがレールを離れてドラゴンの横に並ぶ → 翼でもがくが、打つたびに弱くなる
-/// → 翼が畳まれて力が抜ける → カメラが上へ引き、ドラゴンが雲海へ沈む
+/// → 翼が畳まれて体の力が抜けるが、首だけは空へ伸ばす → カメラが上へ引き、ドラゴンが雲海へ沈む
 /// → 見下ろしに「GAME OVER」のカードが出て、その後ろで場面が黒い幕で暗くなる → カードが閉じたら拠点への遷移の合図
 /// 位置はすべて、Start の時点のドラゴンの位置と、レールの水平な右・前の向きを基準に求める
 /// </summary>
@@ -78,6 +78,21 @@ public:
   /// </summary>
   void RecordWingAngle(float left, float right);
 
+  /// <summary>
+  /// 被弾した瞬間の、左右の翼の付け根の角度（度）を渡す（Start のすぐあとに呼ぶ。弾かれて跳ね上がる動きの始まりにする）
+  /// </summary>
+  void SetStartWingRootAngles(float left, float right) {
+    startLeftRoot_ = left;
+    startRightRoot_ = right;
+  }
+
+  /// <summary>
+  /// 翼の付け根の角度（度。上が正）を一打ちの表から求める（翼の直接モードに渡す）
+  /// </summary>
+  /// <param name="isRight">右の翼なら true</param>
+  /// <param name="delaySec">今の演出の時刻から何秒前の角度か</param>
+  float WingRootAngle(bool isRight, float delaySec) const;
+
   const Vector3 &GetDragonPosition() const { return dragonPos_; }
   const Vector3 &GetDragonRotation() const { return dragonRot_; }
   const DragonWingAnimator::State &GetWingState() const { return wingState_; }
@@ -104,12 +119,20 @@ public:
   void DrawImGui();
 
 private:
-  // もがく一打ち（time から次の一打ちまで、この翼の状態で打つ）
+  // もがく一打ち。前の一打ちの上げきりの角度から下ろしきりまで打ち下ろし、上げきりまで打ち上げて、次の一打ちまで止まる
+  // 角度は翼の付け根（度。上が正）、時刻は被弾からの実際の秒
   struct StruggleBeat {
-    float time = 0.0f;               // この一打ちを始める時刻（秒）
-    DragonWingAnimator::State wing;  // 翼の状態
-    float lift = 0.0f;               // 打ち下ろしで体が浮く割合（0〜1）
-    float headThrow = 0.0f;          // 打ち下ろしで首があおられる割合（0〜1）
+    float time = 0.0f;         // この一打ちを始める時刻（秒）
+    float downSec = 0.0f;      // 打ち下ろす時間（秒）
+    float downAngle = 0.0f;    // 下ろしきる角度（度）
+    float upSec = 0.0f;        // 打ち上げる時間（秒）
+    float leftUpAngle = 0.0f;  // 左の翼の上げきる角度（度）
+    float rightUpAngle = 0.0f; // 右の翼の上げきる角度（度）
+    float rightDelay = 0.0f;   // 右の翼が左より遅れて打つ時間（秒）
+    float buckle = 0.0f;       // 翼の張りが保てない度合い（0〜1）
+    float flail = 0.0f;        // 体が羽ばたきに振り回される度合い（0〜1）
+    float lift = 0.0f;         // 打ち下ろしで体が浮く割合（0〜1）
+    float headThrow = 0.0f;    // 打ち下ろしで首があおられる割合（0〜1）
   };
 
   // 基準の位置から、レールの水平な右・上・前の向きで offset だけ動かした位置
@@ -121,8 +144,15 @@ private:
   // 黒い幕と文字カード
   void UpdateScreen();
 
+  // 時刻 time に打っている一打ち（もがき始める前は最初の一打ち）
+  const StruggleBeat &BeatAt(float time) const;
   // 今の時刻に打っている一打ち
-  const StruggleBeat &CurrentBeat() const;
+  const StruggleBeat &CurrentBeat() const { return BeatAt(timer_); }
+
+  // 時刻 time の付け根の角度（度）。右の翼の遅れは含まない
+  float RootAngleAt(bool isRight, float time) const;
+  // 時刻 time の、被弾からもがき終わるまでの付け根の角度（度）
+  float StruggleRootAngleAt(bool isRight, float time) const;
 
   // 動きの時間 motionTime でのドラゴンの位置
   Vector3 DragonPositionAt(float motionTime) const;
@@ -162,6 +192,9 @@ private:
   float rightPush_ = 0.0f;
   // 打ち下ろしで浮いた高さ（落ちる道筋からの上向きのずれ）
   float lift_ = 0.0f;
+  // 被弾した瞬間の、左右の翼の付け根の角度（度）
+  float startLeftRoot_ = 0.0f;
+  float startRightRoot_ = 0.0f;
   // 一打ちごとの、左右の翼の付け根の角度の最小・最大（度。測った値を ImGui に出す）
   struct WingAngleRange {
     float leftMin = 0.0f;
@@ -182,7 +215,7 @@ private:
   float slowSec_ = 0.4f;            // 時間がゆっくりになる長さ（秒）
   float slowScale_ = 0.3f;          // ゆっくりの間の時間の速さ
   float slowRecoverSec_ = 0.1f;     // ゆっくりから普通の速さへ戻る長さ（slowSec_ の終わりに含む、秒）
-  float limpStartTime_ = 2.2f;      // 翼が畳まれ始める時刻（秒）
+  float limpStartTime_ = 2.3f;      // 翼が畳まれ始める時刻（秒）
   float limpEndTime_ = 2.6f;        // 力が抜けきる時刻（秒）
   float pullStartTime_ = 2.5f;      // カメラが上へ引き始める時刻（秒）
   float sinkTime_ = 3.3f;           // ドラゴンが雲海の面から sinkDepth_ だけ沈みきる時刻（秒）
@@ -210,18 +243,23 @@ private:
   float liftReturnSec_ = 0.3f;      // 浮いた高さが落ちる道筋へ戻る速さ（指数関数の時定数、秒）
   float heavePitch_ = 0.25f;        // 打ち下ろしで機首が上がる角度（ラジアン。浮く割合を掛ける）
 
-  //---- 翼（強さ, 1秒あたりの回数, 畳み具合, 左右差, 姿勢, 羽ばたきの姿勢の割合, 右の遅れ, 折れ, 振り回され）----
-  DragonWingAnimator::State hitWing_ = {0.2f, 1.0f, 0.4f, 0.0f, 1.0f, 0.3f};  // 被弾
-  DragonWingAnimator::State limpWing_ = {0.0f, 0.5f, 0.9f, 0.0f, 1.0f, 0.0f}; // 畳まれる
-  // もがく一打ち：がむしゃらに大振り 2 回 → 大振りだが遅く翼が折れる → 片翼しか上がらない
+  //---- 翼 ----
+  // 翼の状態（強さ, 1秒あたりの回数, 畳み具合, 左右差, 姿勢, 羽ばたきの姿勢の割合）。付け根の角度は直接モードで決めるので、強さと回数は使わない
+  DragonWingAnimator::State hitWing_ = {1.0f, 1.0f, 0.1f, 0.0f, 1.0f, 0.3f};      // 被弾
+  DragonWingAnimator::State struggleWing_ = {1.0f, 1.0f, 0.0f, 0.0f, 1.0f, 1.0f}; // もがく（折れ・振り回されは一打ちの値）
+  DragonWingAnimator::State limpWing_ = {1.0f, 1.0f, 0.9f, 0.0f, 1.0f, 0.0f};     // 畳まれる
+  float hitRiseSec_ = 0.4f;   // 被弾で、付け根が上げきりまで跳ね上がる時間（秒。最初の一打ちの始まりに合わせる）
+  float hitUpAngle_ = 55.0f;  // 被弾で跳ね上がる付け根の角度（度）
+  // もがく一打ち：がむしゃらに大振り 2 回 → 振りが小さく遅くなり翼が折れる → 右の翼が上がりきらない
   std::array<StruggleBeat, 4> beats_ = {{
-      {0.4f, {1.3f, 2.6f, 0.0f, 0.3f, 1.0f, 1.0f, 0.08f, 0.0f, 1.0f}, 1.0f, 1.0f},
-      {0.75f, {1.25f, 2.8f, 0.0f, -0.4f, 1.0f, 1.0f, 0.12f, 0.2f, 1.0f}, 0.7f, 0.8f},
-      {1.1f, {1.0f, 1.6f, 0.1f, 0.25f, 1.0f, 1.0f, 0.1f, 0.7f, 0.6f}, 0.25f, 0.5f},
-      {1.7f, {0.6f, 1.1f, 0.2f, 0.9f, 1.0f, 0.6f, 0.22f, 1.0f, 0.3f}, 0.0f, 0.2f},
+      {0.4f, 0.15f, -50.0f, 0.2f, 55.0f, 55.0f, 0.03f, 0.0f, 1.0f, 1.0f, 1.0f},
+      {0.75f, 0.15f, -50.0f, 0.2f, 50.0f, 50.0f, 0.05f, 0.2f, 1.0f, 0.7f, 0.8f},
+      {1.1f, 0.25f, -40.0f, 0.35f, 35.0f, 35.0f, 0.04f, 0.7f, 0.6f, 0.25f, 0.5f},
+      {1.7f, 0.3f, -25.0f, 0.3f, 20.0f, -10.0f, 0.08f, 1.0f, 0.3f, 0.0f, 0.2f},
   }};
-  float limpCollapse_ = 0.6f;    // 力が抜けたときの、首が垂れる重み
-  float struggleResponse_ = 20.0f; // もがく間、翼の状態が一打ちの値へ近づく速さ（1/秒）
+  float foldRootAngle_ = 5.0f;     // 畳まれたときの付け根の角度（度）
+  float reachHeadThrow_ = 2.0f;    // 力が抜けたあと、首だけを空へ伸ばす量（翼の Gesture::headThrow）
+  float struggleResponse_ = 20.0f; // 翼の状態（畳み具合・折れなど）が演出の値へ近づく速さ（1/秒）
 
   //---- カメラ（オフセットはドラゴンからの右・上・前）----
   float sideMoveStartTime_ = 0.1f; // 横へ回り込み始める時刻（秒）

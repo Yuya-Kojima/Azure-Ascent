@@ -5,6 +5,7 @@
 #include "SpringBoneChain.h"
 #include <array>
 #include <cstdint>
+#include <functional>
 #include <random>
 #include <vector>
 
@@ -44,7 +45,7 @@ public:
     float tremble = 0.0f; // 首と翼の先の震えの大きさ
     float collapse = 0.0f; // 倒れる（首を地面へ下ろし、翼を畳む）
     float lookUp = 0.0f;   // 見上げる（伏せた姿勢から首を立てて空を見上げる）
-    float headThrow = 0.0f; // 首をあおる（-1〜1、正で頭が上がる）。重みの合計には数えず、羽ばたきを弱めない
+    float headThrow = 0.0f; // 首をあおる（正で頭が上がる。1 で Config::headThrowNeck）。重みの合計には数えず、羽ばたきを弱めない
     // 地上の土台の姿勢を、立ち姿勢から伏せの姿勢へ寄せる割合（0〜1）。重みの合計には数えない
     float lie = 0.0f;
     // 伏せの姿勢を、胸を起こした伏せへ寄せる割合（0〜1）。重みの合計には数えない
@@ -171,7 +172,17 @@ public:
     float trembleFrequency = 14.0f; // 1秒あたりの回数
     float neckTremble = 3.0f;       // 首の骨1本あたり
     float fingerTremble = 4.0f;     // 指の節1つあたり
+
+    // 直接モード
+    float directBeatSec = 0.35f;     // 遅れ（1周期に対する割合）を秒に直すときの、1周期の長さ（秒）
+    float directPushSpeed = 700.0f;  // 付け根がこの速さ（度/秒）で動くとき、打つ速さを 1 とする
   };
+
+  /// <summary>
+  /// 直接モードで、付け根の角度（度。上が正）を返す関数
+  /// 引数は、右の翼か・今から何秒前の角度か
+  /// </summary>
+  using DirectRootFunction = std::function<float(bool isRight, float delaySec)>;
 
   /// <summary>
   /// 初期化。羽ばたかせる SkinnedObject の関節を探し、調整値を読み込む
@@ -202,6 +213,19 @@ public:
   /// 羽ばたきに重ねる姿勢の重みを渡す（毎フレーム。何もしないときは既定値）
   /// </summary>
   void SetGesture(const Gesture &gesture) { gesture_ = gesture; }
+
+  /// <summary>
+  /// 直接モードにする。付け根の角度を、周期の波でなくこの関数から毎フレーム求め、腕・手首・指は付け根の少し前の角度をなぞる
+  /// 畳み・折れ・振り回され・姿勢は State のまま使う。空の関数を渡すと周期で打つ羽ばたきに戻る
+  /// </summary>
+  void SetDirectRoot(DirectRootFunction rootAngleAt) {
+    directRoot_ = std::move(rootAngleAt);
+  }
+
+  /// <summary>
+  /// 直接モードか
+  /// </summary>
+  bool IsDirect() const { return static_cast<bool>(directRoot_); }
 
   /// <summary>
   /// 羽ばたきを進めて関節に書き込む。SkinnedObject::Update の前に呼ぶ
@@ -278,6 +302,20 @@ private:
   // 打つ速さ（正: 下へ動いている 〜 負: 上へ動いている、-1 〜 1）。lag だけ遅れた位相で求める
   float StrokeVelocity(float lag) const;
 
+  // 直接モードで、遅れ lag（1周期に対する割合）だけ前の付け根の角度（度）
+  float DirectRootAngle(bool isRight, float lag) const;
+  // 打つ位置・打つ速さ・打ち上げの重み。周期で打つときは Stroke などと同じで isRight は使わない
+  // 直接モードでは isRight の翼の付け根の角度から求める（打つ位置は rootBias からの角度を rootAmplitude で割った値）
+  float WingStroke(bool isRight, float lag) const;
+  float WingStrokeVelocity(bool isRight, float lag) const;
+  float WingUpstrokeWeight(bool isRight, float lag) const;
+  // 左右の翼の打つ位置の平均（体と尾に使う）
+  float MeanStroke(float lag) const;
+  // 打つ位置に掛ける強さ（直接モードでは打つ大きさを付け根の角度が持つので 1）
+  float StrokeStrength() const {
+    return IsDirect() ? 1.0f : currentState_.strength;
+  }
+
   // 周期が1周するたびに、次の1回ぶんの揺らぎを引く
   void DrawNextBeat();
   // 今の周期の中での揺らぎ（前の値から次の値へ、周期の中でなめらかに移る）
@@ -307,6 +345,7 @@ private:
   State targetState_;
   State currentState_;
   float phase_ = 0.0f; // 周期の中の位置（0〜1）。0 で上げきり、そこから打ち下ろす
+  DirectRootFunction directRoot_; // 直接モードの付け根の角度（空なら周期で打つ）
 
   // 1回ごとの揺らぎ（-1 〜 1）。周期の始めに beatFrom_、終わりに beatTo_ になる
   std::mt19937 random_;

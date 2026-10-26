@@ -646,6 +646,13 @@ void Player::SetWingGesture(const DragonWingAnimator::Gesture &gesture) {
   }
 }
 
+void Player::SetDirectWingRoot(
+    DragonWingAnimator::DirectRootFunction rootAngleAt) {
+  if (dragonModel_) {
+    dragonModel_->GetWingAnimator().SetDirectRoot(std::move(rootAngleAt));
+  }
+}
+
 float Player::GetWingPush(bool isRight) const {
   if (!dragonModel_) {
     return 0.0f;

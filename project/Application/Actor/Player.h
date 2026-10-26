@@ -78,6 +78,11 @@ public:
   void SetWingGesture(const DragonWingAnimator::Gesture &gesture);
 
   /// <summary>
+  /// 翼の付け根の角度を外から決める（ゲームオーバーの演出）。空の関数で周期で打つ羽ばたきに戻す
+  /// </summary>
+  void SetDirectWingRoot(DragonWingAnimator::DirectRootFunction rootAngleAt);
+
+  /// <summary>
   /// 片方の翼が今打ち下ろしている強さ（0〜1）。ドラゴンのモデルがなければ 0
   /// </summary>
   float GetWingPush(bool isRight) const;

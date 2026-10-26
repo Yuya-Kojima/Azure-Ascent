@@ -117,7 +117,12 @@ const ConfigItem kConfigItems[] = {
     {"flailTailGain", &Config::flailTailGain, 0.0f, 20.0f},
     {"flailBodyPitchGain", &Config::flailBodyPitchGain, 0.0f, 10.0f},
     {"headThrowNeck", &Config::headThrowNeck, -30.0f, 30.0f},
+    {"directBeatSec", &Config::directBeatSec, 0.05f, 1.0f},
+    {"directPushSpeed", &Config::directPushSpeed, 50.0f, 3000.0f},
 };
+
+// 直接モードで、付け根が動く速さを求めるときの時間の差（秒）
+const float kDirectVelocitySec = 1.0f / 60.0f;
 
 // 重ねる姿勢の各部の JSON のキー
 using GesturePose = DragonWingAnimator::GesturePose;
@@ -430,11 +435,12 @@ void DragonWingAnimator::Update(float deltaTime,
       (currentState_.asymmetry +
        config_.beatAsymmetryJitter * BeatJitter(kBeatAsymmetry)) *
       config_.asymmetryGain;
-  // 右の翼は sideLag だけ遅れて打つ
+  // 右の翼は sideLag だけ遅れて打つ（直接モードでは左右の角度を外が決めるので遅らせない）
+  const float rightLag = IsDirect() ? 0.0f : currentState_.sideLag;
   leftRootAngle_ =
       UpdateWing(leftWing_, (std::max)(0.0f, 1.0f + asymmetry), 0.0f);
-  rightRootAngle_ = UpdateWing(rightWing_, (std::max)(0.0f, 1.0f - asymmetry),
-                               currentState_.sideLag);
+  rightRootAngle_ =
+      UpdateWing(rightWing_, (std::max)(0.0f, 1.0f - asymmetry), rightLag);
   UpdateTail();
   UpdateSpine();
 
@@ -442,8 +448,8 @@ void DragonWingAnimator::Update(float deltaTime,
   // 振り回されるほど大きく傾ける
   bodyPitch_ = config_.bodyPitchAmplitude *
                (1.0f + config_.flailBodyPitchGain * currentState_.flail) *
-               kDegToRad * currentState_.strength * flapScale_ *
-               Stroke(config_.bodyPitchLag);
+               kDegToRad * StrokeStrength() * flapScale_ *
+               MeanStroke(config_.bodyPitchLag);
   UpdateBody();
   UpdateHead(worldMatrix);
 
@@ -487,6 +493,9 @@ float DragonWingAnimator::StrokeVelocity(float lag) const {
 }
 
 float DragonWingAnimator::GetDownstrokePush(bool isRight) const {
+  if (IsDirect()) {
+    return (std::max)(WingStrokeVelocity(isRight, 0.0f), 0.0f) * flapScale_;
+  }
   const float lag = isRight ? currentState_.sideLag : 0.0f;
   return (std::max)(StrokeVelocity(lag), 0.0f) *
          std::clamp(currentState_.strength, 0.0f, 1.0f) * flapScale_;
@@ -499,6 +508,47 @@ float DragonWingAnimator::UpstrokeWeight(float lag) const {
     return 0.0f;
   }
   return std::sin(kPi * (u - down) / (1.0f - down));
+}
+
+float DragonWingAnimator::DirectRootAngle(bool isRight, float lag) const {
+  return directRoot_(isRight, lag * config_.directBeatSec);
+}
+
+float DragonWingAnimator::WingStroke(bool isRight, float lag) const {
+  if (!IsDirect()) {
+    return Stroke(lag);
+  }
+  if (config_.rootAmplitude <= 0.0f) {
+    return 0.0f;
+  }
+  return (DirectRootAngle(isRight, lag) - config_.rootBias) /
+         config_.rootAmplitude;
+}
+
+float DragonWingAnimator::WingStrokeVelocity(bool isRight, float lag) const {
+  if (!IsDirect()) {
+    return StrokeVelocity(lag);
+  }
+  // kDirectVelocitySec 前の角度との差から、下へ動く速さを求め、directPushSpeed で 1 になるように割る
+  const float delaySec = lag * config_.directBeatSec;
+  const float before = directRoot_(isRight, delaySec + kDirectVelocitySec);
+  const float now = directRoot_(isRight, delaySec);
+  const float speed = (before - now) / kDirectVelocitySec;
+  return std::clamp(speed / config_.directPushSpeed, -1.0f, 1.0f);
+}
+
+float DragonWingAnimator::WingUpstrokeWeight(bool isRight, float lag) const {
+  if (!IsDirect()) {
+    return UpstrokeWeight(lag);
+  }
+  return (std::max)(-WingStrokeVelocity(isRight, lag), 0.0f);
+}
+
+float DragonWingAnimator::MeanStroke(float lag) const {
+  if (!IsDirect()) {
+    return Stroke(lag);
+  }
+  return 0.5f * (WingStroke(false, lag) + WingStroke(true, lag));
 }
 
 void DragonWingAnimator::ApplyRotation(const DrivenJoint &joint,
@@ -555,11 +605,18 @@ void DragonWingAnimator::UpdateSprings(float deltaTime,
 
 float DragonWingAnimator::UpdateWing(const Wing &wing, float gain,
                                      float wingLag) const {
+  const bool isRight = wing.side > 0.0f;
+  // 直接モードでは打つ大きさを付け根の角度が持つので、重ねる姿勢で弱める分だけ掛け、揺らぎも足さない
   const float strength =
-      currentState_.strength * gain * flapScale_ *
-      (1.0f + config_.beatAmplitudeJitter * BeatJitter(kBeatAmplitude));
+      IsDirect()
+          ? flapScale_
+          : currentState_.strength * gain * flapScale_ *
+                (1.0f +
+                 config_.beatAmplitudeJitter * BeatJitter(kBeatAmplitude));
   const float rootBias =
-      config_.rootBias + config_.beatBiasJitter * BeatJitter(kBeatBias);
+      IsDirect()
+          ? config_.rootBias
+          : config_.rootBias + config_.beatBiasJitter * BeatJitter(kBeatBias);
   const float fold = currentState_.fold;
   const float buckle = currentState_.buckle;
   // 腕より先の遅れ：張りが保てないほど遅れ、この翼だけの遅れを足す
@@ -569,7 +626,11 @@ float DragonWingAnimator::UpdateWing(const Wing &wing, float gain,
   const float handLag = lagOf(config_.handLag);
   // 打ち下ろしの途中ほど 1 に近い重み（打ち上げの間は 0）
   auto downstrokeWeight = [&](float lag) {
-    return (std::max)(StrokeVelocity(lag), 0.0f);
+    return (std::max)(WingStrokeVelocity(isRight, lag), 0.0f);
+  };
+  auto stroke = [&](float lag) { return WingStroke(isRight, lag); };
+  auto upstrokeWeight = [&](float lag) {
+    return WingUpstrokeWeight(isRight, lag);
   };
 
   // 翼を上げるのは前後の軸まわり、後ろへ畳むのは上下の軸まわり。
@@ -583,31 +644,31 @@ float DragonWingAnimator::UpdateWing(const Wing &wing, float gain,
   // 打ち下ろしの途中ほど前縁を下げるねじれ（腕は半分）。指は手首について回る
   const float kArmTwistRatio = 0.5f;
   auto twist = [&](float lag) {
-    return config_.wingTwist * strength * StrokeVelocity(lag);
+    return config_.wingTwist * strength * WingStrokeVelocity(isRight, lag);
   };
 
   // 付け根: 翼全体を上下に打つ（重ねる姿勢の角度を足す）
   const float rootUp = rootBias +
-                       config_.rootAmplitude * strength * Stroke(wingLag) +
+                       config_.rootAmplitude * strength * stroke(wingLag) +
                        GestureAngle(&GesturePose::wingUp);
   apply(wing.root, rootUp, GestureAngle(&GesturePose::wingBack));
 
   // 腕・手首: 少し遅れて打ち、打ち上げの途中と畳むときに後ろへ回す
   // 張りが保てないときは、打ち下ろしの途中で下へ折れる
   apply(wing.arm,
-        config_.armAmplitude * strength * Stroke(armLag) +
+        config_.armAmplitude * strength * stroke(armLag) +
             GestureAngle(&GesturePose::armUp) -
             config_.buckleArmBend * buckle * downstrokeWeight(armLag),
         config_.foldArmSweep * fold +
-            config_.upstrokeArmSweep * strength * UpstrokeWeight(armLag) +
+            config_.upstrokeArmSweep * strength * upstrokeWeight(armLag) +
             GestureAngle(&GesturePose::armBack),
         kArmTwistRatio * twist(armLag));
   apply(wing.hand,
-        config_.handAmplitude * strength * Stroke(handLag) +
+        config_.handAmplitude * strength * stroke(handLag) +
             GestureAngle(&GesturePose::handUp) -
             config_.buckleHandBend * buckle * downstrokeWeight(handLag),
         config_.foldHandSweep * fold +
-            config_.upstrokeHandSweep * strength * UpstrokeWeight(handLag) +
+            config_.upstrokeHandSweep * strength * upstrokeWeight(handLag) +
             GestureAngle(&GesturePose::handBack),
         twist(handLag));
 
@@ -621,7 +682,7 @@ float DragonWingAnimator::UpdateWing(const Wing &wing, float gain,
       const float lag =
           lagOf(config_.fingerLag + config_.fingerJointLag * joint);
       // 震えは指と節ごとに位相をずらして足す
-      float up = config_.fingerAmplitude * strength * Stroke(lag) +
+      float up = config_.fingerAmplitude * strength * stroke(lag) +
                  config_.fingerTremble *
                      TrembleWave(float(finger * kFingerJointCount_ + joint));
       float back = 0.0f;
@@ -630,7 +691,7 @@ float DragonWingAnimator::UpdateWing(const Wing &wing, float gain,
                GestureAngle(&GesturePose::fingerFan) * spreadSign;
       } else {
         up -= config_.foldFingerCurl * fold +
-              config_.upstrokeFingerCurl * strength * UpstrokeWeight(lag);
+              config_.upstrokeFingerCurl * strength * upstrokeWeight(lag);
       }
       apply(wing.fingers[finger][joint], up, back);
     }
@@ -645,7 +706,7 @@ void DragonWingAnimator::UpdateTail() const {
     // 振り回されるほど大きく振れる
     float up = config_.tailAmplitude *
                (1.0f + config_.flailTailGain * currentState_.flail) *
-               currentState_.strength * flapScale_ * Stroke(lag);
+               StrokeStrength() * flapScale_ * MeanStroke(lag);
     if (i < kGestureTailJointCount_) {
       up += GestureAngle(&GesturePose::tail);
     }
@@ -683,8 +744,8 @@ void DragonWingAnimator::UpdateBody() const {
     return;
   }
   // 打ち下ろしで体が持ち上がる（翼が下にあるほど体は上）
-  const float lift = -config_.bodyBob * currentState_.strength * flapScale_ *
-                     Stroke(config_.bodyLag);
+  const float lift = -config_.bodyBob * StrokeStrength() * flapScale_ *
+                     MeanStroke(config_.bodyLag);
   Vector3 translate = body_.restTranslation;
   translate.y += lift;
   skinned_->SetJointTranslation(body_.index, translate);
@@ -867,6 +928,8 @@ void DragonWingAnimator::DrawImGui() {
       currentState_.strength, currentState_.frequency, currentState_.fold,
       currentState_.asymmetry, currentState_.pose, currentState_.hover);
   ImGui::Text("hover weight %.2f (0: glide / 1: hover)", hoverWeight_);
+  ImGui::Text("direct %s / root L %.0f R %.0f", IsDirect() ? "on" : "off",
+              leftRootAngle_, rightRootAngle_);
   for (const ConfigItem &item : kConfigItems) {
     ImGui::SliderFloat(item.key, &(config_.*item.member), item.min, item.max);
   }
