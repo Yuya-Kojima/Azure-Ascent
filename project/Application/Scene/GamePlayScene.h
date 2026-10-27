@@ -19,6 +19,7 @@ class BillboardParticleEmitter;
 class MeshParticleEmitter;
 class StageIntro;
 class GameOverSequence;
+class SkipHold;
 class StageLighting;
 class RoarDistortion;
 class CloudSea;
@@ -78,6 +79,11 @@ private: // メンバ変数(ゲーム用)
   // ゲーム状態
   GameState gameState_ = GameState::Play;
 
+  // クリア画面に入ってからの経過時間（秒）
+  float clearTimer_ = 0.0f;
+  // クリア画面で決定を受け付け始めるまでの時間（秒）
+  static constexpr float kClearDecideLockSec_ = 0.5f;
+
   // ステージ開始演出
   std::unique_ptr<StageIntro> stageIntro_;
   // Play 開始時に開始演出を再生するか
@@ -89,6 +95,8 @@ private: // メンバ変数(ゲーム用)
 
   // ゲームオーバーの空中の演出
   std::unique_ptr<GameOverSequence> gameOverSequence_;
+  // 開始演出とゲームオーバー演出を飛ばす長押し
+  std::unique_ptr<SkipHold> skipHold_;
   // ゲームオーバーの間、世界の時間の速さを足していき、1 を超えたフレームだけ世界を進める
   float worldTimeCarry_ = 0.0f;
 

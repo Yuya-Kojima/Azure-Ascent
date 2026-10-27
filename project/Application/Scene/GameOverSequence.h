@@ -50,8 +50,16 @@ public:
   /// <summary>
   /// 更新（ドラゴンの位置・向き・翼、カメラ）
   /// </summary>
-  /// <param name="isSkipPressed">決定キーが押されたか（押されたら、すぐ拠点への遷移の合図を出す）</param>
+  /// <param name="isSkipPressed">飛ばす入力があったか（あったら、すぐ拠点への遷移の合図を出す）</param>
   void Update(bool isSkipPressed);
+
+  /// <summary>
+  /// 飛ばせる間か（被弾してから飛ばせるようになるまでの時間が過ぎ、遷移の合図を出す前）
+  /// </summary>
+  bool CanSkip() const {
+    return isActive_ && !isPaused_ && !isTransitionCued_ &&
+           timer_ >= skipLockSec_;
+  }
 
   /// <summary>
   /// 黒い幕と文字カードの描画（HUD より手前）

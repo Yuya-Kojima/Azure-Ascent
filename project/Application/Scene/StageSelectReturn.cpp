@@ -1,6 +1,8 @@
 #include "StageSelectReturn.h"
 #include "../../externals/nlohmann/json.hpp"
+#include "Framework/MenuInput.h"
 #include "Input/Input.h"
+#include "SkipHold.h"
 #include "Input/InputKeyState.h"
 #include "Sprite/Sprite.h"
 #include <algorithm>
@@ -79,14 +81,6 @@ DragonWingAnimator::State LerpWing(const DragonWingAnimator::State &a,
   result.pose = Lerp(a.pose, b.pose, t);
   result.hover = Lerp(a.hover, b.hover, t);
   return result;
-}
-
-/// <summary>
-/// 決定の入力（エンター・スペース・パッドの A）
-/// </summary>
-bool IsDecidePressed(Input *input) {
-  return input->IsTriggerKey(DIK_RETURN) || input->IsTriggerKey(DIK_SPACE) ||
-         input->IsPadTrigger(PadButton::A);
 }
 
 /// <summary>
@@ -244,6 +238,8 @@ void StageSelectReturn::Initialize(SpriteRenderer *spriteRenderer) {
   retry_ = create(dir + "retry.png", kLeftCenter);
   stay_ = create(dir + "stay.png", kLeftCenter);
   underline_ = create("resources/white1x1.png", kLeftCenter);
+  skipHold_ = std::make_unique<SkipHold>();
+  skipHold_->Initialize(spriteRenderer);
 }
 
 void StageSelectReturn::Start(const Vector3 &dragonPos,
@@ -259,6 +255,7 @@ void StageSelectReturn::Start(const Vector3 &dragonPos,
   progress_ = std::clamp(progress, 0.0f, 1.0f);
   leaveAlpha_ = 1.0f;
   focusPos_ = 0.0f;
+  skipHold_->Start();
 
   basePos_ = dragonPos;
   baseRot_ = dragonRot;
@@ -291,10 +288,13 @@ void StageSelectReturn::Update(Input *input) {
     phaseTimer_ += kFrameSec;
   }
 
+  // 起き上がりの間だけ、決定の長押しで UI が出る所まで飛ばせる
+  const bool isSkipped = skipHold_->Update(
+      input, phase_ == Phase::Wake && timer_ >= skipLockSec_);
+
   switch (phase_) {
   case Phase::Wake:
-    // 決定で、UI が出る所まで飛ばす
-    if (input && timer_ >= skipLockSec_ && IsDecidePressed(input)) {
+    if (isSkipped) {
       timer_ = menuTime_;
     }
     UpdateWake();
@@ -445,22 +445,17 @@ void StageSelectReturn::UpdateMenu(Input *input) {
   // 選択肢が現れきる前に決定を押すと、現れきった所まで飛ばす（その押下では選ばない）
   const float readySec = GetChoiceReadySec();
   if (phaseTimer_ < readySec) {
-    if (IsDecidePressed(input)) {
+    if (MenuInput::IsDecideTriggered(input)) {
       timer_ = menuTime_ + readySec;
       phaseTimer_ = readySec;
     }
     return;
   }
-  const bool isUp = input->IsTriggerKey(DIK_UP) || input->IsTriggerKey(DIK_W) ||
-                    input->IsPadTrigger(PadButton::DPadUp);
-  const bool isDown = input->IsTriggerKey(DIK_DOWN) ||
-                      input->IsTriggerKey(DIK_S) ||
-                      input->IsPadTrigger(PadButton::DPadDown);
-  if (isUp || isDown) {
+  if (MenuInput::IsUpTriggered(input) || MenuInput::IsDownTriggered(input)) {
     focused_ = (focused_ == Choice::Retry) ? Choice::Stay : Choice::Retry;
   }
 
-  if (IsDecidePressed(input)) {
+  if (MenuInput::IsDecideTriggered(input)) {
     pendingChoice_ = focused_;
     phase_ = (focused_ == Choice::Retry) ? Phase::Retry : Phase::Stay;
     phaseTimer_ = 0.0f;
@@ -611,6 +606,10 @@ void StageSelectReturn::UpdateSprites() {
 }
 
 void StageSelectReturn::Draw() {
+  // 長押しの案内は UI の板より奥に出す（UI が現れたら板が上に重なる）
+  if (isActive_) {
+    skipHold_->Draw();
+  }
   if (!isActive_ || phase_ == Phase::Wake || leaveAlpha_ <= 0.0f) {
     return;
   }

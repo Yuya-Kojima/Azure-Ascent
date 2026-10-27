@@ -98,6 +98,8 @@ public:
   void DrawCloudSeaImGui(const Vector3 &focus, const Vector3 &forward);
 
   bool IsFinished() const { return isFinished_; }
+  // 飛ばして先へ進む間か（溜め始める前まで）
+  bool CanSkip() const { return !isFinished_ && timer_ < crouchStartTime_; }
   // 吠え声からの秒（鳴る前は負）
   float GetTimeSinceRoar() const { return timer_ - roarSoundTime_; }
   const ICamera *GetCamera() const;

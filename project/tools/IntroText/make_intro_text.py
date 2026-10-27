@@ -1,4 +1,4 @@
-"""文字カード（ステージ開始演出の目標・ゲームオーバー・拠点に戻ったあとの UI）の文字画像を書き出す
+"""文字カード（ステージ開始演出の目標・ゲームオーバー・拠点に戻ったあとの UI・長押しスキップ）の文字画像を書き出す
 
 エンジンのフォントは ASCII しか焼いていないので、日本語の文字は画像にして Sprite で出す。
 M PLUS 1p Black で文字を描き、上から下への色のグラデーションと、縁のうっすらした光（明るい背景に置く文字は暗い影）をつける。
@@ -17,12 +17,14 @@ ROOT = Path(__file__).resolve().parents[2]
 FONT_PATH = ROOT / "Application/resources/Fonts/MPLUS1p-Black.ttf"
 INTRO_DIR = ROOT / "Application/resources/UI/StageIntro"
 GAME_OVER_DIR = ROOT / "Application/resources/UI/GameOver"
+COMMON_DIR = ROOT / "Application/resources/UI/Common"
 
 # 文字の色: (上の色, 下の色, 縁の光の色)。上 → 下のグラデーション
 GOLD = ((255, 247, 220), (232, 196, 110), (255, 214, 130))  # 淡い金色（出撃）
 # 赤（GAME OVER）。下の色は、見下ろしの暗い雲海（平均の明るさ 57）より 40 以上明るくしてある
 RED = ((255, 150, 130), (230, 72, 58), (255, 70, 50))
 FADED_GOLD = ((214, 206, 186), (160, 140, 100), (190, 170, 120))  # 金の彩度と明るさを落とした色（奪還ならず）
+PALE = ((255, 255, 255), (214, 222, 236), (255, 255, 255))  # 白 → 淡い青灰（操作の案内）
 # 縁の光の強さ（0〜1）
 GLOW_STRENGTH = 0.55
 
@@ -31,6 +33,7 @@ SHADOW = (12, 14, 20)
 GOLD_SHADOWED = (GOLD[0], GOLD[1], SHADOW, 0.85, 2)
 FADED_GOLD_SHADOWED = (FADED_GOLD[0], FADED_GOLD[1], SHADOW, 0.85, 2)
 RED_SHADOWED = (RED[0], RED[1], SHADOW, 0.85, 2)
+PALE_SHADOWED = (PALE[0], PALE[1], SHADOW, 0.85, 2)
 
 # 書き出す文字: (書き出し先, ファイル名, 文字, 文字の大きさ px, 字間（文字の大きさに対する割合）, 縁の光のぼかし半径 px, 色)
 TEXTS = [
@@ -44,6 +47,8 @@ TEXTS = [
     (GAME_OVER_DIR, "stay", "拠点に残る", 36, 0.15, 5, GOLD_SHADOWED),
     (GAME_OVER_DIR, "route_start", "出撃", 22, 0.1, 4, FADED_GOLD_SHADOWED),
     (GAME_OVER_DIR, "route_boss", "ボス", 22, 0.1, 4, RED_SHADOWED),
+    # 演出を飛ばす長押しの案内（画像の端から文字までの余白は、ぼかし半径の 3 倍 = 12px）
+    (COMMON_DIR, "skip_hold", "SPACE 長押しでスキップ", 20, 0.08, 4, PALE_SHADOWED),
 ]
 
 

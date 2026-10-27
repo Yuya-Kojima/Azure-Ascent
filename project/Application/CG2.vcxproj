@@ -196,6 +196,7 @@ copy "$(WindowsSdkDir)bin\$(TargetPlatformVersion)\x64\dxil.dll" "$(TargetDir)dx
     <ClCompile Include="Scene\GamePlayScene.cpp" />
     <ClCompile Include="Scene\StageIntro.cpp" />
     <ClCompile Include="Scene\CaptionCard.cpp" />
+    <ClCompile Include="Scene\SkipHold.cpp" />
     <ClCompile Include="Scene\GameOverSequence.cpp" />
     <ClCompile Include="Scene\StageSelectReturn.cpp" />
     <ClCompile Include="Scene\StageSelectLightning.cpp" />
@@ -203,6 +204,7 @@ copy "$(WindowsSdkDir)bin\$(TargetPlatformVersion)\x64\dxil.dll" "$(TargetDir)dx
     <ClCompile Include="Scene\StageLighting.cpp" />
     <ClCompile Include="Scene\CloudSeaEvents.cpp" />
     <ClCompile Include="Framework\GameManager.cpp" />
+    <ClCompile Include="Framework\MenuInput.cpp" />
     <ClCompile Include="main.cpp">
       <Optimization Condition="'$(Configuration)|$(Platform)'=='Development|x64'">MaxSpeed</Optimization>
       <WholeProgramOptimization Condition="'$(Configuration)|$(Platform)'=='Development|x64'">true</WholeProgramOptimization>
@@ -338,6 +340,7 @@ copy "$(WindowsSdkDir)bin\$(TargetPlatformVersion)\x64\dxil.dll" "$(TargetDir)dx
     <ClInclude Include="Scene\GamePlayScene.h" />
     <ClInclude Include="Scene\StageIntro.h" />
     <ClInclude Include="Scene\CaptionCard.h" />
+    <ClInclude Include="Scene\SkipHold.h" />
     <ClInclude Include="Scene\GameOverSequence.h" />
     <ClInclude Include="Scene\StageSelectReturn.h" />
     <ClInclude Include="Scene\DarkCloudTransition.h" />
@@ -346,6 +349,7 @@ copy "$(WindowsSdkDir)bin\$(TargetPlatformVersion)\x64\dxil.dll" "$(TargetDir)dx
     <ClInclude Include="Scene\StageLighting.h" />
     <ClInclude Include="Scene\CloudSeaEvents.h" />
     <ClInclude Include="Framework\GameManager.h" />
+    <ClInclude Include="Framework\MenuInput.h" />
   </ItemGroup>
   <ItemGroup>
     <None Include="cpp.hint" />

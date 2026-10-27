@@ -3,6 +3,7 @@
 #include "Camera/GameCamera.h"
 #include "Debug/DebugCamera.h"
 #include "Framework/GameManager.h"
+#include "Framework/MenuInput.h"
 #include "Framework/UIManager.h"
 #include "Input/InputKeyState.h"
 #include "Model/ModelManager.h"
@@ -134,11 +135,10 @@ void StageSelectScene::Update() {
     UpdateReturn();
   }
 
-  // 決定キー（エンターキーまたはパッドのAボタン）の処理
+  // 決定の処理
   if (GameManager::GetInstance()->IsGlobalPlayMode() && !isLaunching_ &&
       !returnSequence_->IsActive()) {
-    if (engine_->GetInputManager()->IsTriggerKey(DIK_RETURN) ||
-        engine_->GetInputManager()->IsPadTrigger(PadButton::A)) {
+    if (MenuInput::IsDecideTriggered(engine_->GetInputManager())) {
       SoundManager::GetInstance()->PlaySE("ui_decide");
       std::string selectedName = UIManager::GetInstance()->GetFocusedNodeName();
 

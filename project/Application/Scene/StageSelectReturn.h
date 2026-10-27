@@ -7,6 +7,7 @@
 #include <string>
 
 class Input;
+class SkipHold;
 class Sprite;
 class SpriteRenderer;
 
@@ -239,6 +240,7 @@ private:
   std::unique_ptr<Sprite> retry_;
   std::unique_ptr<Sprite> stay_;
   std::unique_ptr<Sprite> underline_;  // 選んでいる方の下線
+  std::unique_ptr<SkipHold> skipHold_; // 起き上がりを飛ばす長押し
   float leaveAlpha_ = 1.0f; // 選んだあと UI を消していく不透明度
   float focusPos_ = 0.0f;   // 下線の位置（0: 再出撃 〜 1: 拠点に残る）
 };

@@ -4,6 +4,7 @@
 #include "Debug/DebugCamera.h"
 #include "Effect/EffectManager.h"
 #include "Framework/GameManager.h"
+#include "Framework/MenuInput.h"
 #include "Framework/UIManager.h"
 #include "Model/ModelManager.h"
 #include "Object3d/Object3d.h"
@@ -229,19 +230,19 @@ void TitleScene::UpdateUI() {
     }
   }
 
-  // タイトルロゴと PRESS ENTER の表示が出きったか判定
+  // タイトルロゴと PRESS SPACE の表示が出きったか判定
   const bool isStartTextReady = (uiIntroTimer_ >= kTitleIntroDuration_ + kStartTextFadeDuration_);
 
   // ステージセレクトシーンへ移行（発進演出トリガー）
   if (GameManager::GetInstance()->IsGlobalPlayMode()) {
-    if (!isStarting_ && isStartTextReady && engine_->GetInputManager()->IsTriggerKey(DIK_RETURN)) {
+    if (!isStarting_ && isStartTextReady && MenuInput::IsDecideTriggered(engine_->GetInputManager())) {
       isStarting_ = true;
       startTimer_ = 0.0f;
       startCut_ = currentCut_; // 発進時のカメラカットを記録
       if (camera_) {
         startCamPos_ = camera_->GetTranslate();
         startCamRot_ = camera_->GetRotate();
-        // 発進直前の実際のFOVを引き継ぎ、Enter押下時のFOV跳ねを防ぐ
+        // 発進直前の実際のFOVを引き継ぎ、決定押下時のFOV跳ねを防ぐ
         startCamFov_ = camera_->GetFovY();
       }
       startDragonPos_ = dragonTransform_.translate;
@@ -302,7 +303,7 @@ void TitleScene::UpdateUI() {
     }
   }
 
-  // スタートテキスト（PRESS ENTER）
+  // スタートテキスト（PRESS SPACE）
   const Vector3 kShadowRgb = {0.01f, 0.03f, 0.08f};
 
   float startAlpha = 0.0f;
@@ -963,7 +964,7 @@ void TitleScene::UpdateWingTrails(const ICamera *activeCamera, float launchAccel
       float currentWidth = trailWidth_;
       float currentAlpha = trailAlpha_;
       if (isStarting_) {
-        // 発進加速の進行度（launchAccelCurve）に合わせて滑らかに強調（Enter直後の急変を防止）
+        // 発進加速の進行度（launchAccelCurve）に合わせて滑らかに強調（決定直後の急変を防止）
         currentWidth *= (1.0f + 0.25f * launchAccelCurve);
         currentAlpha = (std::min)(1.0f, currentAlpha * (1.0f + 0.20f * launchAccelCurve));
       }

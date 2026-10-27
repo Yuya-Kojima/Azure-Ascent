@@ -17,6 +17,7 @@
 #include "Debug/Logger.h"
 #include "Effect/FractureCache.h"
 #include "Effect/RoarDistortion.h"
+#include "Framework/MenuInput.h"
 #include "Framework/UIManager.h"
 #include "Input/InputKeyState.h"
 #include "Math/MathUtil.h"
@@ -37,6 +38,7 @@
 #include "Sprite/Sprite.h"
 #include "StageIntro.h"
 #include "GameOverSequence.h"
+#include "SkipHold.h"
 #include "Texture/TextureManager.h"
 #include <filesystem>
 #include <fstream>
@@ -296,6 +298,8 @@ void GamePlayScene::Initialize(EngineBase *engine) {
   stageIntro_->Initialize(engine_->GetSpriteRenderer(), cloudSeaEvents_.get());
   gameOverSequence_ = std::make_unique<GameOverSequence>();
   gameOverSequence_->Initialize(engine_->GetSpriteRenderer());
+  skipHold_ = std::make_unique<SkipHold>();
+  skipHold_->Initialize(engine_->GetSpriteRenderer());
 
   //===========================
   // プレイヤーの初期化
@@ -501,6 +505,7 @@ void GamePlayScene::Update() {
 
       if (!isBossActive) {
         gameState_ = GameState::Clear;
+        clearTimer_ = 0.0f;
         SoundManager::GetInstance()->StopBGM();
         SoundManager::GetInstance()->PlaySE("victory_jingle");
         if (railCamera_)
@@ -509,8 +514,11 @@ void GamePlayScene::Update() {
       }
     }
   } else if (gameState_ == GameState::Clear) {
-    // リザルト画面でEnterキーを押したらステージセレクト（雲の下の拠点）へ戻るので、雲を抜けて降下する
-    if (engine_->GetInputManager()->IsTriggerKey(DIK_RETURN)) {
+    // リザルト画面で決定を押したらステージセレクト（雲の下の拠点）へ戻るので、雲を抜けて降下する
+    // 入ってすぐの間は、射撃の押下が決定にならないよう受け付けない
+    clearTimer_ += 1.0f / 60.0f;
+    if (clearTimer_ >= kClearDecideLockSec_ &&
+        MenuInput::IsDecideTriggered(engine_->GetInputManager())) {
       const float kCloudTransitionSec = 1.0f;
       const Vector4 kCloudColor = {1.0f, 1.0f, 1.0f, 1.0f};
       SceneManager::GetInstance()->SetNextTransitionFade(
@@ -728,6 +736,7 @@ void GamePlayScene::Update() {
         if (ev.prefabName == "Boss") {
           newEnemy->SetOnDestroyedCallback([this](bool isSelfDestruct) {
             gameState_ = GameState::Clear;
+            clearTimer_ = 0.0f;
             SoundManager::GetInstance()->StopBGM();
             SoundManager::GetInstance()->PlaySE("victory_jingle");
             if (railCamera_)
@@ -1662,6 +1671,9 @@ void GamePlayScene::DrawEditorUI() {
     player_->Kill();
   }
   gameOverSequence_->DrawImGui();
+  if (ImGui::CollapsingHeader("Skip Hold")) {
+    skipHold_->DrawImGui();
+  }
   if (player_ && ImGui::CollapsingHeader("Dragon Wing Config")) {
     player_->DrawWingConfigImGui();
   }
@@ -2015,9 +2027,14 @@ void GamePlayScene::Draw2D() {
   if (gameState_ == GameState::GameOver) {
     gameOverSequence_->Draw();
   }
+
+  // 演出を飛ばす長押しの案内は一番手前に出す
+  skipHold_->Draw();
 }
 
 void GamePlayScene::StartIntro() {
+  skipHold_->Start();
+
   // レールを止めたまま、操作開始時のレールカメラと自機の位置を決める
   railCamera_->SetAutoMove(false);
   railCamera_->Update();
@@ -2036,12 +2053,10 @@ void GamePlayScene::StartIntro() {
 }
 
 void GamePlayScene::UpdateIntro() {
-  // 一度最後まで見ていれば、決定ボタンで飛ばせる
-  Input *input = engine_->GetInputManager();
-  if (GameManager::GetInstance()->HasSeenStageIntro() &&
-      (input->IsTriggerKey(DIK_RETURN) || input->IsTriggerKey(DIK_SPACE) ||
-       input->IsPadTrigger(PadButton::A) ||
-       input->IsPadTrigger(PadButton::Start))) {
+  // 一度最後まで見ていれば、決定の長押しで飛ばせる
+  const bool canSkip = GameManager::GetInstance()->HasSeenStageIntro() &&
+                       stageIntro_->CanSkip();
+  if (skipHold_->Update(engine_->GetInputManager(), canSkip)) {
     stageIntro_->Skip();
   }
 
@@ -2101,6 +2116,7 @@ void GamePlayScene::StartGameOver() {
   railCamera_->SetAutoMove(false);
   SoundManager::GetInstance()->StopBGM();
   worldTimeCarry_ = 0.0f;
+  skipHold_->Start();
   gameOverSequence_->Start(*railCamera_, player_->GetTransform().translate,
                            player_->GetTransform().rotate,
                            cloudSea_->GetHeight());
@@ -2114,10 +2130,8 @@ void GamePlayScene::StartGameOver() {
 }
 
 void GamePlayScene::UpdateGameOver() {
-  Input *input = engine_->GetInputManager();
-  const bool isSkipPressed = input->IsTriggerKey(DIK_RETURN) ||
-                             input->IsPadTrigger(PadButton::A) ||
-                             input->IsPadTrigger(PadButton::Start);
+  const bool isSkipPressed = skipHold_->Update(
+      engine_->GetInputManager(), gameOverSequence_->CanSkip());
   // 翼の打ち下ろしを渡し、体の浮き・揺れに使う
   gameOverSequence_->SetWingPush(player_->GetWingPush(false),
                                  player_->GetWingPush(true));
