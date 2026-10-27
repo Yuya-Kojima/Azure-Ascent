@@ -2110,11 +2110,12 @@ void GamePlayScene::UpdateGameOver() {
   const bool isSkipPressed = input->IsTriggerKey(DIK_RETURN) ||
                              input->IsPadTrigger(PadButton::A) ||
                              input->IsPadTrigger(PadButton::Start);
-  // 翼の打ち下ろしを渡し、体の浮き・揺れ・首のあおりに使う
+  // 翼の打ち下ろしを渡し、体の浮き・揺れに使う
   gameOverSequence_->SetWingPush(player_->GetWingPush(false),
                                  player_->GetWingPush(true));
   gameOverSequence_->RecordWingAngle(player_->GetWingRootAngle(false),
                                      player_->GetWingRootAngle(true));
+  gameOverSequence_->SetFaceAngle(player_->GetFaceAngle());
   gameOverSequence_->Update(isSkipPressed);
 
   // 自機の位置・向き・翼は演出が決める

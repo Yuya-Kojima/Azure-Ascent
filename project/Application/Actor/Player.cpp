@@ -667,6 +667,13 @@ float Player::GetWingRootAngle(bool isRight) const {
   return dragonModel_->GetWingAnimator().GetRootAngle(isRight);
 }
 
+float Player::GetFaceAngle() const {
+  if (!dragonModel_) {
+    return 0.0f;
+  }
+  return dragonModel_->GetWingAnimator().GetFaceAngle();
+}
+
 void Player::UpdateWing(float deltaTime) {
   if (!dragonModel_) {
     return;

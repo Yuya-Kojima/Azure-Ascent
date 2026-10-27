@@ -45,11 +45,17 @@ public:
     float tremble = 0.0f; // 首と翼の先の震えの大きさ
     float collapse = 0.0f; // 倒れる（首を地面へ下ろし、翼を畳む）
     float lookUp = 0.0f;   // 見上げる（伏せた姿勢から首を立てて空を見上げる）
-    float headThrow = 0.0f; // 首をあおる（正で頭が上がる。1 で Config::headThrowNeck）。重みの合計には数えず、羽ばたきを弱めない
+    // 顔の向き（GetFaceAngle と同じ測り方）を、体の傾きによらず faceUpAngle に合わせる割合（0〜1）。首は曲げず頭蓋だけ回す。重みの合計には数えない
+    float faceUp = 0.0f;
+    float faceUpAngle = 0.0f; // faceUp で合わせる顔の向き（度。GetFaceAngle と同じ測り方）
     // 地上の土台の姿勢を、立ち姿勢から伏せの姿勢へ寄せる割合（0〜1）。重みの合計には数えない
     float lie = 0.0f;
     // 伏せの姿勢を、胸を起こした伏せへ寄せる割合（0〜1）。重みの合計には数えない
     float lieChest = 0.0f;
+    // 首の震えに掛ける割合（tremble のうち首に効く分。1 で翼の先と同じ）。重みの合計には数えない
+    float neckTrembleRatio = 1.0f;
+    // 力が抜けて垂れる割合（0〜1）。脚と尾の先を重さで垂らし、尾は自分で振らずに根元から下げる。重みの合計には数えない
+    float hang = 0.0f;
   };
 
   /// <summary>
@@ -143,6 +149,12 @@ public:
     float legSpringMaxAngle = 8.0f;    // 脚の骨1本が姿勢から曲がる最大の角度（度）
     float springResetDistance = 0.5f;  // これ以上（モデルの単位）一度に動いたら置き直す
 
+    // 力が抜けて垂れる（Gesture::hang が 1 のとき。揺れものの値はこの値へ混ぜる）
+    float hangLegStiffness = 3.0f;   // 脚のばねの強さ（1/秒）
+    float hangSpringGravity = 12.0f; // 脚と尾の先の下向きの重さ（1/秒）
+    float hangLegMaxAngle = 45.0f;   // 脚の骨1本が姿勢から曲がる最大の角度（度）
+    float hangTailDroop = 4.0f;      // 尾の根元側の骨1本を下げる角度（度）
+
     // 重ねる姿勢（翼の付け根は rootBias に足す）
     GesturePose crouchPose = {4.0f, 6.0f, 8.0f, -2.0f, -15.0f, 20.0f,
                               0.0f, 15.0f, 0.0f, 25.0f, -8.0f};
@@ -165,8 +177,6 @@ public:
     float flailTailGain = 6.0f;
     float flailBodyPitchGain = 3.0f;
 
-    // 首をあおる（Gesture::headThrow が 1 のときの、首の骨1本あたりの角度、度。負で頭が上がる）
-    float headThrowNeck = -8.0f;
 
     // 震え（Gesture::tremble が 1 のときの振れ幅、度）
     float trembleFrequency = 14.0f; // 1秒あたりの回数
@@ -257,6 +267,12 @@ public:
   }
   const Config &GetConfig() const { return config_; }
 
+  /// <summary>
+  /// 顔の向き（度）。頭蓋の先の骨の根元から先への線が、世界の水平から上へ向く角度（下向きは負）
+  /// この線は鼻先より約 40 度下を向くので、0 のとき鼻先は斜め上を向く
+  /// </summary>
+  float GetFaceAngle() const { return faceAngle_; }
+
 private:
   // 書き込む関節。モデル空間の軸を、元の姿勢での親の向きで表したものを持つ
   struct DrivenJoint {
@@ -327,7 +343,8 @@ private:
   float UpdateWing(const Wing &wing, float gain, float wingLag) const;
   void UpdateTail() const;
   void UpdateBody() const;
-  void UpdateHead(const Matrix4x4 &worldMatrix) const;
+  // 戻り値は書き込んだあとの顔の向き（度。GetFaceAngle と同じ測り方）
+  float UpdateHead(const Matrix4x4 &worldMatrix) const;
   void UpdateSpine() const;
 
   // 重ねる姿勢の角度を、重みで混ぜて求める（度）
@@ -373,6 +390,9 @@ private:
   Wing rightWing_;
   std::vector<DrivenJoint> neck_; // 頭蓋より根元側の首の骨
   DrivenJoint head_;              // 頭蓋（前を向く骨）
+  DrivenJoint faceBase_;          // 顔の向きを測る骨の根元（頭蓋の先）
+  DrivenJoint faceTip_;           // 顔の向きを測る骨の先
+  float faceAngle_ = 0.0f;        // 顔の向き（度。GetFaceAngle と同じ測り方）
   std::vector<DrivenJoint> tail_;
   std::vector<DrivenJoint> spine_;
   static constexpr size_t kGestureTailJointCount_ = 6; // 重ねる姿勢で曲げる尾の骨の数（根元から）

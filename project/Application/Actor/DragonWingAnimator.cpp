@@ -39,6 +39,9 @@ const float kRightSide = 1.0f;
 const char *const kBodyJoint = "Root";
 const char *const kNeckJoints[] = {"Neck", "Head_0", "Head_1", "Head_2"};
 const char *const kHeadJoint = "Head_3";
+// 顔の向きを測る骨（頭蓋の先にある。根元から先への線は、鼻先より約 40 度下を向く）
+const char *const kFaceBaseJoint = "Head_4";
+const char *const kFaceTipJoint = "Head_5";
 const char *const kSpineJoints[] = {"Spine_0", "Spine_1", "Spine_2", "Spine_3"};
 // 揺れものの骨の並び（根元から先へ。最後の1つは先端の位置を決めるだけ）
 const std::vector<std::string> kTailSpringJoints = {
@@ -108,6 +111,10 @@ const ConfigItem kConfigItems[] = {
     {"tailSpringMaxAngle", &Config::tailSpringMaxAngle, 0.0f, 90.0f},
     {"legSpringMaxAngle", &Config::legSpringMaxAngle, 0.0f, 90.0f},
     {"springResetDistance", &Config::springResetDistance, 0.0f, 5.0f},
+    {"hangLegStiffness", &Config::hangLegStiffness, 0.0f, 30.0f},
+    {"hangSpringGravity", &Config::hangSpringGravity, 0.0f, 40.0f},
+    {"hangLegMaxAngle", &Config::hangLegMaxAngle, 0.0f, 90.0f},
+    {"hangTailDroop", &Config::hangTailDroop, -10.0f, 20.0f},
     {"trembleFrequency", &Config::trembleFrequency, 0.0f, 30.0f},
     {"neckTremble", &Config::neckTremble, 0.0f, 10.0f},
     {"fingerTremble", &Config::fingerTremble, 0.0f, 10.0f},
@@ -116,13 +123,20 @@ const ConfigItem kConfigItems[] = {
     {"buckleLagGain", &Config::buckleLagGain, 0.0f, 5.0f},
     {"flailTailGain", &Config::flailTailGain, 0.0f, 20.0f},
     {"flailBodyPitchGain", &Config::flailBodyPitchGain, 0.0f, 10.0f},
-    {"headThrowNeck", &Config::headThrowNeck, -30.0f, 30.0f},
     {"directBeatSec", &Config::directBeatSec, 0.05f, 1.0f},
     {"directPushSpeed", &Config::directPushSpeed, 50.0f, 3000.0f},
 };
 
 // 直接モードで、付け根が動く速さを求めるときの時間の差（秒）
 const float kDirectVelocitySec = 1.0f / 60.0f;
+
+/// <summary>
+/// 向き direction が、上向き up に垂直な面（水平）から上へ向いている角度（度。下向きは負）
+/// </summary>
+float UpAngle(const Vector3 &direction, const Vector3 &up) {
+  const float sine = Dot(SafeNormalize(direction), SafeNormalize(up));
+  return std::asin(std::clamp(sine, -1.0f, 1.0f)) / kDegToRad;
+}
 
 // 重ねる姿勢の各部の JSON のキー
 using GesturePose = DragonWingAnimator::GesturePose;
@@ -245,6 +259,8 @@ void DragonWingAnimator::Initialize(SkinnedObject *skinned,
     tail_.push_back(MakeJoint(name));
   }
   head_ = MakeJoint(kHeadJoint);
+  faceBase_ = MakeJoint(kFaceBaseJoint);
+  faceTip_ = MakeJoint(kFaceTipJoint);
   spine_.clear();
   for (const char *name : kSpineJoints) {
     spine_.push_back(MakeJoint(name));
@@ -451,7 +467,7 @@ void DragonWingAnimator::Update(float deltaTime,
                kDegToRad * StrokeStrength() * flapScale_ *
                MeanStroke(config_.bodyPitchLag);
   UpdateBody();
-  UpdateHead(worldMatrix);
+  faceAngle_ = UpdateHead(worldMatrix);
 
   // 体と尾の根元が決まってから、尾の先と脚を遅れてしならせる
   UpdateSprings(deltaTime, worldMatrix);
@@ -586,8 +602,10 @@ void DragonWingAnimator::UpdatePose() const {
 
 void DragonWingAnimator::UpdateSprings(float deltaTime,
                                        const Matrix4x4 &worldMatrix) {
+  // 力が抜けるほど、重さを足し、脚のばねを弱めて大きく曲がれるようにする
+  const float hang = std::clamp(gesture_.hang, 0.0f, 1.0f);
   SpringBoneChain::Settings settings;
-  settings.gravity = config_.springGravity;
+  settings.gravity = Lerp(config_.springGravity, config_.hangSpringGravity, hang);
   settings.resetDistance = config_.springResetDistance;
 
   settings.stiffness = config_.tailSpringStiffness;
@@ -595,9 +613,12 @@ void DragonWingAnimator::UpdateSprings(float deltaTime,
   settings.maxAngle = config_.tailSpringMaxAngle * kDegToRad;
   tailSpring_.Update(deltaTime, worldMatrix, settings);
 
-  settings.stiffness = config_.legSpringStiffness;
+  settings.stiffness =
+      Lerp(config_.legSpringStiffness, config_.hangLegStiffness, hang);
   settings.drag = config_.legSpringDrag;
-  settings.maxAngle = config_.legSpringMaxAngle * kDegToRad;
+  settings.maxAngle =
+      Lerp(config_.legSpringMaxAngle, config_.hangLegMaxAngle, hang) *
+      kDegToRad;
   for (SpringBoneChain &leg : legSprings_) {
     leg.Update(deltaTime, worldMatrix, settings);
   }
@@ -701,14 +722,17 @@ float DragonWingAnimator::UpdateWing(const Wing &wing, float gain,
 
 void DragonWingAnimator::UpdateTail() const {
   // 尾は後ろを向いているので、左右の軸まわりの正の回転で上がり、上下の軸まわりの正の回転で左へ曲がる
+  // 力が抜けるほど、羽ばたきに合わせて振るのをやめ、根元側を下げる
+  const float hang = std::clamp(gesture_.hang, 0.0f, 1.0f);
   for (size_t i = 0; i < tail_.size(); ++i) {
     const float lag = config_.tailLag + config_.tailJointLag * float(i);
     // 振り回されるほど大きく振れる
     float up = config_.tailAmplitude *
                (1.0f + config_.flailTailGain * currentState_.flail) *
-               StrokeStrength() * flapScale_ * MeanStroke(lag);
+               StrokeStrength() * flapScale_ * MeanStroke(lag) *
+               (1.0f - hang);
     if (i < kGestureTailJointCount_) {
-      up += GestureAngle(&GesturePose::tail);
+      up += GestureAngle(&GesturePose::tail) - config_.hangTailDroop * hang;
     }
     const float left = config_.tailTurn * currentState_.asymmetry;
     ApplyRotation(tail_[i], up * kDegToRad, left * kDegToRad, 0.0f);
@@ -763,9 +787,9 @@ Vector3 DragonWingAnimator::JointModelPosition(int32_t jointIndex) const {
   return {matrix.m[3][0], matrix.m[3][1], matrix.m[3][2]};
 }
 
-void DragonWingAnimator::UpdateHead(const Matrix4x4 &worldMatrix) const {
+float DragonWingAnimator::UpdateHead(const Matrix4x4 &worldMatrix) const {
   if (head_.index < 0 || body_.index < 0) {
-    return;
+    return 0.0f;
   }
   // Multiply(a, b) は b のあとに a で回す。ここの回転はすべてモデル空間で考える
 
@@ -838,17 +862,36 @@ void DragonWingAnimator::UpdateHead(const Matrix4x4 &worldMatrix) const {
 
   //---- 首と頭蓋へ書き込む ----
   // 首の4本: 高さ合わせの曲げのあとに、向きの差の neckShare の割合を等分して回す
-  // 重ねる姿勢の首の角度（震えを含む）。首の4本を同じ角度で曲げ、頭蓋はその合計に自分の角度を足して回す
-  const float gestureNeck =
-      (GestureAngle(&GesturePose::neck) +
-       config_.neckTremble * TrembleWave(0.0f) +
-       config_.headThrowNeck * gesture_.headThrow) *
-      kDegToRad;
-  const float gestureHead = gestureNeck * float(neck_.size()) +
-                            GestureAngle(&GesturePose::head) * kDegToRad;
-  const Quaternion headTarget =
-      Multiply(MakeRotateAxisAngleQuaternion(kLateralAxis, gestureHead),
-               Multiply(headDelta, JointModelRotation(head_.index)));
+  // 重ねる姿勢の首の角度（震えを含む、度）。首の4本を同じ角度で曲げ、頭蓋はその合計に自分の角度を足して回す
+  const float neckGestureAngle =
+      GestureAngle(&GesturePose::neck) +
+      config_.neckTremble * gesture_.neckTrembleRatio * TrembleWave(0.0f);
+  float headGestureAngle = GestureAngle(&GesturePose::head);
+  // 姿勢どおりの頭蓋の回転（頭蓋の目標の向きは、これに向きの差と重ねる姿勢を足して決める）
+  const Quaternion headPose = JointModelRotation(head_.index);
+  auto headTargetFor = [&](float neckAngle) {
+    const float headAngle =
+        (neckAngle * float(neck_.size()) + headGestureAngle) * kDegToRad;
+    return Multiply(MakeRotateAxisAngleQuaternion(kLateralAxis, headAngle),
+                    Multiply(headDelta, headPose));
+  };
+
+  // 顔の向きを世界で決める: 頭蓋がこのまま向く顔の向きを求め、faceUpAngle になるまでの差を頭蓋だけで回す（首は曲げない）
+  // 頭蓋を左右の軸まわりに回した分だけ、頭蓋の先の顔も同じ向きに回る
+  const bool hasFace = faceBase_.index >= 0 && faceTip_.index >= 0;
+  if (hasFace && gesture_.faceUp > 0.0f) {
+    // 頭蓋から見た顔の向き（頭蓋の先の骨の根元から先へ）
+    const Vector3 faceInHead = RotateVector(
+        Conjugate(headPose), JointModelPosition(faceTip_.index) -
+                                 JointModelPosition(faceBase_.index));
+    const Vector3 face =
+        RotateVector(headTargetFor(neckGestureAngle), faceInHead);
+    const float faceAngle = UpAngle(face, worldUp);
+    // 頭蓋の角度は正で鼻先が下がるので、上げたい角度の分だけ引く
+    headGestureAngle -= gesture_.faceUp * (gesture_.faceUpAngle - faceAngle);
+  }
+  const float gestureNeck = neckGestureAngle * kDegToRad;
+  const Quaternion headTarget = headTargetFor(neckGestureAngle);
   const float shareRatio =
       neck_.empty() ? 0.0f : config_.neckShare / float(neck_.size());
   const Quaternion neckDelta = Multiply(
@@ -870,6 +913,14 @@ void DragonWingAnimator::UpdateHead(const Matrix4x4 &worldMatrix) const {
   }
   // 頭蓋: 首の曲げで残ったずれを、ここでちょうど目標の向きに合わせる
   rotateInModelSpace(head_, headTarget);
+
+  // 書き込んだあとの顔の向きを測る
+  if (!hasFace) {
+    return 0.0f;
+  }
+  return UpAngle(JointModelPosition(faceTip_.index) -
+                     JointModelPosition(faceBase_.index),
+                 worldUp);
 }
 
 void DragonWingAnimator::LoadConfig() {
@@ -936,8 +987,9 @@ void DragonWingAnimator::DrawImGui() {
   ImGui::Text("gesture: crouch %.2f / roar %.2f / launch %.2f / tremble %.2f",
               gesture_.crouch, gesture_.roar, gesture_.launch,
               gesture_.tremble);
-  ImGui::Text("gesture: collapse %.2f / lookUp %.2f", gesture_.collapse,
-              gesture_.lookUp);
+  ImGui::Text("gesture: collapse %.2f / lookUp %.2f / hang %.2f / faceUp %.2f",
+              gesture_.collapse, gesture_.lookUp, gesture_.hang,
+              gesture_.faceUp);
   for (const GesturePoseSlot &slot : kGesturePoseSlots) {
     if (ImGui::TreeNode(slot.key)) {
       for (const GesturePoseItem &item : kGesturePoseItems) {

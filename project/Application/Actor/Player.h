@@ -91,6 +91,11 @@ public:
   /// 片方の翼の付け根を今上げている角度（度）。ドラゴンのモデルがなければ 0
   /// </summary>
   float GetWingRootAngle(bool isRight) const;
+
+  /// <summary>
+  /// 顔の向き（度。DragonWingAnimator::GetFaceAngle の値）。ドラゴンのモデルがなければ 0
+  /// </summary>
+  float GetFaceAngle() const;
   void SetHitStopCallback(std::function<void(int)> callback) {
     hitStopCallback_ = callback;
   }

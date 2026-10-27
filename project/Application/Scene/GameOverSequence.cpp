@@ -342,13 +342,18 @@ void GameOverSequence::RecordWingAngle(float left, float right) {
   range.rightMax = (std::max)(range.rightMax, right);
 }
 
+size_t GameOverSequence::UsedBeatCount() const {
+  return static_cast<size_t>(
+      std::clamp(beatCount_, 1, static_cast<int>(kMaxBeatCount_)));
+}
+
 const GameOverSequence::StruggleBeat &
 GameOverSequence::BeatAt(float time) const {
-  // 始める時刻を過ぎた一打ちのうち、最後のもの（もがき始める前は最初の一打ち）
+  // 使う一打ちのうち、始める時刻を過ぎた最後のもの（もがき始める前は最初の一打ち）
   const StruggleBeat *current = &beats_.front();
-  for (const StruggleBeat &beat : beats_) {
-    if (time >= beat.time) {
-      current = &beat;
+  for (size_t i = 0; i < UsedBeatCount(); ++i) {
+    if (time >= beats_[i].time) {
+      current = &beats_[i];
     }
   }
   return *current;
@@ -417,11 +422,21 @@ void GameOverSequence::UpdateWing() {
   wingState_ = LerpWing(struggle, limpWing_, limp);
   wingState_.response = struggleResponse_;
 
-  // 打ち下ろしで首があおられ、力が抜けると首だけを空へ伸ばす
+  // 顔は、被弾から最初の一打ちまでに空の方へ向け、体の傾きによらず沈みきるまで同じ向きに保つ
+  // 脚と尾は、もがき始めると重さで垂れていく
   gesture_ = {};
+  gesture_.faceUp = EaseOutQuad(Progress(timer_, 0.0f, beats_.front().time));
+  gesture_.faceUpAngle = faceUpAngle_;
+  gesture_.hang = EaseOutQuad(Progress(timer_, hangStartTime_, hangSec_));
+
+  // 打ち上げの間は指と首が震え、上げ始めと上げきりで 0、真ん中で一番強い。畳まれ始めたら弱めて 0 にする
   if (timer_ >= beats_.front().time) {
-    const float push = 0.5f * (leftPush_ + rightPush_);
-    gesture_.headThrow = Lerp(beat.headThrow * push, reachHeadThrow_, limp);
+    const float upProgress =
+        Progress(timer_, beat.time + beat.downSec, beat.upSec);
+    gesture_.tremble = beat.tremble *
+                       std::sin(std::numbers::pi_v<float> * upProgress) *
+                       (1.0f - limp);
+    gesture_.neckTrembleRatio = neckTrembleRatio_;
   }
 }
 
@@ -516,7 +531,7 @@ void GameOverSequence::DrawImGui() {
   ImGui::SliderAngle("Heave Pitch", &heavePitch_, 0.0f, 45.0f);
   ImGui::Text("lift %.2f / push L %.2f R %.2f", lift_, leftPush_, rightPush_);
   // 一打ちごとに、翼の付け根をどこまで上げ・どこまで下ろしたか（度。正で上）
-  for (size_t i = 0; i < beatAngles_.size(); ++i) {
+  for (size_t i = 0; i < UsedBeatCount(); ++i) {
     const WingAngleRange &range = beatAngles_[i];
     if (range.isRecorded) {
       ImGui::Text("Beat %d root L %.0f..%.0f / R %.0f..%.0f",
@@ -530,7 +545,9 @@ void GameOverSequence::DrawImGui() {
               WingRootAngle(true, 0.0f));
   ImGui::DragFloat("Hit Rise Sec", &hitRiseSec_, 0.01f, 0.01f, 1.0f);
   ImGui::DragFloat("Hit Up Angle", &hitUpAngle_, 0.5f, -90.0f, 90.0f);
-  for (size_t i = 0; i < beats_.size(); ++i) {
+  ImGui::SliderInt("Beat Count", &beatCount_, 1,
+                   static_cast<int>(kMaxBeatCount_));
+  for (size_t i = 0; i < UsedBeatCount(); ++i) {
     StruggleBeat &beat = beats_[i];
     ImGui::PushID(static_cast<int>(i));
     ImGui::Text("Beat %d", static_cast<int>(i + 1));
@@ -540,11 +557,15 @@ void GameOverSequence::DrawImGui() {
     ImGui::DragFloat("Right Delay", &beat.rightDelay, 0.005f, 0.0f, 0.5f);
     ImGui::DragFloat2("Buckle / Flail", &beat.buckle, 0.01f, 0.0f, 1.0f);
     ImGui::SliderFloat("Lift", &beat.lift, 0.0f, 1.0f);
-    ImGui::SliderFloat("Head Throw", &beat.headThrow, 0.0f, 1.0f);
+    ImGui::SliderFloat("Tremble", &beat.tremble, 0.0f, 1.0f);
     ImGui::PopID();
   }
   ImGui::DragFloat("Fold Root Angle", &foldRootAngle_, 0.5f, -90.0f, 90.0f);
-  ImGui::DragFloat("Reach Head Throw", &reachHeadThrow_, 0.05f, -1.0f, 5.0f);
+  ImGui::DragFloat("Face Up Angle", &faceUpAngle_, 0.5f, -60.0f, 80.0f);
+  ImGui::Text("face angle %.0f", faceAngle_);
+  ImGui::DragFloat("Hang Start", &hangStartTime_, 0.01f, 0.0f, 3.0f);
+  ImGui::DragFloat("Hang Sec", &hangSec_, 0.01f, 0.0f, 3.0f);
+  ImGui::SliderFloat("Neck Tremble", &neckTrembleRatio_, 0.0f, 1.0f);
   // 畳み具合と、羽ばたきの姿勢の割合（0: 滑空 〜 1: 体を起こす）
   ImGui::DragFloat("Hit Fold", &hitWing_.fold, 0.01f, 0.0f, 1.0f);
   ImGui::DragFloat("Hit Hover", &hitWing_.hover, 0.01f, 0.0f, 1.0f);
