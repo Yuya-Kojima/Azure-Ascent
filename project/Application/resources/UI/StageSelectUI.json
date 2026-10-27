@@ -77,9 +77,9 @@
             ],
             "children": [],
             "color": [
-                1.0,
-                1.0,
-                1.0,
+                0.45,
+                0.45,
+                0.45,
                 1.0
             ],
             "focusedColor": [
@@ -89,7 +89,7 @@
                 1.0
             ],
             "fontName": "MPLUS1p-Black",
-            "isSelectable": true,
+            "isSelectable": false,
             "name": "Stage2Text",
             "position": [
                 533.1699829101563,
