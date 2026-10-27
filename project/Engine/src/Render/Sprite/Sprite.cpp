@@ -202,6 +202,14 @@ void Sprite::SetDissolveParams(float progress, float edgeWidth, bool flip,
   }
 }
 
+void Sprite::SetCloudShadeColors(const Vector4 &shadowColor,
+                                 const Vector4 &glowColor) {
+  if (uiEffectParamsData_) {
+    uiEffectParamsData_->cloudShadowColor = shadowColor;
+    uiEffectParamsData_->cloudGlowColor = glowColor;
+  }
+}
+
 void Sprite::CreateVertexData() {
 
   // VertexResourceを作る
@@ -316,6 +324,9 @@ void Sprite::CreateUIEffectParamsData() {
   uiEffectParamsData_->dissolveFlip = 0.0f;
   uiEffectParamsData_->glowStrength = 1.0f;
   uiEffectParamsData_->dissolveDescend = 0.0f;
+  // 雲ディゾルブの色は、使う側（Fade）が描く前に SetCloudShadeColors で決める
+  uiEffectParamsData_->cloudShadowColor = Vector4{0.0f, 0.0f, 0.0f, 1.0f};
+  uiEffectParamsData_->cloudGlowColor = Vector4{0.0f, 0.0f, 0.0f, 1.0f};
 }
 
 void Sprite::ChangeTexture(const std::string &textureFilePath) {

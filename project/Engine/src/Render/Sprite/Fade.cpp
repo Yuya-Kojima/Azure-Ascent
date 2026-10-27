@@ -242,6 +242,7 @@ void Fade::ApplyCloud_(float eased) {
   Vector4 c = color_;
   c.w = 1.0f;
   cloudSprite_->SetColor(c);
+  cloudSprite_->SetCloudShadeColors(cloudShadowColor_, cloudGlowColor_);
 
   // 晴れるときは縦の向きを反転して、覆うときと同じく上から晴らす
   const bool isClearing = (state_ == State::FadingIn);

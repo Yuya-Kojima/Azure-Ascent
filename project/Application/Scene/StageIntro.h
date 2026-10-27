@@ -9,7 +9,7 @@ class ICamera;
 class RailCamera;
 class BillboardParticleEmitter;
 class SpriteRenderer;
-class StageIntroText;
+class CaptionCard;
 
 /// <summary>
 /// ステージ開始演出（絵コンテの S4〜S7）
@@ -98,6 +98,8 @@ public:
   void DrawCloudSeaImGui(const Vector3 &focus, const Vector3 &forward);
 
   bool IsFinished() const { return isFinished_; }
+  // 飛ばして先へ進む間か（溜め始める前まで）
+  bool CanSkip() const { return !isFinished_ && timer_ < crouchStartTime_; }
   // 吠え声からの秒（鳴る前は負）
   float GetTimeSinceRoar() const { return timer_ - roarSoundTime_; }
   const ICamera *GetCamera() const;
@@ -183,7 +185,7 @@ private:
   // 雲の粒
   std::unique_ptr<BillboardParticleEmitter> cloudParticles_;
   // 目標カード
-  std::unique_ptr<StageIntroText> text_;
+  std::unique_ptr<CaptionCard> text_;
   // 雲海の出来事の登録先
   CloudSeaEvents *cloudSeaEvents_ = nullptr;
 

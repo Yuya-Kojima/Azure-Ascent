@@ -18,6 +18,16 @@ struct CloudSeaShape {
 	float padding;
 };
 
+// 雲の中の 1 点から照らす光
+static const int kMaxGlows = 4;
+
+struct CloudSeaGlow {
+	float3 position; // ワールドの位置
+	float radius;    // 光が届く広がり（この距離で 1/e に弱まる）
+	float3 color;    // 光の色と強さ
+	float padding;
+};
+
 struct CloudSeaParams {
 	float4x4 inverseViewProjection;
 	float3 cameraPosition;
@@ -46,6 +56,8 @@ struct CloudSeaParams {
 	float projection22;    // 投影行列の [2][2]（深度から奥行きを戻すのに使う）
 	float projection32;    // 投影行列の [3][2]
 	CloudSeaShape shapes[kMaxShapes];
+	CloudSeaGlow glows[kMaxGlows];
+	int glowCount;
 };
 
 ConstantBuffer<CloudSeaParams> gCloudSea : register(b0);

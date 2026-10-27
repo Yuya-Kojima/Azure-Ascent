@@ -2,7 +2,7 @@
 #include "Camera/GameCamera.h"
 #include "Camera/RailCamera.h"
 #include "Render/Particle/BillboardParticleEmitter.h"
-#include "StageIntroText.h"
+#include "CaptionCard.h"
 #include <algorithm>
 
 #ifdef USE_IMGUI
@@ -14,6 +14,22 @@ namespace {
 const float kFrameSec = 1.0f / 60.0f;
 // 真上
 const Vector3 kWorldUp = {0.0f, 1.0f, 0.0f};
+
+/// <summary>
+/// 目標カード（画面の上に「第一空域」と「天空を奪還せよ」）の時刻と置き場所
+/// </summary>
+CaptionCard::Settings MakeObjectiveCardSettings() {
+  CaptionCard::Settings settings;
+  settings.upperPath = "resources/UI/StageIntro/stage_name.png";
+  settings.lowerPath = "resources/UI/StageIntro/objective.png";
+  settings.cardInTime = 2.75f;
+  settings.cardOutTime = 4.2f;
+  settings.lineY = 100.0f;
+  settings.lineWidth = 560.0f;
+  settings.upperY = 72.0f;
+  settings.lowerY = 150.0f;
+  return settings;
+}
 } // namespace
 
 StageIntro::StageIntro() : camera_(std::make_unique<GameCamera>()) {}
@@ -28,8 +44,8 @@ void StageIntro::Initialize(SpriteRenderer *spriteRenderer,
   cloudParticles_->Initialize("resources/cloud_puff.png");
   cloudParticles_->SetBlendMode(IParticleEmitter::BlendMode::Alpha);
 
-  text_ = std::make_unique<StageIntroText>();
-  text_->Initialize(spriteRenderer);
+  text_ = std::make_unique<CaptionCard>();
+  text_->Initialize(spriteRenderer, MakeObjectiveCardSettings());
 }
 
 void StageIntro::Start(const RailCamera &railCamera,
@@ -701,6 +717,7 @@ void StageIntro::DrawImGui() {
   ImGui::SliderFloat("End Wing Hover", &endWing_.hover, 0.0f, 1.0f);
   ImGui::SliderFloat("Dive Wing Ratio", &diveWingRatio_, 0.0f, 1.0f);
   ImGui::ColorEdit3("Puff Color", &puffColor_.x);
+  ImGui::SeparatorText("Objective Card");
   text_->DrawImGui();
 #endif
 }

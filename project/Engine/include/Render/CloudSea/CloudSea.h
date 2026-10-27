@@ -24,6 +24,15 @@ struct CloudSeaShape {
 };
 
 /// <summary>
+/// 雲の中の 1 点から照らす光（雷など）。毎フレーム設定し直す
+/// </summary>
+struct CloudSeaGlow {
+  Vector3 position = {0.0f, 0.0f, 0.0f}; // ワールドの位置
+  float radius = 1.0f; // 光が届く広がり（この距離で 1/e に弱まる）
+  Vector3 color = {0.0f, 0.0f, 0.0f}; // 光の色と強さ（雲の色によらず足す）
+};
+
+/// <summary>
 /// 雲海の見た目の値
 /// </summary>
 struct CloudSeaLook {
@@ -51,6 +60,7 @@ struct CloudSeaLook {
 class CloudSea {
 public:
   static constexpr int kMaxShapes = 8;
+  static constexpr int kMaxGlows = 4;
 
   // 調べるための表示
   enum class DebugView : int32_t {
@@ -79,6 +89,15 @@ public:
   /// </summary>
   void SetShape(int index, const CloudSeaShape &shape);
 
+  /// <summary>
+  /// 雲の中から照らす光を全部消す
+  /// </summary>
+  void ClearGlows();
+  /// <summary>
+  /// index 番目の雲の中から照らす光を設定する（0 〜 kMaxGlows - 1）
+  /// </summary>
+  void SetGlow(int index, const CloudSeaGlow &glow);
+
   // 雲の層の上の面の基準の高さ（ワールドの Y。起伏はこの上下に付く）
   void SetHeight(float height) { height_ = height; }
   float GetHeight() const { return height_; }
@@ -105,6 +124,14 @@ private:
     float amount;
     float crack;
     int32_t kind;
+    float padding;
+  };
+
+  // 雲の中から照らす光（シェーダーの CloudSeaGlow と同じ並び。32 バイト）
+  struct GlowForGPU {
+    Vector3 position;
+    float radius;
+    Vector3 color;
     float padding;
   };
 
@@ -137,6 +164,9 @@ private:
     float projection22;
     float projection32;
     ShapeForGPU shapes[kMaxShapes];
+    GlowForGPU glows[kMaxGlows];
+    int32_t glowCount;
+    float glowPadding[3];
   };
 
   void CreateParamsResource();
@@ -155,6 +185,8 @@ private:
   float time_ = 0.0f;
   CloudSeaShape shapes_[kMaxShapes] = {};
   int shapeCount_ = 0;
+  CloudSeaGlow glows_[kMaxGlows] = {};
+  int glowCount_ = 0;
 
   Microsoft::WRL::ComPtr<ID3D12Resource> paramsResource_;
   ParamsForGPU *paramsData_ = nullptr;

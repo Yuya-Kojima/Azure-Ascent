@@ -623,6 +623,11 @@ void Player::TakeDamage(int damage) {
   }
 }
 
+void Player::Kill() {
+  invincibleTimer_ = 0;
+  TakeDamage(hp_);
+}
+
 void Player::SetDragonModel(std::unique_ptr<DragonModel> model) {
   dragonModel_ = std::move(model);
 }
@@ -639,6 +644,40 @@ void Player::SetWingGesture(const DragonWingAnimator::Gesture &gesture) {
   if (dragonModel_) {
     dragonModel_->GetWingAnimator().SetGesture(gesture);
   }
+}
+
+void Player::DrawWingConfigImGui() {
+  if (dragonModel_) {
+    dragonModel_->GetWingAnimator().DrawImGui();
+  }
+}
+
+void Player::SetDirectWingRoot(
+    DragonWingAnimator::DirectRootFunction rootAngleAt) {
+  if (dragonModel_) {
+    dragonModel_->GetWingAnimator().SetDirectRoot(std::move(rootAngleAt));
+  }
+}
+
+float Player::GetWingPush(bool isRight) const {
+  if (!dragonModel_) {
+    return 0.0f;
+  }
+  return dragonModel_->GetWingAnimator().GetDownstrokePush(isRight);
+}
+
+float Player::GetWingRootAngle(bool isRight) const {
+  if (!dragonModel_) {
+    return 0.0f;
+  }
+  return dragonModel_->GetWingAnimator().GetRootAngle(isRight);
+}
+
+float Player::GetFaceAngle() const {
+  if (!dragonModel_) {
+    return 0.0f;
+  }
+  return dragonModel_->GetWingAnimator().GetFaceAngle();
 }
 
 void Player::UpdateWing(float deltaTime) {

@@ -35,31 +35,31 @@
             "anchorPoint": [0.5, 0.5], "children": [],
             "color": [0.01, 0.03, 0.08, 0.92], "fontName": "MPLUS1p-Black",
             "name": "StartTextShadow_TL", "position": [638.0, 618.0], "scale": [0.8, 0.8],
-            "textString": "PRESS ENTER", "textureName": "", "type": 1
+            "textString": "PRESS SPACE", "textureName": "", "type": 1
         },
         {
             "anchorPoint": [0.5, 0.5], "children": [],
             "color": [0.01, 0.03, 0.08, 0.92], "fontName": "MPLUS1p-Black",
             "name": "StartTextShadow_TR", "position": [642.0, 618.0], "scale": [0.8, 0.8],
-            "textString": "PRESS ENTER", "textureName": "", "type": 1
+            "textString": "PRESS SPACE", "textureName": "", "type": 1
         },
         {
             "anchorPoint": [0.5, 0.5], "children": [],
             "color": [0.01, 0.03, 0.08, 0.92], "fontName": "MPLUS1p-Black",
             "name": "StartTextShadow_BL", "position": [638.0, 622.0], "scale": [0.8, 0.8],
-            "textString": "PRESS ENTER", "textureName": "", "type": 1
+            "textString": "PRESS SPACE", "textureName": "", "type": 1
         },
         {
             "anchorPoint": [0.5, 0.5], "children": [],
             "color": [0.01, 0.03, 0.08, 0.92], "fontName": "MPLUS1p-Black",
             "name": "StartTextShadow_BR", "position": [642.0, 622.0], "scale": [0.8, 0.8],
-            "textString": "PRESS ENTER", "textureName": "", "type": 1
+            "textString": "PRESS SPACE", "textureName": "", "type": 1
         },
         {
             "anchorPoint": [0.5, 0.5], "children": [],
             "color": [1.0, 1.0, 1.0, 1.0], "fontName": "MPLUS1p-Black",
             "name": "StartText", "position": [640.0, 620.0], "scale": [0.8, 0.8],
-            "textString": "PRESS ENTER", "textureName": "", "type": 1
+            "textString": "PRESS SPACE", "textureName": "", "type": 1
         }
     ],
     "color": [1.0, 1.0, 1.0, 1.0],

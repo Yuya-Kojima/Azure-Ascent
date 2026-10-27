@@ -28,6 +28,8 @@ public:
   void UpdateTransform() override;
   void ForceSnapToCamera();
   void TakeDamage(int damage);
+  // 無敵時間を無視して HP を 0 にする
+  void Kill();
   void Draw3D() override;
   void Draw2D() override;
   void OnCollision(class Collider *other) override;
@@ -51,6 +53,8 @@ public:
   }
   // 羽ばたく自機ドラゴンを使う（SetModel の Object3d より優先して描く）
   void SetDragonModel(std::unique_ptr<DragonModel> model);
+  // 自機ドラゴン（なければ nullptr）
+  DragonModel *GetDragonModel() const { return dragonModel_.get(); }
 
   /// <summary>
   /// 頭のワールド座標（ドラゴンのモデルがなければ自機の位置）
@@ -74,6 +78,31 @@ public:
   /// 羽ばたきに重ねる姿勢（開始演出の吠える姿など）。毎フレーム渡す
   /// </summary>
   void SetWingGesture(const DragonWingAnimator::Gesture &gesture);
+
+  /// <summary>
+  /// 翼の付け根の角度を外から決める（ゲームオーバーの演出）。空の関数で周期で打つ羽ばたきに戻す
+  /// </summary>
+  void SetDirectWingRoot(DragonWingAnimator::DirectRootFunction rootAngleAt);
+
+  /// <summary>
+  /// 羽ばたきの調整値の ImGui（ドラゴンのモデルがなければ何も出さない）
+  /// </summary>
+  void DrawWingConfigImGui();
+
+  /// <summary>
+  /// 片方の翼が今打ち下ろしている強さ（0〜1）。ドラゴンのモデルがなければ 0
+  /// </summary>
+  float GetWingPush(bool isRight) const;
+
+  /// <summary>
+  /// 片方の翼の付け根を今上げている角度（度）。ドラゴンのモデルがなければ 0
+  /// </summary>
+  float GetWingRootAngle(bool isRight) const;
+
+  /// <summary>
+  /// 顔の向き（度。DragonWingAnimator::GetFaceAngle の値）。ドラゴンのモデルがなければ 0
+  /// </summary>
+  float GetFaceAngle() const;
   void SetHitStopCallback(std::function<void(int)> callback) {
     hitStopCallback_ = callback;
   }

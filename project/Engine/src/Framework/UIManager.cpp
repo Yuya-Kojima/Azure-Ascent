@@ -109,13 +109,13 @@ void UIManager::Update(Input *input) {
       if (focusedIdx == -1)
         focusedIdx = 0;
 
-      if (input->IsTriggerKey(DIK_UP) ||
+      if (input->IsTriggerKey(DIK_W) || input->IsTriggerKey(DIK_UP) ||
           input->IsPadTrigger(PadButton::DPadUp)) {
         focusedIdx--;
         if (focusedIdx < 0)
           focusedIdx = (int)selectables.size() - 1;
       }
-      if (input->IsTriggerKey(DIK_DOWN) ||
+      if (input->IsTriggerKey(DIK_S) || input->IsTriggerKey(DIK_DOWN) ||
           input->IsPadTrigger(PadButton::DPadDown)) {
         focusedIdx++;
         if (focusedIdx >= (int)selectables.size())

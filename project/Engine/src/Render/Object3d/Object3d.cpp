@@ -261,4 +261,13 @@ void Object3d::CreateMaterialData() {
   materialData->dissolveEdgeRange = 0.05f;
   materialData->maskTransform = {0.0f, 0.0f};
   materialData->dissolveEdgeColor = Vector4(1.0f, 0.4f, 0.3f, 1.0f);
+
+  // 模様の光と傷は使わない
+  materialData->patternGlow = Vector4(0.0f, 0.0f, 0.0f, 0.0f);
+  materialData->patternRange = Vector4(0.45f, 0.6f, 0.0f, 0.0f);
+  materialData->woundCenter = Vector4(0.0f, 0.0f, 0.0f, 0.0f);
+  materialData->woundNormal = Vector4(0.0f, 1.0f, 0.0f, 0.0f);
+  materialData->woundTangent = Vector4(1.0f, 0.0f, 0.0f, 0.0f);
+  materialData->woundGlow = Vector4(0.0f, 0.0f, 0.0f, 0.0f);
+  materialData->woundShape = Vector4(0.0f, 0.0f, 0.0f, 0.0f);
 }

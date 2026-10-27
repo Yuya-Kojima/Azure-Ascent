@@ -79,6 +79,12 @@ void SpringBoneChain::Update(float deltaTime, const Matrix4x4 &worldMatrix,
   previousRoot_ = root;
   hasPreviousRoot_ = true;
 
+  // 空気が当たる向き（根元が動いた向きの逆）。動いていなければ当たらない
+  const float rootMoveLength = Length(rootMove);
+  const Vector3 airDirection = rootMoveLength > 0.0f
+                                   ? rootMove * (-1.0f / rootMoveLength)
+                                   : Vector3{};
+
   // 揺れの減り方を、このフレームの長さに合わせる（60fps のとき drag そのもの）
   const float keep = std::pow(1.0f - std::clamp(settings.drag, 0.0f, 1.0f),
                               deltaTime * kReferenceFrameRate);
@@ -113,7 +119,7 @@ void SpringBoneChain::Update(float deltaTime, const Matrix4x4 &worldMatrix,
       continue;
     }
 
-    // 先端の点を動かす: 慣性 + 姿勢へ戻すばね + 重さ。
+    // 先端の点を動かす: 慣性 + 姿勢へ戻すばね + 重さ + 空気。
     // 慣性は、根元の前のフレームの動きに、それとの差を keep の割合だけ残して足す。
     // 等速で進むだけなら遅れず、根元が急に加速した分だけ遅れる
     const Vector3 tipMove = bone.tip - bone.previousTip;
@@ -121,7 +127,8 @@ void SpringBoneChain::Update(float deltaTime, const Matrix4x4 &worldMatrix,
     Vector3 nextTip = bone.tip + previousRootMove_ +
                       (tipMove - previousRootMove_) * keep +
                       poseDirection * (settings.stiffness * length * deltaTime) +
-                      kDown * (settings.gravity * length * deltaTime);
+                      kDown * (settings.gravity * length * deltaTime) +
+                      airDirection * (settings.airDrag * length * deltaTime);
 
     // 骨の長さを保ち、姿勢から曲がる角度を抑える
     const Vector3 toTip = nextTip - head;

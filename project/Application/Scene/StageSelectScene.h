@@ -15,6 +15,8 @@ class DebugCamera;
 class InputKeyState;
 class Skybox;
 class ICamera;
+class StageSelectReturn;
+class StageSelectReturnSky;
 
 class StageSelectScene : public BaseScene {
 
@@ -71,12 +73,18 @@ private: // メンバ関数
   /// <summary>
   /// 出撃演出を始める
   /// </summary>
-  void StartLaunch();
+  /// <param name="isRetry">ゲームオーバーから戻ったときの再出撃か（カメラを引いてから出撃演出につなぐ）</param>
+  void StartLaunch(bool isRetry);
 
   /// <summary>
   /// 出撃演出の更新（S1 かがむ → S2 飛び立ち → S3 雲のフェード）
   /// </summary>
   void UpdateLaunch();
+
+  /// <summary>
+  /// ゲームオーバーから戻ったときの演出の更新（選んだものに合わせて、出撃するか拠点のメニューへ戻す）
+  /// </summary>
+  void UpdateReturn();
 
 private: // メンバ変数(システム用)
   // カメラ
@@ -96,14 +104,15 @@ private: // メンバ変数(拠点)
 
   // 地面
   std::unique_ptr<Object3d> groundObject_ = nullptr;
-  Vector3 groundPos_ = {0.0f, -3.0f, 60.0f};
+  // 地面の平らな所の高さはドラゴンの足の裏（dragonPos_.y）にそろえる
+  Vector3 groundPos_ = {0.0f, 0.5f, 60.0f};
   Vector3 groundScale_ = {30.0f, 4.0f, 30.0f};
 
   // 拠点で待機するドラゴン（メニューの文字と重ならないよう画面の右寄りに置く）
   std::unique_ptr<DragonModel> dragonModel_ = nullptr;
   Object3d *dragonObject_ = nullptr; // dragonModel_ の Object3d（位置・向き・大きさの設定用）
   Vector3 dragonPos_ = {2.0f, 0.5f, 2.0f};
-  Vector3 dragonRot_ = {-0.25f, -0.5f, 0.0f};
+  Vector3 dragonRot_ = {0.0f, -0.5f, 0.0f};
   float dragonScale_ = 1.7f;
 
   // 羽ばたき（強さ, 1秒あたりの回数, 畳み具合, 左右差, 姿勢, 羽ばたきの姿勢の割合）。地上では立ち姿勢、飛び立つと飛行姿勢
@@ -113,10 +122,38 @@ private: // メンバ変数(拠点)
   static constexpr float kWingDeltaTime_ = 1.0f / 60.0f; // 羽ばたきを進める1フレームの時間（秒）
 
   // 地上からやや見上げるカメラ
-  Vector3 cameraPos_ = {0.0f, 0.8f, -6.0f};
-  Vector3 cameraRot_ = {-0.12f, 0.0f, 0.0f};
+  Vector3 cameraPos_ = {0.0f, 1.2f, -6.0f};
+  Vector3 cameraRot_ = {-0.07f, 0.0f, 0.0f};
+
+private: // メンバ変数(ゲームオーバーから戻ったとき)
+  std::unique_ptr<StageSelectReturn> returnSequence_;
+  // 戻ったときの雲の天井と光
+  std::unique_ptr<StageSelectReturnSky> returnSky_;
+  // いつもの拠点の露出（戻ったときの露出から戻す先）
+  float baseExposure_ = 0.0f;
+  // 空の暗さ（0: いつもの昼の空 〜 1: ゲームオーバーから戻ったときの暗い空）
+  float gloom_ = 0.0f;
+  // 雲の天井の雷の時刻（戻ったときの演出の間は演出の時刻、終わったあとはそこから進める。秒）
+  float lightningTime_ = 0.0f;
+  // 戻ったときの演出で、UI が出るまで BGM を待っているか
+  bool isBgmPending_ = false;
+  // 暗い空の色・太陽・雲量・ライトの強さ
+  Vector3 gloomZenith_ = {0.05f, 0.07f, 0.14f};
+  Vector3 gloomHorizon_ = {0.22f, 0.24f, 0.32f};
+  float gloomSunIntensity_ = 0.15f;
+  float gloomCloudAmount_ = 0.85f;
+  float gloomLightIntensity_ = 0.55f;
 
 private: // メンバ変数(出撃演出)
+  // 出撃演出を始めたときのカメラの位置・向き（ここからかがみ、飛び立ちを追う）
+  Vector3 launchCameraPos_{};
+  Vector3 launchCameraRot_{};
+  // 再出撃を選んだ瞬間のカメラの位置・向き（ここから出撃演出のカメラへ寄せる）
+  Vector3 retryCameraPos_{};
+  Vector3 retryCameraRot_{};
+  bool isRetryLaunch_ = false;
+  // 出撃演出の姿勢（かがむ）
+  DragonWingAnimator::Gesture launchGesture_;
   bool isLaunching_ = false;
   // 出撃を押してからの経過時間（秒）
   float launchTimer_ = 0.0f;
@@ -127,7 +164,14 @@ private: // メンバ変数(出撃演出)
   float menuFadeSec_ = 0.2f;     // メニューが消えるまでの時間（秒）
   float crouchSec_ = 0.45f;      // 沈み込む時間（秒）
   float crouchHoldSec_ = 0.15f;  // かがんだまま止まる時間（秒）
-  float crouchDepth_ = 0.3f;     // 沈む深さ
+  float crouchDepth_ = 0.0f;     // 沈む深さ（脚を曲げるのは伏せの姿勢で行う）
+  float crouchLie_ = 0.4f;       // かがんだときに伏せの姿勢を混ぜる割合（脚を曲げる）
+  float crouchGesture_ = 1.0f;   // かがんだときの溜め（頭を下げ、翼をすぼめる）の強さ
+  float crouchReleaseSec_ = 0.15f; // 飛び立ってから、かがんだ姿勢が抜けきるまでの時間（秒）
+
+  // 再出撃のとき、肩越しのカメラを引く
+  float retryPullBack_ = 4.0f;   // 水平に後ろへ引く距離
+  float retryRaise_ = 0.6f;      // 上げる高さ
   float crouchPitch_ = 0.25f;    // かがんだときに機首を下げる角度（ラジアン）
   float dollyDistance_ = 0.5f;   // かがむ間にカメラがドラゴンへ寄る距離
 

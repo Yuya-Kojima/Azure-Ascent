@@ -24,9 +24,8 @@ void SceneManager::Initialize(EngineBase *engine) {
 
 void SceneManager::Finalize() {
 
-  // 予約が残ってたら解放
+  // 予約が残ってたら解放（予約だけのシーンは Initialize していないので、Finalize は呼ばない）
   if (nextScene_) {
-    nextScene_->Finalize();
     nextScene_.reset();
   }
 
@@ -62,6 +61,8 @@ void SceneManager::Update() {
   if (transitionState_ == TransitionState::None) {
     if (nextScene_) {
       transitionState_ = TransitionState::FadeOut;
+      fade_.SetCloudShade(transitionCloudShadowColor_,
+                          transitionCloudGlowColor_);
       fade_.StartFadeOut(transitionDurationSec_, transitionFadeType_,
                          transitionColor_, transitionEasing_);
     }
@@ -81,6 +82,8 @@ void SceneManager::Update() {
     holdSec_ += dt;
     if (holdSec_ >= holdDurationSec_) {
       transitionState_ = TransitionState::FadeIn;
+      fade_.SetCloudShade(transitionCloudShadowColor_,
+                          transitionCloudGlowColor_);
       fade_.StartFadeIn(transitionDurationSec_, transitionFadeType_,
                         transitionColor_, transitionEasing_);
       ResetTransitionSettings();
@@ -142,6 +145,8 @@ void SceneManager::ResetTransitionSettings() {
   transitionColor_ = Vector4{0.0f, 0.0f, 0.0f, 1.0f};
   transitionFadeType_ = Fade::FadeType::Solid;
   transitionEasing_ = Fade::EasingType::EaseInOutCubic;
+  transitionCloudShadowColor_ = Fade::kDefaultCloudShadowColor;
+  transitionCloudGlowColor_ = Fade::kDefaultCloudGlowColor;
 }
 
 void SceneManager::Draw() {
@@ -202,4 +207,10 @@ void SceneManager::SetNextTransitionFade(float durationSec, Fade::FadeType type,
   transitionFadeType_ = type;
   transitionColor_ = color;
   transitionEasing_ = easing;
+}
+
+void SceneManager::SetNextTransitionCloudShade(const Vector4 &shadowColor,
+                                               const Vector4 &glowColor) {
+  transitionCloudShadowColor_ = shadowColor;
+  transitionCloudGlowColor_ = glowColor;
 }

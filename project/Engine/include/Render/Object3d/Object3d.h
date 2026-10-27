@@ -223,6 +223,50 @@ public:
   }
 
   /// <summary>
+  /// 模様の光。テクスチャの水色らしさ（min(緑, 青) − 赤）が rangeLow〜rangeHigh で 0〜1 になる所に、色 × 強さの光を足す。強さ0で無効
+  /// </summary>
+  void SetPatternGlow(const Vector3 &color, float strength, float rangeLow,
+                      float rangeHigh) {
+    if (materialData) {
+      materialData->patternGlow = {color.x, color.y, color.z, strength};
+      materialData->patternRange = {rangeLow, rangeHigh, 0.0f, 0.0f};
+    }
+  }
+
+  /// <summary>
+  /// 傷（宝石が割れたような丸い穴と、放射状のひび）。長さはすべてワールドの長さ
+  /// </summary>
+  struct Wound {
+    Vector3 center{};                  // 穴の中心
+    Vector3 normal = {0.0f, 1.0f, 0.0f};  // 外向き（単位ベクトル）
+    Vector3 tangent = {1.0f, 0.0f, 0.0f}; // 面に沿った向き（ひびの向きの基準。単位ベクトル）
+    float radius = 0.0f;               // 穴の半径
+    float crackLength = 0.0f;          // ひびの長さ（中心から）
+    float crackWidth = 0.0f;           // ひびの根元の太さ
+    float rimWidth = 0.0f;             // 縁の欠けた殻の幅（半径に対する割合）
+    float rimJag = 0.0f;               // 縁のぎざぎざの深さ（半径に対する割合）
+    float open = 0.0f;                 // 開いた割合（0で傷なし、1で開ききる）
+    Vector3 glowColor{};               // 漏れる光の色
+    float glow = 0.0f;                 // 漏れる光の強さ（0で穴とひびは暗いまま）
+    float spill = 0.0f;                // 穴の周りの面ににじむ光の強さ
+  };
+
+  void SetWound(const Wound &wound) {
+    if (materialData) {
+      materialData->woundCenter = {wound.center.x, wound.center.y,
+                                   wound.center.z, wound.radius};
+      materialData->woundNormal = {wound.normal.x, wound.normal.y,
+                                   wound.normal.z, wound.crackLength};
+      materialData->woundTangent = {wound.tangent.x, wound.tangent.y,
+                                    wound.tangent.z, wound.open};
+      materialData->woundGlow = {wound.glowColor.x, wound.glowColor.y,
+                                 wound.glowColor.z, wound.glow};
+      materialData->woundShape = {wound.crackWidth, wound.rimWidth,
+                                  wound.rimJag, wound.spill};
+    }
+  }
+
+  /// <summary>
   /// ディゾルブエフェクトの有効/無効を切り替える
   /// </summary>
   /// <param name="enable">trueで有効、falseで無効</param>

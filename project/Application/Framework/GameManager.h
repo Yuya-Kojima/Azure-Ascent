@@ -46,6 +46,19 @@ public:
     void SetSeenStageIntro() { hasSeenStageIntro_ = true; }
     bool HasSeenStageIntro() const { return hasSeenStageIntro_; }
 
+    // --- ゲームオーバー ---
+    // ゲームオーバーで拠点へ戻るところか（拠点が戻ってきたときの演出を始めたら下ろす）
+    bool isReturningFromGameOver_ = false;
+    // ゲームオーバーになったとき、ボスまでの道のりのどこまで進んだか（0〜1。ボス戦まで来たら 1）
+    float gameOverProgress_ = 0.0f;
+    void SetGameOverReturn(float progress) {
+        isReturningFromGameOver_ = true;
+        gameOverProgress_ = progress;
+    }
+    void ClearGameOverReturn() { isReturningFromGameOver_ = false; }
+    bool IsReturningFromGameOver() const { return isReturningFromGameOver_; }
+    float GetGameOverProgress() const { return gameOverProgress_; }
+
     // --- スコア関連 ---
     int currentScore_ = 0;
     void AddScore(int score) { currentScore_ += score; }
