@@ -52,6 +52,18 @@ const std::vector<std::string> kLegSpringJoints[] = {
     {"HindLeg_L_0", "HindLeg_L_1", "HindLeg_L_2", "HindLeg_L_3"},
     {"HindLeg_R_0", "HindLeg_R_1", "HindLeg_R_2", "HindLeg_R_3"},
 };
+// 脚で掻くときに回す骨（kLegSpringJoints と同じ脚の順。付け根と、前脚は肘・後脚は膝）
+// どの骨も体の左右の面に並んでいるので、左右の軸まわりに回すと前後に振れる
+const char *const kLegPaddleJoints[][2] = {
+    {"FrontLeg_L_1", "FrontLeg_L_2"},
+    {"FrontLeg_R_1", "FrontLeg_R_2"},
+    {"HindLeg_L_0", "HindLeg_L_1"},
+    {"HindLeg_R_0", "HindLeg_R_1"},
+};
+// 前脚の数（kLegPaddleJoints の先頭から）
+const int kFrontLegCount = 2;
+// 掻く順（左前 → 右後 → 右前 → 左後）での、各脚の順番（kLegPaddleJoints と同じ脚の順）
+const int kLegPaddleOrder[] = {0, 2, 3, 1};
 const char *const kTailJoints[] = {"Tail_00", "Tail_01", "Tail_02", "Tail_03",
                                    "Tail_04", "Tail_05", "Tail_06", "Tail_07",
                                    "Tail_08", "Tail_09"};
@@ -115,6 +127,11 @@ const ConfigItem kConfigItems[] = {
     {"hangSpringGravity", &Config::hangSpringGravity, 0.0f, 40.0f},
     {"hangLegMaxAngle", &Config::hangLegMaxAngle, 0.0f, 90.0f},
     {"hangTailDroop", &Config::hangTailDroop, -10.0f, 20.0f},
+    {"frontLegPaddle", &Config::frontLegPaddle, 0.0f, 90.0f},
+    {"frontElbowBend", &Config::frontElbowBend, -90.0f, 90.0f},
+    {"hindLegPaddle", &Config::hindLegPaddle, 0.0f, 90.0f},
+    {"hindKneeExtend", &Config::hindKneeExtend, -90.0f, 90.0f},
+    {"legPaddleLag", &Config::legPaddleLag, 0.0f, 0.5f},
     {"trembleFrequency", &Config::trembleFrequency, 0.0f, 30.0f},
     {"neckTremble", &Config::neckTremble, 0.0f, 10.0f},
     {"fingerTremble", &Config::fingerTremble, 0.0f, 10.0f},
@@ -266,6 +283,10 @@ void DragonWingAnimator::Initialize(SkinnedObject *skinned,
     spine_.push_back(MakeJoint(name));
   }
   body_ = MakeJoint(kBodyJoint);
+  for (int leg = 0; leg < kLegCount_; ++leg) {
+    legJoints_[leg].root = MakeJoint(kLegPaddleJoints[leg][0]);
+    legJoints_[leg].bend = MakeJoint(kLegPaddleJoints[leg][1]);
+  }
 
   tailSpring_.Initialize(skinned_, kTailSpringJoints);
   legSpringJoints_.clear();
@@ -459,6 +480,7 @@ void DragonWingAnimator::Update(float deltaTime,
       UpdateWing(rightWing_, (std::max)(0.0f, 1.0f - asymmetry), rightLag);
   UpdateTail();
   UpdateSpine();
+  UpdateLegs();
 
   // 体を羽ばたきで前後に傾けて上下させ、そのあとで頭をその揺れから切り離す
   // 振り回されるほど大きく傾ける
@@ -469,8 +491,9 @@ void DragonWingAnimator::Update(float deltaTime,
   UpdateBody();
   faceAngle_ = UpdateHead(worldMatrix);
 
-  // 体と尾の根元が決まってから、尾の先と脚を遅れてしならせる
+  // 体と尾の根元が決まってから、尾の先と脚を遅れてしならせ、垂れた脚を根元から振る
   UpdateSprings(deltaTime, worldMatrix);
+  SwingLimpLegs();
 }
 
 void DragonWingAnimator::DrawNextBeat() {
@@ -747,6 +770,56 @@ void DragonWingAnimator::UpdateSpine() const {
   }
 }
 
+void DragonWingAnimator::UpdateLegs() const {
+  // 脚の骨は左右の軸まわりの正の回転で、骨の先が後ろへ動く（前脚の肘は曲がり、後脚の膝は伸びる向きが負）
+  // 掻く周期の前半で前の端から後ろの端へ振り（前脚は手前へ引き、後脚は後ろへ蹴る）、後半で前へ戻す
+  const float paddle = std::clamp(gesture_.paddle, 0.0f, 1.0f);
+  for (int leg = 0; leg < kLegCount_; ++leg) {
+    const bool isFront = leg < kFrontLegCount;
+    const float amplitude =
+        isFront ? config_.frontLegPaddle : config_.hindLegPaddle;
+    // 振る途中で、前脚は肘を曲げ、後脚は膝を伸ばす（どちらも負の回転）
+    const float bendAmount =
+        isFront ? -config_.frontElbowBend : -config_.hindKneeExtend;
+
+    const float cycle =
+        2.0f * kPi *
+        Wrap01(gesture_.paddlePhase -
+               config_.legPaddleLag * float(kLegPaddleOrder[leg]));
+    // 前の端（-amplitude）から後ろの端（+amplitude）へ振る間ほど 1 に近い重み（前へ戻す間は 0）
+    const float pushWeight = (std::max)(std::sin(cycle), 0.0f);
+    const float swing = -amplitude * paddle * std::cos(cycle);
+    const float bend = bendAmount * paddle * pushWeight;
+
+    ApplyRotation(legJoints_[leg].root, swing * kDegToRad, 0.0f, 0.0f);
+    ApplyRotation(legJoints_[leg].bend, bend * kDegToRad, 0.0f, 0.0f);
+  }
+}
+
+void DragonWingAnimator::SwingLimpLegs() const {
+  // 付け根のモデル空間の回転に、モデルの左右の軸まわりの回転を足し、親の回転を外して書き込む
+  // 先の骨は親に対する回転のままなので、揺れもので垂れた形を保ったまま根元から振れる
+  const std::vector<Joint> &joints = skinned_->GetSkeleton().joints;
+  for (int leg = 0; leg < kLegCount_; ++leg) {
+    const float swing = std::clamp(gesture_.limpLegSwing[leg], -1.0f, 1.0f);
+    const DrivenJoint &root = legJoints_[leg].root;
+    if (swing == 0.0f || root.index < 0) {
+      continue;
+    }
+    const float amplitude =
+        leg < kFrontLegCount ? config_.frontLegPaddle : config_.hindLegPaddle;
+    const Quaternion turn = MakeRotateAxisAngleQuaternion(
+        kLateralAxis, amplitude * swing * kDegToRad);
+    const std::optional<int32_t> parent = joints[root.index].parent;
+    const Quaternion parentRotation =
+        parent ? JointModelRotation(*parent) : kIdentityQuaternion;
+    skinned_->SetJointRotation(
+        root.index,
+        Multiply(Conjugate(parentRotation),
+                 Multiply(turn, JointModelRotation(root.index))));
+  }
+}
+
 float DragonWingAnimator::GestureAngle(float GesturePose::*part) const {
   return gesture_.crouch * (config_.crouchPose.*part) +
          gesture_.roar * (config_.roarPose.*part) +
@@ -990,6 +1063,11 @@ void DragonWingAnimator::DrawImGui() {
   ImGui::Text("gesture: collapse %.2f / lookUp %.2f / hang %.2f / faceUp %.2f",
               gesture_.collapse, gesture_.lookUp, gesture_.hang,
               gesture_.faceUp);
+  ImGui::Text("gesture: paddle %.2f (phase %.2f) / limp swing %.2f %.2f "
+              "%.2f %.2f",
+              gesture_.paddle, gesture_.paddlePhase, gesture_.limpLegSwing[0],
+              gesture_.limpLegSwing[1], gesture_.limpLegSwing[2],
+              gesture_.limpLegSwing[3]);
   for (const GesturePoseSlot &slot : kGesturePoseSlots) {
     if (ImGui::TreeNode(slot.key)) {
       for (const GesturePoseItem &item : kGesturePoseItems) {

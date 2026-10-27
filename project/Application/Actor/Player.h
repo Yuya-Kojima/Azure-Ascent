@@ -83,6 +83,11 @@ public:
   void SetDirectWingRoot(DragonWingAnimator::DirectRootFunction rootAngleAt);
 
   /// <summary>
+  /// 羽ばたきの調整値の ImGui（ドラゴンのモデルがなければ何も出さない）
+  /// </summary>
+  void DrawWingConfigImGui();
+
+  /// <summary>
   /// 片方の翼が今打ち下ろしている強さ（0〜1）。ドラゴンのモデルがなければ 0
   /// </summary>
   float GetWingPush(bool isRight) const;

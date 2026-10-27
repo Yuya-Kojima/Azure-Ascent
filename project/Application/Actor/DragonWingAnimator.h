@@ -14,7 +14,7 @@ struct Animation;
 
 /// <summary>
 /// 自機ドラゴンの羽ばたき。翼・尾の関節を位相をずらした波で回し、頭は体の揺れを打ち消して保ち、
-/// 尾の先と脚は揺れもので遅れてしならせて、SkinnedObject に書き込む
+/// 脚は必要なときに前後へ振って空を掻かせ、尾の先と脚は揺れもので遅れてしならせて、SkinnedObject に書き込む
 /// </summary>
 class DragonWingAnimator {
 public:
@@ -56,6 +56,13 @@ public:
     float neckTrembleRatio = 1.0f;
     // 力が抜けて垂れる割合（0〜1）。脚と尾の先を重さで垂らし、尾は自分で振らずに根元から下げる。重みの合計には数えない
     float hang = 0.0f;
+    // 4 本の脚で空を掻く強さ（0〜1）。重みの合計には数えない
+    float paddle = 0.0f;
+    // 掻く周期の中の位置（周期の数。左前脚の位置で、ほかの脚は Config::legPaddleLag ずつ遅れる）
+    float paddlePhase = 0.0f;
+    // 揺れもので垂れた形のまま、脚を付け根から前後へ振る割合（-1〜1。正で後ろ、掻く振れ幅を掛ける）。重みの合計には数えない
+    // 脚の順は左前・右前・左後・右後
+    std::array<float, 4> limpLegSwing{};
   };
 
   /// <summary>
@@ -154,6 +161,13 @@ public:
     float hangSpringGravity = 12.0f; // 脚と尾の先の下向きの重さ（1/秒）
     float hangLegMaxAngle = 45.0f;   // 脚の骨1本が姿勢から曲がる最大の角度（度）
     float hangTailDroop = 4.0f;      // 尾の根元側の骨1本を下げる角度（度）
+
+    // 脚で空を掻く（Gesture::paddle が 1 のときの角度、度）
+    float frontLegPaddle = 30.0f; // 前脚の付け根を前後へ振る片側の角度
+    float frontElbowBend = 20.0f; // 前脚を手前へ引く途中で肘を曲げる角度
+    float hindLegPaddle = 25.0f;  // 後脚の付け根を前後へ振る片側の角度
+    float hindKneeExtend = 15.0f; // 後脚を後ろへ蹴る途中で膝を伸ばす角度
+    float legPaddleLag = 0.25f;   // 掻く順（左前 → 右後 → 右前 → 左後）で、1 本ごとに足す遅れ（1周期に対する割合）
 
     // 重ねる姿勢（翼の付け根は rootBias に足す）
     GesturePose crouchPose = {4.0f, 6.0f, 8.0f, -2.0f, -15.0f, 20.0f,
@@ -346,6 +360,10 @@ private:
   // 戻り値は書き込んだあとの顔の向き（度。GetFaceAngle と同じ測り方）
   float UpdateHead(const Matrix4x4 &worldMatrix) const;
   void UpdateSpine() const;
+  // 脚で空を掻く角度を、脚の揺れものの骨の姿勢に足す
+  void UpdateLegs() const;
+  // 揺れもので決まった脚の形のまま、付け根を Gesture::limpLegSwing の分だけ前後へ回す
+  void SwingLimpLegs() const;
 
   // 重ねる姿勢の角度を、重みで混ぜて求める（度）
   float GestureAngle(float GesturePose::*part) const;
@@ -398,6 +416,13 @@ private:
   static constexpr size_t kGestureTailJointCount_ = 6; // 重ねる姿勢で曲げる尾の骨の数（根元から）
   DrivenJoint body_;
   static constexpr int kLegCount_ = 4; // 前脚・後脚の左右
+
+  // 脚で掻くときに回す骨（付け根と、前脚は肘・後脚は膝）
+  struct LegJoints {
+    DrivenJoint root;
+    DrivenJoint bend;
+  };
+  std::array<LegJoints, kLegCount_> legJoints_;
 
   SpringBoneChain tailSpring_;                        // 尾の先
   std::array<SpringBoneChain, kLegCount_> legSprings_; // 前脚・後脚

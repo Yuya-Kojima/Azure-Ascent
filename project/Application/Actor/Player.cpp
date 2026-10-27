@@ -646,6 +646,12 @@ void Player::SetWingGesture(const DragonWingAnimator::Gesture &gesture) {
   }
 }
 
+void Player::DrawWingConfigImGui() {
+  if (dragonModel_) {
+    dragonModel_->GetWingAnimator().DrawImGui();
+  }
+}
+
 void Player::SetDirectWingRoot(
     DragonWingAnimator::DirectRootFunction rootAngleAt) {
   if (dragonModel_) {

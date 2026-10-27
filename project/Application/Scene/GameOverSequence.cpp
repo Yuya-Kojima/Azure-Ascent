@@ -4,8 +4,12 @@
 #include "Camera/RailCamera.h"
 #include "Core/WindowSystem.h"
 #include "Sprite/Sprite.h"
+#include "../../externals/nlohmann/json.hpp"
 #include <algorithm>
 #include <cmath>
+#include <filesystem>
+#include <fstream>
+#include <iomanip>
 #include <numbers>
 
 #ifdef USE_IMGUI
@@ -13,6 +17,12 @@
 #endif
 
 namespace {
+// 調整値の保存先
+const char *const kConfigDirectory = "resources/config";
+const char *const kConfigPath = "resources/config/GameOverConfig.json";
+// 使う一打ちの数の JSON のキー
+const char *const kBeatCountKey = "beatCount";
+
 // 1フレームの時間（秒）
 const float kFrameSec = 1.0f / 60.0f;
 // 真上
@@ -103,6 +113,142 @@ void GameOverSequence::Initialize(SpriteRenderer *spriteRenderer) {
 
   card_ = std::make_unique<CaptionCard>();
   card_->Initialize(spriteRenderer, MakeGameOverCardSettings());
+
+  LoadConfig();
+}
+
+void GameOverSequence::VisitConfigValues(
+    const std::function<void(const std::string &key, float &value)> &visit) {
+  // 時間
+  visit("slowSec", slowSec_);
+  visit("slowScale", slowScale_);
+  visit("slowRecoverSec", slowRecoverSec_);
+  visit("limpStartTime", limpStartTime_);
+  visit("limpEndTime", limpEndTime_);
+  visit("pullStartTime", pullStartTime_);
+  visit("sinkTime", sinkTime_);
+  visit("darkenStartTime", darkenStartTime_);
+  visit("darkenSec", darkenSec_);
+  visit("skipLockSec", skipLockSec_);
+  visit("hudFadeSec", hudFadeSec_);
+
+  // ドラゴンの動き（角度はラジアン）
+  visit("hitPushDistance", hitPushDistance_);
+  visit("hitLift", hitLift_);
+  visit("hitPushSec", hitPushSec_);
+  visit("driftSpeed", driftSpeed_);
+  visit("driftDecaySec", driftDecaySec_);
+  visit("fallAccelSec", fallAccelSec_);
+  visit("sinkDepth", sinkDepth_);
+  visit("minFallDistance", minFallDistance_);
+  visit("hitRoll", hitRoll_);
+  visit("limpRoll", limpRoll_);
+  visit("hitPitch", hitPitch_);
+  visit("limpPitch", limpPitch_);
+  visit("sinkPitch", sinkPitch_);
+  visit("struggleRoll", struggleRoll_);
+  visit("liftSpeed", liftSpeed_);
+  visit("liftReturnSec", liftReturnSec_);
+  visit("heavePitch", heavePitch_);
+
+  // 翼
+  visit("hitFold", hitWing_.fold);
+  visit("hitHover", hitWing_.hover);
+  visit("struggleFold", struggleWing_.fold);
+  visit("struggleHover", struggleWing_.hover);
+  visit("limpFold", limpWing_.fold);
+  visit("limpHover", limpWing_.hover);
+  visit("hitRiseSec", hitRiseSec_);
+  visit("hitUpAngle", hitUpAngle_);
+  for (size_t i = 0; i < kMaxBeatCount_; ++i) {
+    StruggleBeat &beat = beats_[i];
+    const std::string prefix = "beat" + std::to_string(i + 1) + ".";
+    visit(prefix + "time", beat.time);
+    visit(prefix + "downSec", beat.downSec);
+    visit(prefix + "downAngle", beat.downAngle);
+    visit(prefix + "upSec", beat.upSec);
+    visit(prefix + "leftUpAngle", beat.leftUpAngle);
+    visit(prefix + "rightUpAngle", beat.rightUpAngle);
+    visit(prefix + "rightDelay", beat.rightDelay);
+    visit(prefix + "buckle", beat.buckle);
+    visit(prefix + "flail", beat.flail);
+    visit(prefix + "lift", beat.lift);
+    visit(prefix + "tremble", beat.tremble);
+  }
+  visit("foldRootAngle", foldRootAngle_);
+  visit("faceUpAngle", faceUpAngle_);
+  visit("hangStartTime", hangStartTime_);
+  visit("hangSec", hangSec_);
+  visit("neckTrembleRatio", neckTrembleRatio_);
+  visit("struggleResponse", struggleResponse_);
+
+  // 脚
+  visit("paddleStartTime", paddleStartTime_);
+  visit("paddleRiseSec", paddleRiseSec_);
+  visit("paddleTiredTime", paddleTiredTime_);
+  visit("paddleTiredStrength", paddleTiredStrength_);
+  visit("paddleStopTime", paddleStopTime_);
+  visit("paddleStartSec", paddleStartSec_);
+  visit("paddleEndSec", paddleEndSec_);
+  visit("lastPaddleTime", lastPaddleTime_);
+  visit("lastPaddleSec", lastPaddleSec_);
+  visit("lastPaddleLegDelay", lastPaddleLegDelay_);
+  visit("lastPaddleStrength", lastPaddleStrength_);
+  for (size_t leg = 0; leg < lastPaddleLegWeights_.size(); ++leg) {
+    visit("lastPaddleLegWeight" + std::to_string(leg + 1),
+          lastPaddleLegWeights_[leg]);
+  }
+
+  // カメラ
+  visit("sideMoveStartTime", sideMoveStartTime_);
+  visit("sideMoveSec", sideMoveSec_);
+  auto visitVector = [&](const std::string &key, Vector3 &value) {
+    visit(key + ".x", value.x);
+    visit(key + ".y", value.y);
+    visit(key + ".z", value.z);
+  };
+  visitVector("sideCameraOffset", sideCameraOffset_);
+  visitVector("sideLookOffset", sideLookOffset_);
+  visitVector("pullCameraOffset", pullCameraOffset_);
+  visit("pullSec", pullSec_);
+  visit("hitShake", hitShake_);
+  visit("hitShakeSec", hitShakeSec_);
+}
+
+void GameOverSequence::LoadConfig() {
+  std::ifstream file(kConfigPath);
+  if (!file.is_open()) {
+    return;
+  }
+  nlohmann::json root;
+  try {
+    file >> root;
+  } catch (const nlohmann::json::exception &) {
+    return;
+  }
+  // ファイルにないキーは今の値のまま
+  VisitConfigValues([&](const std::string &key, float &value) {
+    if (root.contains(key) && root[key].is_number()) {
+      value = root[key].get<float>();
+    }
+  });
+  if (root.contains(kBeatCountKey) && root[kBeatCountKey].is_number_integer()) {
+    beatCount_ = root[kBeatCountKey].get<int>();
+  }
+}
+
+void GameOverSequence::SaveConfig() {
+  nlohmann::json root;
+  VisitConfigValues(
+      [&](const std::string &key, float &value) { root[key] = value; });
+  root[kBeatCountKey] = beatCount_;
+  if (!std::filesystem::exists(kConfigDirectory)) {
+    std::filesystem::create_directories(kConfigDirectory);
+  }
+  std::ofstream file(kConfigPath);
+  if (file.is_open()) {
+    file << std::setw(4) << root << std::endl;
+  }
 }
 
 void GameOverSequence::Start(const RailCamera &railCamera,
@@ -423,11 +569,17 @@ void GameOverSequence::UpdateWing() {
   wingState_.response = struggleResponse_;
 
   // 顔は、被弾から最初の一打ちまでに空の方へ向け、体の傾きによらず沈みきるまで同じ向きに保つ
-  // 脚と尾は、もがき始めると重さで垂れていく
+  // 脚は空を掻いてから止まり、脚と尾は重さで垂れていく。最後の打ち下ろしで、垂れたまま脚が弱く一掻きする
   gesture_ = {};
   gesture_.faceUp = EaseOutQuad(Progress(timer_, 0.0f, beats_.front().time));
   gesture_.faceUpAngle = faceUpAngle_;
   gesture_.hang = EaseOutQuad(Progress(timer_, hangStartTime_, hangSec_));
+  gesture_.paddle = PaddleStrengthAt(timer_);
+  gesture_.paddlePhase = PaddlePhaseAt(timer_);
+  for (size_t leg = 0; leg < gesture_.limpLegSwing.size(); ++leg) {
+    gesture_.limpLegSwing[leg] =
+        LastPaddleSwingAt(static_cast<int>(leg), timer_);
+  }
 
   // 打ち上げの間は指と首が震え、上げ始めと上げきりで 0、真ん中で一番強い。畳まれ始めたら弱めて 0 にする
   if (timer_ >= beats_.front().time) {
@@ -438,6 +590,63 @@ void GameOverSequence::UpdateWing() {
                        (1.0f - limp);
     gesture_.neckTrembleRatio = neckTrembleRatio_;
   }
+}
+
+float GameOverSequence::PaddleStrengthAt(float time) const {
+  // 0 → 1 へ素早く上げ、paddleTiredStrength_ まで一定の割合で下げてから、0 へ止める
+  const float riseEnd = paddleStartTime_ + paddleRiseSec_;
+  if (time < riseEnd) {
+    return EaseOutQuad(Progress(time, paddleStartTime_, paddleRiseSec_));
+  }
+  if (time < paddleTiredTime_) {
+    return Lerp(1.0f, paddleTiredStrength_,
+                Progress(time, riseEnd, paddleTiredTime_ - riseEnd));
+  }
+  return Lerp(paddleTiredStrength_, 0.0f,
+              EaseOutQuad(Progress(time, paddleTiredTime_,
+                                   paddleStopTime_ - paddleTiredTime_)));
+}
+
+float GameOverSequence::PaddlePhaseAt(float time) const {
+  // 一掻きの長さ: 強さが 1 になるまでは paddleStartSec_、そこから下がりきるまでに一定の割合で paddleEndSec_ へ延ばし、そのあとはそのまま
+  // 周期の数は、経過時間を一掻きの長さで割ったものを足し合わせる
+  const float kMinPaddleSec = 0.05f; // 一掻きの長さの下限（秒）
+  const float kMinRate = 1.0e-4f;    // これより小さい延び方は、長さが変わらないとみなす
+  const float startSec = (std::max)(paddleStartSec_, kMinPaddleSec);
+  const float endSec = (std::max)(paddleEndSec_, kMinPaddleSec);
+  const float riseEnd = paddleStartTime_ + paddleRiseSec_;
+  if (time <= riseEnd) {
+    return (time - paddleStartTime_) / startSec;
+  }
+  float cycles = paddleRiseSec_ / startSec;
+
+  // 長さ startSec + rate × s を、s で 1 / 長さ を積分すると log(長さ / startSec) / rate になる
+  const float slowSec = (std::max)(paddleTiredTime_ - riseEnd, 0.0f);
+  const float slowElapsed = (std::min)(time - riseEnd, slowSec);
+  const float rate = slowSec > 0.0f ? (endSec - startSec) / slowSec : 0.0f;
+  if (std::abs(rate) > kMinRate) {
+    cycles += std::log((startSec + rate * slowElapsed) / startSec) / rate;
+  } else {
+    cycles += slowElapsed / startSec;
+  }
+  const float afterSlow = time - riseEnd - slowSec;
+  if (afterSlow > 0.0f) {
+    cycles += afterSlow / endSec;
+  }
+  return cycles;
+}
+
+float GameOverSequence::LastPaddleSwingAt(int leg, float time) const {
+  // 掻く順（左前 → 右後 → 右前 → 左後）での、各脚の順番（左前・右前・左後・右後の順に並べたもの）
+  const int kLegOrder[] = {0, 2, 3, 1};
+  const float start = lastPaddleTime_ + lastPaddleLegDelay_ * kLegOrder[leg];
+  const float progress = Progress(time, start, lastPaddleSec_);
+  if (progress <= 0.0f || progress >= 1.0f) {
+    return 0.0f;
+  }
+  // 一周期の sin で、前へ出して（負）後ろへ引き（正）、垂れた位置に戻す
+  return -std::sin(2.0f * std::numbers::pi_v<float> * progress) *
+         lastPaddleStrength_ * lastPaddleLegWeights_[leg];
 }
 
 void GameOverSequence::UpdateCamera() {
@@ -496,6 +705,14 @@ void GameOverSequence::DrawImGui() {
   ImGui::Text("Time %.2f / %.2f (motion %.2f, scale %.2f)", timer_,
               card_->GetEndTime(), motionTime_, GetTimeScale());
   // 止めて、つまみで時刻を動かし、その時刻の構図を見る
+  // 調整値（文字カードの値は含まない）を JSON に保存・読み込みする
+  if (ImGui::Button("Save Game Over Config")) {
+    SaveConfig();
+  }
+  ImGui::SameLine();
+  if (ImGui::Button("Load Game Over Config")) {
+    LoadConfig();
+  }
   ImGui::Checkbox("Pause", &isPaused_);
   if (isPaused_) {
     ImGui::SliderFloat("Scrub Time", &timer_, 0.0f, card_->GetEndTime());
@@ -565,6 +782,27 @@ void GameOverSequence::DrawImGui() {
   ImGui::Text("face angle %.0f", faceAngle_);
   ImGui::DragFloat("Hang Start", &hangStartTime_, 0.01f, 0.0f, 3.0f);
   ImGui::DragFloat("Hang Sec", &hangSec_, 0.01f, 0.0f, 3.0f);
+  // 脚で掻く強さ・一掻きの長さと、最後の一掻き（時刻は被弾からの秒）
+  ImGui::Text("leg paddle %.2f (phase %.2f) / last %.2f %.2f %.2f %.2f",
+              gesture_.paddle, gesture_.paddlePhase, gesture_.limpLegSwing[0],
+              gesture_.limpLegSwing[1], gesture_.limpLegSwing[2],
+              gesture_.limpLegSwing[3]);
+  ImGui::DragFloat("Paddle Start", &paddleStartTime_, 0.01f, 0.0f, 3.0f);
+  ImGui::DragFloat("Paddle Rise Sec", &paddleRiseSec_, 0.01f, 0.0f, 1.0f);
+  ImGui::DragFloat("Paddle Tired Time", &paddleTiredTime_, 0.01f, 0.0f, 3.0f);
+  ImGui::SliderFloat("Paddle Tired Strength", &paddleTiredStrength_, 0.0f,
+                     1.0f);
+  ImGui::DragFloat("Paddle Stop Time", &paddleStopTime_, 0.01f, 0.0f, 3.0f);
+  ImGui::DragFloat2("Paddle Sec Start / End", &paddleStartSec_, 0.01f, 0.05f,
+                    2.0f);
+  ImGui::DragFloat("Last Paddle Time", &lastPaddleTime_, 0.01f, 0.0f, 3.0f);
+  ImGui::DragFloat("Last Paddle Sec", &lastPaddleSec_, 0.01f, 0.05f, 2.0f);
+  ImGui::DragFloat("Last Paddle Leg Delay", &lastPaddleLegDelay_, 0.005f, 0.0f,
+                   0.5f);
+  ImGui::SliderFloat("Last Paddle Strength", &lastPaddleStrength_, 0.0f, 1.0f);
+  // 左前・右前・左後・右後
+  ImGui::SliderFloat4("Last Paddle Legs FL/FR/HL/HR",
+                      lastPaddleLegWeights_.data(), 0.0f, 1.0f);
   ImGui::SliderFloat("Neck Tremble", &neckTrembleRatio_, 0.0f, 1.0f);
   // 畳み具合と、羽ばたきの姿勢の割合（0: 滑空 〜 1: 体を起こす）
   ImGui::DragFloat("Hit Fold", &hitWing_.fold, 0.01f, 0.0f, 1.0f);

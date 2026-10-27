@@ -1657,6 +1657,9 @@ void GamePlayScene::DrawEditorUI() {
     player_->Kill();
   }
   gameOverSequence_->DrawImGui();
+  if (player_ && ImGui::CollapsingHeader("Dragon Wing Config")) {
+    player_->DrawWingConfigImGui();
+  }
   ImGui::End();
 
   if (!isPlayMode_) {

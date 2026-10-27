@@ -2,7 +2,9 @@
 #include "Actor/DragonWingAnimator.h"
 #include "Math/MathUtil.h"
 #include <array>
+#include <functional>
 #include <memory>
+#include <string>
 
 class CaptionCard;
 class GameCamera;
@@ -13,8 +15,8 @@ class SpriteRenderer;
 
 /// <summary>
 /// ゲームオーバーの空中の演出
-/// 被弾して時間がゆっくりになる → カメラがレールを離れてドラゴンの横に並ぶ → 脚と尾は力が抜けて垂れ、頭は空を見上げたまま、
-/// 翼だけでもがくが、打つたびに弱くなる → 翼が畳まれる → カメラが上へ引き、ドラゴンが雲海へ沈む
+/// 被弾して時間がゆっくりになる → カメラがレールを離れてドラゴンの横に並ぶ → 頭は空を見上げたまま、翼と脚でもがくが、
+/// 打つたびに弱くなる → 脚は先に止まって尾と一緒に力が抜けて垂れ、最後の打ち下ろしで一度だけ掻く → 翼が畳まれる → カメラが上へ引き、ドラゴンが雲海へ沈む
 /// → 見下ろしに「GAME OVER」のカードが出て、その後ろで場面が黒い幕で暗くなる → カードが閉じたら拠点への遷移の合図
 /// 位置はすべて、Start の時点のドラゴンの位置と、レールの水平な右・前の向きを基準に求める
 /// </summary>
@@ -123,7 +125,17 @@ public:
   /// </summary>
   void DrawImGui();
 
+  /// <summary>
+  /// 調整値を JSON から読み込む・JSON へ保存する（文字カードの値は含まない）
+  /// </summary>
+  void LoadConfig();
+  void SaveConfig();
+
 private:
+  // 調整値の float を、JSON のキーと一緒に1つずつ visit に渡す（読み込み・保存で共通）
+  void VisitConfigValues(
+      const std::function<void(const std::string &key, float &value)> &visit);
+
   // もがく一打ち。前の一打ちの上げきりの角度から下ろしきりまで打ち下ろし、上げきりまで打ち上げて、次の一打ちまで止まる
   // 角度は翼の付け根（度。上が正）、時刻は被弾からの実際の秒
   struct StruggleBeat {
@@ -162,6 +174,13 @@ private:
   float RootAngleAt(bool isRight, float time) const;
   // 時刻 time の、被弾からもがき終わるまでの付け根の角度（度）
   float StruggleRootAngleAt(bool isRight, float time) const;
+
+  // 時刻 time の、脚で掻く強さ（0〜1）
+  float PaddleStrengthAt(float time) const;
+  // 時刻 time までに掻いた周期の数（掻き始めてから。一掻きの長さが遅くなる分を含む）
+  float PaddlePhaseAt(float time) const;
+  // 時刻 time の、最後の一掻きで脚 leg（左前・右前・左後・右後）を振る割合（正で後ろ）
+  float LastPaddleSwingAt(int leg, float time) const;
 
   // 動きの時間 motionTime でのドラゴンの位置
   Vector3 DragonPositionAt(float motionTime) const;
@@ -272,14 +291,32 @@ private:
   }};
   float foldRootAngle_ = 5.0f;     // 畳まれたときの付け根の角度（度）
   float faceUpAngle_ = 0.0f;       // もがく間から沈みきるまで保つ顔の向き（度。翼の Gesture::faceUpAngle。0 で鼻先が斜め上を向く）
-  float hangStartTime_ = 0.15f;    // 脚と尾が垂れ始める時刻（秒）
-  float hangSec_ = 0.7f;           // 脚と尾が垂れきるまでの時間（秒）
+  float hangStartTime_ = 0.9f;     // 脚と尾が垂れ始める時刻（秒）
+  float hangSec_ = 0.5f;           // 脚と尾が垂れきるまでの時間（秒）
   float neckTrembleRatio_ = 0.2f;  // 震えのうち首に効く割合（翼の Gesture::neckTrembleRatio）
   float struggleResponse_ = 20.0f; // 翼の状態（畳み具合・折れなど）が演出の値へ近づく速さ（1/秒）
 
+  //---- 脚 ----
+  // 4 本がばらばらに空を掻き、だんだん弱く遅くなって止まる → 垂れる → 3 打目の打ち下ろしで、垂れたまま最後に弱く遅く一掻きする
+  float paddleStartTime_ = 0.15f;    // 掻き始める時刻（秒）
+  float paddleRiseSec_ = 0.15f;      // 掻く強さが 1 になるまでの時間（秒）
+  float paddleTiredTime_ = 1.25f;    // 掻く強さが paddleTiredStrength_ まで下がりきる時刻（秒）
+  float paddleTiredStrength_ = 0.8f; // 下がりきったときの掻く強さ
+  float paddleStopTime_ = 1.0f;      // 掻く強さが 0 になる時刻（秒）
+  // 脚 1 本の一掻きの長さ（秒）。強さが 1 になったときの長さから、下がりきったときの長さへ遅くする
+  float paddleStartSec_ = 0.45f;
+  float paddleEndSec_ = 0.65f;
+  // 最後の一掻き：脚ごとに、垂れた形のまま前へ出して後ろへ引き、垂れた位置に戻す。掻き始めと同じ順で 1 本ずつずらす
+  float lastPaddleTime_ = 1.75f;     // 最初の脚が掻き始める時刻（秒）
+  float lastPaddleSec_ = 0.4f;       // 脚 1 本の一掻きの長さ（秒）
+  float lastPaddleLegDelay_ = 0.06f; // 掻く順で、1 本ごとに遅れる時間（秒）
+  float lastPaddleStrength_ = 0.6f;  // 大きさ（掻く振れ幅に対する割合）
+  // 脚ごとの大きさの割合（左前・右前・左後・右後）
+  std::array<float, 4> lastPaddleLegWeights_ = {1.0f, 0.4f, 0.7f, 1.0f};
+
   //---- カメラ（オフセットはドラゴンからの右・上・前）----
   float sideMoveStartTime_ = 0.1f; // 横へ回り込み始める時刻（秒）
-  float sideMoveSec_ = 0.8f;       // 横へ回り込む時間（秒）
+  float sideMoveSec_ = 0.45f;      // 横へ回り込む時間（秒）
   Vector3 sideCameraOffset_ = {7.0f, 1.0f, 1.5f};
   Vector3 sideLookOffset_ = {0.0f, 0.3f, 0.5f};
   Vector3 pullCameraOffset_ = {3.0f, 14.0f, -3.0f}; // 引き始めたときのドラゴンの位置から
