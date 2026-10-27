@@ -111,6 +111,15 @@ float3 InScatteredLight(float3 p, float sampleDensity, float top, float3 rayDir,
 
 	float3 light = gCloudSea.color.rgb * gCloudSea.brightness * (sun + ambient);
 
+	// 雲の中の点から照らす光（雷など）：点からの距離 radius で 1/e になるなめらかな弱まり
+	if (gCloudSea.debugView == 0) {
+		for (int i = 0; i < gCloudSea.glowCount; ++i) {
+			CloudSeaGlow glow = gCloudSea.glows[i];
+			float3 offset = (p - glow.position) / glow.radius;
+			light += glow.color * exp(-dot(offset, offset));
+		}
+	}
+
 	// 地平線の光：光の来る向きへ雲が薄い所ほど透けて光り、ほかの塊の陰では暗い（強さ 0 で無効）。
 	// 透けるのは上の面のすぐ下だけ（上の面からの深さが edgeSoftness で 1/e）
 	if (gCloudSea.rimStrength > 0.0) {

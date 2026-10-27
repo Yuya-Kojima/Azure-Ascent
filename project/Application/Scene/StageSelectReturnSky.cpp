@@ -1,4 +1,5 @@
 #include "StageSelectReturnSky.h"
+#include "StageSelectLightning.h"
 #include "../../externals/nlohmann/json.hpp"
 #include "Render/CloudSea/CloudSea.h"
 #include "Render/Object3d/Object3d.h"
@@ -30,7 +31,8 @@ Vector4 Lerp4(const Vector4 &a, const Vector4 &b, float t) {
 }
 } // namespace
 
-StageSelectReturnSky::StageSelectReturnSky() = default;
+StageSelectReturnSky::StageSelectReturnSky()
+    : lightning_(std::make_unique<StageSelectLightning>()) {}
 
 StageSelectReturnSky::~StageSelectReturnSky() = default;
 
@@ -73,6 +75,10 @@ void StageSelectReturnSky::VisitConfigValues(Visitor &&visit) {
   visit("ceiling.detailStrength", c.detailStrength);
   visit("ceiling.wind.x", c.wind.x);
   visit("ceiling.wind.y", c.wind.y);
+
+  lightning_->VisitConfigValues([&](const std::string &key, float &value) {
+    visit("lightning." + key, value);
+  });
 }
 
 void StageSelectReturnSky::LoadConfig() {
@@ -92,6 +98,7 @@ void StageSelectReturnSky::LoadConfig() {
       value = root[key].get<float>();
     }
   });
+  lightning_->OnConfigLoaded();
 }
 
 void StageSelectReturnSky::SaveConfig() {
@@ -110,11 +117,15 @@ void StageSelectReturnSky::SaveConfig() {
 void StageSelectReturnSky::Initialize(CloudSeaRenderer *cloudSeaRenderer) {
   cloudSea_ = std::make_unique<CloudSea>();
   cloudSea_->Initialize(cloudSeaRenderer);
+  lightning_->Initialize();
   LoadConfig();
 }
 
-void StageSelectReturnSky::Update(const ICamera *camera, float deltaTime) {
+void StageSelectReturnSky::Update(const ICamera *camera, float deltaTime,
+                                  float lightningTime,
+                                  const Vector3 &dragonPos, float dragonYaw) {
   time_ += deltaTime;
+  camera_ = camera;
 
   const Ceiling &c = ceiling_;
   cloudSea_->SetHeight(c.height);
@@ -135,6 +146,9 @@ void StageSelectReturnSky::Update(const ICamera *camera, float deltaTime) {
   look.rimStrength = 0.0f;
   cloudSea_->SetLook(look);
   cloudSea_->ClearShapes();
+  lightning_->Update(lightningTime, dragonPos, dragonYaw,
+                     c.height - c.thickness);
+  lightning_->ApplyGlows(cloudSea_.get());
   cloudSea_->SetTime(time_);
   cloudSea_->SetCamera(camera);
   cloudSea_->Update();
@@ -169,6 +183,7 @@ void StageSelectReturnSky::ApplyLighting(Object3dRenderer *renderer,
     dl->backRimPower = l.rimPower;
     dl->backRimDirection = toWorld(l.rimFrom) * -1.0f;
   }
+  lightning_->ApplyLight(renderer, weight);
 
   fog.nearDist = Lerp(fog.nearDist, l.fogNear, weight);
   fog.farDist = Lerp(fog.farDist, l.fogFar, weight);
@@ -176,6 +191,7 @@ void StageSelectReturnSky::ApplyLighting(Object3dRenderer *renderer,
 
   if (postProcess) {
     postProcess->SetExposure(Lerp(baseExposure, l.exposure, weight));
+    lightning_->ApplyPostProcess(postProcess);
   }
 }
 
@@ -186,7 +202,10 @@ void StageSelectReturnSky::ApplyMaterials(Object3d *ground, Object3d *dragon,
   dragon->SetBackRimScale(lighting_.dragonRimScale * weight);
 }
 
-void StageSelectReturnSky::Draw() { cloudSea_->Draw(); }
+void StageSelectReturnSky::Draw() {
+  cloudSea_->Draw();
+  lightning_->Draw(camera_);
+}
 
 void StageSelectReturnSky::DrawImGui() {
 #ifdef USE_IMGUI
@@ -234,5 +253,7 @@ void StageSelectReturnSky::DrawImGui() {
   ImGui::DragFloat("Detail Size", &c.detailSize, 0.05f, 0.5f, 50.0f);
   ImGui::SliderFloat("Detail Strength", &c.detailStrength, 0.0f, 0.9f);
   ImGui::DragFloat2("Wind", &c.wind.x, 0.01f, -20.0f, 20.0f);
+
+  lightning_->DrawImGui();
 #endif
 }

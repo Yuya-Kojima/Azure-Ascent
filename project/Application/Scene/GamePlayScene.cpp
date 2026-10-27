@@ -33,6 +33,7 @@
 #include "Renderer/SpriteRenderer.h"
 #include "Renderer/TrailRenderer.h"
 #include "Scene/SceneManager.h"
+#include "Scene/DarkCloudTransition.h"
 #include "Sprite/Sprite.h"
 #include "StageIntro.h"
 #include "GameOverSequence.h"
@@ -2144,15 +2145,8 @@ void GamePlayScene::UpdateGameOver() {
     GameManager::GetInstance()->SetGameOverReturn(
         std::clamp(railCamera_->GetT() / lastIndex, 0.0f, 1.0f));
     const float kDarkCloudTransitionSec = 0.8f;
-    // 雲の本体（日の当たる面）・影・縁の光の色（sRGB）。見下ろしの雲海に近い暗い灰青
-    const Vector4 kDarkCloudColor = {0.36f, 0.38f, 0.45f, 1.0f};
-    const Vector4 kDarkCloudShadowColor = {0.10f, 0.11f, 0.15f, 1.0f};
-    const Vector4 kDarkCloudGlowColor = {0.55f, 0.58f, 0.66f, 1.0f};
-    SceneManager::GetInstance()->SetNextTransitionFade(
-        kDarkCloudTransitionSec, Fade::FadeType::CloudDescend,
-        kDarkCloudColor, Fade::EasingType::Linear);
-    SceneManager::GetInstance()->SetNextTransitionCloudShade(
-        kDarkCloudShadowColor, kDarkCloudGlowColor);
+    DarkCloudTransition::SetNext(kDarkCloudTransitionSec,
+                                 Fade::FadeType::CloudDescend);
     SceneManager::GetInstance()->ChangeScene("STAGE_SELECT");
   }
 }

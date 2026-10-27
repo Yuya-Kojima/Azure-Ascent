@@ -12,6 +12,7 @@
 #include "Renderer/PostProcess.h"
 #include "Renderer/SpriteRenderer.h"
 #include "Scene/SceneManager.h"
+#include "Scene/DarkCloudTransition.h"
 #include "Scene/StageLighting.h"
 #include "Scene/StageSelectReturn.h"
 #include "Scene/StageSelectReturnSky.h"
@@ -297,12 +298,19 @@ void StageSelectScene::UpdateSky(const ICamera *activeCamera) {
   //===========================
   returnSky_->ApplyMaterials(groundObject_.get(), dragonObject_, gloom_);
   if (gloom_ > 0.0f) {
+    if (returnSequence_->IsActive()) {
+      lightningTime_ = returnSequence_->GetTime();
+    } else {
+      lightningTime_ += kSkyTimeStep;
+    }
+    returnSky_->Update(activeCamera, kSkyTimeStep, lightningTime_, dragonPos_,
+                       dragonRot_.y);
     returnSky_->ApplyLighting(engine_->GetObject3dRenderer(), fog,
                               postProcess_.get(), baseExposure_,
                               dragonRot_.y, gloom_);
-    returnSky_->Update(activeCamera, kSkyTimeStep);
   } else {
     postProcess_->SetExposure(baseExposure_);
+    postProcess_->SetUseBloom(false);
   }
 }
 
@@ -419,13 +427,17 @@ void StageSelectScene::UpdateLaunch() {
                  shakePower;
 
     //===========================
-    // S3 雲のフェード：雲が画面の上から覆う
+    // S3 雲のフェード：雲が画面の上から覆う。空が暗いとき（ゲームオーバーから戻ったとき）は暗い雲
     //===========================
     if (!hasRequestedSceneChange_ && flightTime >= flightSec_) {
-      const Vector4 kCloudColor = {1.0f, 1.0f, 1.0f, 1.0f};
-      SceneManager::GetInstance()->SetNextTransitionFade(
-          cloudFadeSec_, Fade::FadeType::Cloud, kCloudColor,
-          Fade::EasingType::Linear);
+      if (gloom_ > 0.0f) {
+        DarkCloudTransition::SetNext(cloudFadeSec_, Fade::FadeType::Cloud);
+      } else {
+        const Vector4 kCloudColor = {1.0f, 1.0f, 1.0f, 1.0f};
+        SceneManager::GetInstance()->SetNextTransitionFade(
+            cloudFadeSec_, Fade::FadeType::Cloud, kCloudColor,
+            Fade::EasingType::Linear);
+      }
       SceneManager::GetInstance()->ChangeScene("GAMEPLAY");
       hasRequestedSceneChange_ = true;
     }
@@ -461,7 +473,7 @@ void StageSelectScene::Draw3D() {
   groundObject_->Draw();
   dragonModel_->Draw();
 
-  // ゲームオーバーから戻ったときの雲の天井（不透明な物のあと。深度を読んで物の手前まで重ねる）
+  // ゲームオーバーから戻ったときの雲の天井と稲妻（不透明な物のあと。深度を読んで物の手前まで重ねる）
   if (gloom_ > 0.0f) {
     returnSky_->Draw();
     engine_->GetObject3dRenderer()->Begin();

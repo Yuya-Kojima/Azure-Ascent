@@ -14,7 +14,7 @@ class SpriteRenderer;
 /// ゲームオーバーで拠点へ戻ったときの演出と UI
 /// 雲が晴れると拠点の真上の空 → 伏せて休むドラゴンの右斜め後ろ・肩より少し高い所へ降りる
 /// → 首を持ち上げるのに合わせてカメラも少し下がり、一緒に雲の天井を見上げる
-/// → 見上げたあと模様の光がかすかに戻る（傷は暗いまま） → 到達度と「再出撃」「拠点に残る」を出す
+/// → 見上げきって雲の天井に大きな雷が光ったあと、模様の光がかすかに戻る（傷は暗いまま） → 到達度と「再出撃」「拠点に残る」を出す
 /// 位置はすべて、拠点のドラゴンの位置と向き（水平な右・上・前）を基準に求める
 /// </summary>
 class StageSelectReturn {
@@ -76,6 +76,11 @@ public:
   const DragonModel::Glow &GetGlow() const { return glow_; }
   const Vector3 &GetCameraPosition() const { return cameraPos_; }
   const Vector3 &GetCameraRotation() const { return cameraRot_; }
+
+  /// <summary>
+  /// 始めてからの時間（秒）
+  /// </summary>
+  float GetTime() const { return timer_; }
 
   /// <summary>
   /// UI が出始めたか（BGM を流し始める合図に使う）
@@ -160,13 +165,13 @@ private:
   //---- 時間 ----
   float lookUpTime_ = 2.5f;   // 首を持ち上げ始める時刻（秒）
   float lookUpSec_ = 1.2f;    // 首を持ち上げきるまでの時間（秒）。そのあとは見上げたまま止まる
-  float menuTime_ = 3.7f;     // UI を出し始める時刻（秒）。見上げきった所
+  float menuTime_ = 4.4f;     // UI を出し始める時刻（秒）。大きな雷の残光が消えたあと
   float skipLockSec_ = 0.3f;  // 始めてから飛ばせるようになるまでの時間（秒）
   float menuFadeSec_ = 0.6f;  // UI が現れきるまでの時間（秒）
   float barFillSec_ = 0.8f;   // 到達度のバーが伸びきるまでの時間（UI が現れてから、秒）
   float leaveSec_ = 0.3f;     // 選んだあと、UI が消え、伏せて見上げる姿勢から立ち姿勢へ戻るまでの時間（秒）
   float stayCameraSec_ = 1.2f; // 拠点に残るとき、カメラがいつもの位置へ戻るまでの時間（秒）
-  float glowReturnTime_ = 3.4f; // 模様の光が戻り始める時刻（秒）
+  float glowReturnTime_ = 4.0f; // 模様の光が戻り始める時刻（秒）。大きな雷に応える
   float glowReturnSec_ = 0.6f;  // 模様の光が戻りきるまでの時間（秒）
 
   //---- ドラゴン ----

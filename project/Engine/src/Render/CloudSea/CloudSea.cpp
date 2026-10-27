@@ -34,6 +34,16 @@ void CloudSea::SetShape(int index, const CloudSeaShape &shape) {
   shapeCount_ = (std::max)(shapeCount_, index + 1);
 }
 
+void CloudSea::ClearGlows() { glowCount_ = 0; }
+
+void CloudSea::SetGlow(int index, const CloudSeaGlow &glow) {
+  if (index < 0 || index >= kMaxGlows) {
+    return;
+  }
+  glows_[index] = glow;
+  glowCount_ = (std::max)(glowCount_, index + 1);
+}
+
 void CloudSea::Update() {
   assert(paramsData_);
 
@@ -78,6 +88,12 @@ void CloudSea::Update() {
     const CloudSeaShape &s = shapes_[i];
     paramsData_->shapes[i] = {s.center, s.radius,        s.width,
                               s.amount, s.crack, int32_t(s.kind), 0.0f};
+  }
+  paramsData_->glowCount = glowCount_;
+  for (int i = 0; i < glowCount_; ++i) {
+    const CloudSeaGlow &g = glows_[i];
+    paramsData_->glows[i] = {g.position, (std::max)(g.radius, 0.01f), g.color,
+                             0.0f};
   }
 }
 

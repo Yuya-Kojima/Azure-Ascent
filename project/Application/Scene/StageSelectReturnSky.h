@@ -9,11 +9,12 @@ class ICamera;
 class Object3d;
 class Object3dRenderer;
 class PostProcess;
+class StageSelectLightning;
 struct FogData;
 
 /// <summary>
 /// ゲームオーバーで拠点へ戻ったときの空と光
-/// 空を覆う分厚い雲の天井（雲海を下から見る）と、ドラゴンをカメラ側の右斜め後ろから照らす光
+/// 空を覆う分厚い雲の天井（雲海を下から見る）と、ドラゴンをカメラ側の右斜め後ろから照らす光、雲の天井の赤い雷
 /// 光の向きは拠点のドラゴンの向き（水平な右・上・前）を基準に決める
 /// </summary>
 class StageSelectReturnSky {
@@ -27,14 +28,18 @@ public:
   void Initialize(CloudSeaRenderer *cloudSeaRenderer);
 
   /// <summary>
-  /// 雲の天井の更新
+  /// 雲の天井と雷の更新（ApplyLighting より前に呼ぶ）
   /// </summary>
   /// <param name="camera">描画に使うカメラ</param>
   /// <param name="deltaTime">進める時間（秒）</param>
-  void Update(const ICamera *camera, float deltaTime);
+  /// <param name="lightningTime">雷の時刻（拠点に入ってからの時間、秒）</param>
+  /// <param name="dragonPos">拠点で立っているときのドラゴンの位置</param>
+  /// <param name="dragonYaw">拠点のドラゴンの向き（Y 軸まわりの角度）</param>
+  void Update(const ICamera *camera, float deltaTime, float lightningTime,
+              const Vector3 &dragonPos, float dragonYaw);
 
   /// <summary>
-  /// 光・霧・露出を、いつもの拠点の値から戻ったときの値へ weight の分だけ寄せる
+  /// 光・霧・露出を、いつもの拠点の値から戻ったときの値へ weight の分だけ寄せ、雷の光と Bloom を足す
   /// いつもの拠点の値を設定したあとに呼ぶ
   /// </summary>
   /// <param name="renderer">平行光源と霧を持つ描画</param>
@@ -53,7 +58,7 @@ public:
   void ApplyMaterials(Object3d *ground, Object3d *dragon, float weight) const;
 
   /// <summary>
-  /// 雲の天井の描画（不透明な物を描いたあとに呼ぶ）
+  /// 雲の天井と稲妻の描画（不透明な物を描いたあとに呼ぶ）
   /// </summary>
   void Draw();
 
@@ -105,6 +110,8 @@ private:
   void SaveConfig();
 
   std::unique_ptr<CloudSea> cloudSea_;
+  std::unique_ptr<StageSelectLightning> lightning_;
+  const ICamera *camera_ = nullptr; // 稲妻を描くカメラ
   float time_ = 0.0f; // 雲を流す時刻（秒）
   Lighting lighting_;
   Ceiling ceiling_;

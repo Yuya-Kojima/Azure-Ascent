@@ -65,7 +65,7 @@ public:
              PostProcess *postProcess, float skyTime) const;
 
   /// <summary>
-  /// 全シーン共通の平行光源から、このクラスが足した環境光と逆光の縁を外す
+  /// 全シーン共通の光から、足した環境光と逆光の縁と点の光を外す
   /// </summary>
   static void ResetSharedLight(Object3dRenderer *renderer);
 

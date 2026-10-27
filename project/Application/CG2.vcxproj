@@ -198,6 +198,7 @@ copy "$(WindowsSdkDir)bin\$(TargetPlatformVersion)\x64\dxil.dll" "$(TargetDir)dx
     <ClCompile Include="Scene\CaptionCard.cpp" />
     <ClCompile Include="Scene\GameOverSequence.cpp" />
     <ClCompile Include="Scene\StageSelectReturn.cpp" />
+    <ClCompile Include="Scene\StageSelectLightning.cpp" />
     <ClCompile Include="Scene\StageSelectReturnSky.cpp" />
     <ClCompile Include="Scene\StageLighting.cpp" />
     <ClCompile Include="Scene\CloudSeaEvents.cpp" />
@@ -339,6 +340,8 @@ copy "$(WindowsSdkDir)bin\$(TargetPlatformVersion)\x64\dxil.dll" "$(TargetDir)dx
     <ClInclude Include="Scene\CaptionCard.h" />
     <ClInclude Include="Scene\GameOverSequence.h" />
     <ClInclude Include="Scene\StageSelectReturn.h" />
+    <ClInclude Include="Scene\DarkCloudTransition.h" />
+    <ClInclude Include="Scene\StageSelectLightning.h" />
     <ClInclude Include="Scene\StageSelectReturnSky.h" />
     <ClInclude Include="Scene\StageLighting.h" />
     <ClInclude Include="Scene\CloudSeaEvents.h" />

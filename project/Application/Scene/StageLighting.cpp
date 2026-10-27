@@ -176,6 +176,9 @@ void StageLighting::ResetSharedLight(Object3dRenderer *renderer) {
     dl->groundAmbient = {0.0f, 0.0f, 0.0f, 0.0f};
     dl->backRimColor = {0.0f, 0.0f, 0.0f, 0.0f};
   }
+  if (auto *pl = renderer->GetPointLightData()) {
+    pl->intensity = 0.0f;
+  }
 }
 
 void StageLighting::LoadConfig() {
