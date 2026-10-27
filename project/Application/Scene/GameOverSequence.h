@@ -15,7 +15,7 @@ class SpriteRenderer;
 
 /// <summary>
 /// ゲームオーバーの空中の演出
-/// 被弾して時間がゆっくりになる → カメラがレールを離れてドラゴンの横に並ぶ → 頭は空を見上げたまま、翼と脚でもがくが、
+/// 被弾して時間がゆっくりになる → カメラがレールを離れてドラゴンの横に並ぶ → 頭は空を見上げたまま、翼と脚でもがき、脚の反動で体と頭が揺さぶられるが、
 /// 打つたびに弱くなる → 脚は先に止まって尾と一緒に力が抜けて垂れ、最後の打ち下ろしで一度だけ掻く → 翼が畳まれる → カメラが上へ引き、ドラゴンが雲海へ沈む
 /// → 見下ろしに「GAME OVER」のカードが出て、その後ろで場面が黒い幕で暗くなる → カードが閉じたら拠点への遷移の合図
 /// 位置はすべて、Start の時点のドラゴンの位置と、レールの水平な右・前の向きを基準に求める
@@ -181,6 +181,8 @@ private:
   float PaddlePhaseAt(float time) const;
   // 時刻 time の、最後の一掻きで脚 leg（左前・右前・左後・右後）を振る割合（正で後ろ）
   float LastPaddleSwingAt(int leg, float time) const;
+  // 時刻 time の、頭を体の揺れについていかせる度合い（0〜1。掻き始めて 1 へ上げ、畳まれる間に 0 へ戻す）
+  float HeadShakeAt(float time) const;
 
   // 動きの時間 motionTime でのドラゴンの位置
   Vector3 DragonPositionAt(float motionTime) const;
@@ -313,6 +315,11 @@ private:
   float lastPaddleStrength_ = 0.6f;  // 大きさ（掻く振れ幅に対する割合）
   // 脚ごとの大きさの割合（左前・右前・左後・右後）
   std::array<float, 4> lastPaddleLegWeights_ = {1.0f, 0.4f, 0.7f, 1.0f};
+
+  //---- 頭 ----
+  // もがく間（掻き始めて強さが 1 になるまでに強め、畳まれる間に戻す）、頭を体の揺れについていかせる
+  float headFollow_ = 0.5f;          // 頭を体についていかせる割合（翼の Gesture::headFollow）
+  float struggleFaceUpScale_ = 0.5f; // 顔を空へ向ける割合（Gesture::faceUp）に掛ける値
 
   //---- カメラ（オフセットはドラゴンからの右・上・前）----
   float sideMoveStartTime_ = 0.1f; // 横へ回り込み始める時刻（秒）

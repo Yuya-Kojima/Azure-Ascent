@@ -14,7 +14,7 @@ struct Animation;
 
 /// <summary>
 /// 自機ドラゴンの羽ばたき。翼・尾の関節を位相をずらした波で回し、頭は体の揺れを打ち消して保ち、
-/// 脚は必要なときに前後へ振って空を掻かせ、尾の先と脚は揺れもので遅れてしならせて、SkinnedObject に書き込む
+/// 脚は必要なときに前後へ振って空を掻かせ、その反動で体と背骨を揺らし、尾の先と脚は揺れもので遅れてしならせて、SkinnedObject に書き込む
 /// </summary>
 class DragonWingAnimator {
 public:
@@ -63,6 +63,8 @@ public:
     // 揺れもので垂れた形のまま、脚を付け根から前後へ振る割合（-1〜1。正で後ろ、掻く振れ幅を掛ける）。重みの合計には数えない
     // 脚の順は左前・右前・左後・右後
     std::array<float, 4> limpLegSwing{};
+    // 頭を体の揺れについていかせる割合（0〜1）。水平に保つ向きと高さの合わせを、この割合だけ弱める。重みの合計には数えない
+    float headFollow = 0.0f;
   };
 
   /// <summary>
@@ -168,6 +170,11 @@ public:
     float hindLegPaddle = 25.0f;  // 後脚の付け根を前後へ振る片側の角度
     float hindKneeExtend = 15.0f; // 後脚を後ろへ蹴る途中で膝を伸ばす角度
     float legPaddleLag = 0.25f;   // 掻く順（左前 → 右後 → 右前 → 左後）で、1 本ごとに足す遅れ（1周期に対する割合）
+
+    // 脚の反動（脚の前後の位置の差 1 のときの角度、度）
+    float legBodyRoll = 15.0f; // 左右の差で、体を前後の軸まわりに傾ける角度
+    float legSpineCurl = 6.0f; // 対角の差で、背骨 1 本を丸める角度（正で頭側が下がる）
+    float legSpineSway = 5.0f; // 左右の差で、背骨 1 本を上下の軸まわりにくねらせる角度
 
     // 重ねる姿勢（翼の付け根は rootBias に足す）
     GesturePose crouchPose = {4.0f, 6.0f, 8.0f, -2.0f, -15.0f, 20.0f,
@@ -360,6 +367,17 @@ private:
   // 戻り値は書き込んだあとの顔の向き（度。GetFaceAngle と同じ測り方）
   float UpdateHead(const Matrix4x4 &worldMatrix) const;
   void UpdateSpine() const;
+  // 脚 leg（左前・右前・左後・右後）の掻く周期の中の角度（ラジアン）
+  float PaddleCycle(int leg) const;
+  // 脚 leg の前後の位置（-1: 前 〜 1: 後ろ。掻く振れ幅に対する割合）
+  // 掻く動きの分（PaddlePosition）と、垂れた形のまま振る分（LimpPosition）を足したもの
+  float PaddlePosition(int leg) const;
+  float LimpPosition(int leg) const;
+  float LegPosition(int leg) const {
+    return PaddlePosition(leg) + LimpPosition(leg);
+  }
+  // 脚の位置から、左右の差（左の平均 − 右の平均）と対角の差（左前・右後の平均 − 右前・左後の平均）を求める
+  void UpdateLegReaction();
   // 脚で空を掻く角度を、脚の揺れものの骨の姿勢に足す
   void UpdateLegs() const;
   // 揺れもので決まった脚の形のまま、付け根を Gesture::limpLegSwing の分だけ前後へ回す
@@ -397,6 +415,9 @@ private:
   std::vector<int32_t> posedJoints_;
   float hoverWeight_ = 0.0f; // 飛行姿勢のうち羽ばたきの割合（0: 滑空 〜 1: 羽ばたき）
   float bodyPitch_ = 0.0f;   // 羽ばたきでの体の前後の傾き（ラジアン、モデルの左右の軸まわり）
+  float bodyRoll_ = 0.0f;    // 脚の反動での体の傾き（ラジアン、モデルの前後の軸まわり）
+  float legSideDiff_ = 0.0f;     // 脚の位置の左右の差
+  float legDiagonalDiff_ = 0.0f; // 脚の位置の対角の差
   Gesture gesture_;          // 重ねる姿勢の重み
   float gestureWeight_ = 0.0f; // 重ねる姿勢の重みの合計（0〜1）
   float flapScale_ = 1.0f;     // 羽ばたきの強さに掛ける割合（1 - gestureWeight_）

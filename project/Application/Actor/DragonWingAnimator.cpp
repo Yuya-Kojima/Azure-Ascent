@@ -132,6 +132,9 @@ const ConfigItem kConfigItems[] = {
     {"hindLegPaddle", &Config::hindLegPaddle, 0.0f, 90.0f},
     {"hindKneeExtend", &Config::hindKneeExtend, -90.0f, 90.0f},
     {"legPaddleLag", &Config::legPaddleLag, 0.0f, 0.5f},
+    {"legBodyRoll", &Config::legBodyRoll, -30.0f, 30.0f},
+    {"legSpineCurl", &Config::legSpineCurl, -15.0f, 15.0f},
+    {"legSpineSway", &Config::legSpineSway, -15.0f, 15.0f},
     {"trembleFrequency", &Config::trembleFrequency, 0.0f, 30.0f},
     {"neckTremble", &Config::neckTremble, 0.0f, 10.0f},
     {"fingerTremble", &Config::fingerTremble, 0.0f, 10.0f},
@@ -479,6 +482,7 @@ void DragonWingAnimator::Update(float deltaTime,
   rightRootAngle_ =
       UpdateWing(rightWing_, (std::max)(0.0f, 1.0f - asymmetry), rightLag);
   UpdateTail();
+  UpdateLegReaction();
   UpdateSpine();
   UpdateLegs();
 
@@ -763,11 +767,41 @@ void DragonWingAnimator::UpdateTail() const {
 }
 
 void DragonWingAnimator::UpdateSpine() const {
-  // 背骨を1本ずつ同じ角度で曲げる
-  const float angle = GestureAngle(&GesturePose::spine) * kDegToRad;
+  // 背骨を1本ずつ同じ角度で曲げる。脚の反動で、対角の差の分だけ丸め、左右の差の分だけ左右にくねらせる
+  const float curl =
+      GestureAngle(&GesturePose::spine) + config_.legSpineCurl * legDiagonalDiff_;
+  const float sway = config_.legSpineSway * legSideDiff_;
   for (const DrivenJoint &joint : spine_) {
-    ApplyRotation(joint, angle, 0.0f, 0.0f);
+    ApplyRotation(joint, curl * kDegToRad, sway * kDegToRad, 0.0f);
   }
+}
+
+float DragonWingAnimator::PaddleCycle(int leg) const {
+  return 2.0f * kPi *
+         Wrap01(gesture_.paddlePhase -
+                config_.legPaddleLag * float(kLegPaddleOrder[leg]));
+}
+
+float DragonWingAnimator::PaddlePosition(int leg) const {
+  // 周期の始めに前の端（-1）にあり、前半で後ろの端（+1）へ振って、後半で前へ戻す
+  const float paddle = std::clamp(gesture_.paddle, 0.0f, 1.0f);
+  return -paddle * std::cos(PaddleCycle(leg));
+}
+
+float DragonWingAnimator::LimpPosition(int leg) const {
+  return std::clamp(gesture_.limpLegSwing[leg], -1.0f, 1.0f);
+}
+
+void DragonWingAnimator::UpdateLegReaction() {
+  // 脚の順は左前・右前・左後・右後
+  const float frontLeft = LegPosition(0);
+  const float frontRight = LegPosition(1);
+  const float hindLeft = LegPosition(2);
+  const float hindRight = LegPosition(3);
+  legSideDiff_ = 0.5f * (frontLeft + hindLeft) - 0.5f * (frontRight + hindRight);
+  legDiagonalDiff_ =
+      0.5f * (frontLeft + hindRight) - 0.5f * (frontRight + hindLeft);
+  bodyRoll_ = config_.legBodyRoll * kDegToRad * legSideDiff_;
 }
 
 void DragonWingAnimator::UpdateLegs() const {
@@ -782,13 +816,9 @@ void DragonWingAnimator::UpdateLegs() const {
     const float bendAmount =
         isFront ? -config_.frontElbowBend : -config_.hindKneeExtend;
 
-    const float cycle =
-        2.0f * kPi *
-        Wrap01(gesture_.paddlePhase -
-               config_.legPaddleLag * float(kLegPaddleOrder[leg]));
     // 前の端（-amplitude）から後ろの端（+amplitude）へ振る間ほど 1 に近い重み（前へ戻す間は 0）
-    const float pushWeight = (std::max)(std::sin(cycle), 0.0f);
-    const float swing = -amplitude * paddle * std::cos(cycle);
+    const float pushWeight = (std::max)(std::sin(PaddleCycle(leg)), 0.0f);
+    const float swing = amplitude * PaddlePosition(leg);
     const float bend = bendAmount * paddle * pushWeight;
 
     ApplyRotation(legJoints_[leg].root, swing * kDegToRad, 0.0f, 0.0f);
@@ -801,7 +831,7 @@ void DragonWingAnimator::SwingLimpLegs() const {
   // 先の骨は親に対する回転のままなので、揺れもので垂れた形を保ったまま根元から振れる
   const std::vector<Joint> &joints = skinned_->GetSkeleton().joints;
   for (int leg = 0; leg < kLegCount_; ++leg) {
-    const float swing = std::clamp(gesture_.limpLegSwing[leg], -1.0f, 1.0f);
+    const float swing = LimpPosition(leg);
     const DrivenJoint &root = legJoints_[leg].root;
     if (swing == 0.0f || root.index < 0) {
       continue;
@@ -847,8 +877,8 @@ void DragonWingAnimator::UpdateBody() const {
   translate.y += lift;
   skinned_->SetJointTranslation(body_.index, translate);
 
-  // 体の前後の傾き（左右の軸まわりの正の回転で頭が下がる）
-  ApplyRotation(body_, bodyPitch_, 0.0f, 0.0f);
+  // 体の前後の傾き（左右の軸まわりの正の回転で頭が下がる）と、脚の反動での左右の傾き
+  ApplyRotation(body_, bodyPitch_, 0.0f, bodyRoll_);
 }
 
 Quaternion DragonWingAnimator::JointModelRotation(int32_t jointIndex) const {
@@ -877,9 +907,10 @@ float DragonWingAnimator::UpdateHead(const Matrix4x4 &worldMatrix) const {
       TransformDirection(kVerticalAxis, Inverse(worldMatrix));
 
   //---- 向き ----
-  // 体の今の回転 = 羽ばたきの傾き × 飛び方の体の向き。羽ばたきの傾きを外して飛び方の向きを取り出す
+  // 体の今の回転 = 揺れ（脚の反動の左右の傾き × 羽ばたきの前後の傾き）× 飛び方の体の向き。揺れを外して飛び方の向きを取り出す
   const Quaternion flap =
-      MakeRotateAxisAngleQuaternion(kLateralAxis, bodyPitch_);
+      Multiply(MakeRotateAxisAngleQuaternion(kForwardAxis, bodyRoll_),
+               MakeRotateAxisAngleQuaternion(kLateralAxis, bodyPitch_));
   const Quaternion body =
       Multiply(Conjugate(flap), JointModelRotation(body_.index));
   // 元の姿勢から体がどれだけ回ったか。モデルの前・上がどこを向いたかが分かる
@@ -908,8 +939,12 @@ float DragonWingAnimator::UpdateHead(const Matrix4x4 &worldMatrix) const {
   // 体の飛び方の向き → 頭の目標の向き、への回転。羽ばたきの傾きも打ち消し、首が折れない範囲に抑える
   const Quaternion level =
       Multiply(RotationFromAxes(forward, up), Conjugate(bodyTurn));
-  const Quaternion headDelta = ClampRotationAngle(
-      Multiply(level, Conjugate(flap)), config_.headMaxAngle * kDegToRad);
+  // 体についていかせる割合の分だけ、目標の向きへの回転を弱める
+  const float headFollow = std::clamp(gesture_.headFollow, 0.0f, 1.0f);
+  const Quaternion headDelta =
+      Slerp(ClampRotationAngle(Multiply(level, Conjugate(flap)),
+                               config_.headMaxAngle * kDegToRad),
+            kIdentityQuaternion, headFollow);
 
   //---- 高さ ----
   // 羽ばたき（体の上下と傾き）がなかったときの頭の位置との差を求める
@@ -929,7 +964,8 @@ float DragonWingAnimator::UpdateHead(const Matrix4x4 &worldMatrix) const {
   float neckPitch = 0.0f;
   if (leverSum > kMinDirectionLength) {
     const float maxPitch = config_.neckMaxPitch * kDegToRad;
-    neckPitch = std::clamp(config_.headKeepHeight * headRise / leverSum,
+    neckPitch = std::clamp(config_.headKeepHeight * (1.0f - headFollow) *
+                               headRise / leverSum,
                            -maxPitch, maxPitch);
   }
 
@@ -1068,6 +1104,10 @@ void DragonWingAnimator::DrawImGui() {
               gesture_.paddle, gesture_.paddlePhase, gesture_.limpLegSwing[0],
               gesture_.limpLegSwing[1], gesture_.limpLegSwing[2],
               gesture_.limpLegSwing[3]);
+  ImGui::Text("leg reaction: side %.2f / diagonal %.2f / body roll %.1f / "
+              "head follow %.2f",
+              legSideDiff_, legDiagonalDiff_, bodyRoll_ / kDegToRad,
+              gesture_.headFollow);
   for (const GesturePoseSlot &slot : kGesturePoseSlots) {
     if (ImGui::TreeNode(slot.key)) {
       for (const GesturePoseItem &item : kGesturePoseItems) {

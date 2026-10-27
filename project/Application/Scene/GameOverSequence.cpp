@@ -199,6 +199,10 @@ void GameOverSequence::VisitConfigValues(
           lastPaddleLegWeights_[leg]);
   }
 
+  // 頭
+  visit("headFollow", headFollow_);
+  visit("struggleFaceUpScale", struggleFaceUpScale_);
+
   // カメラ
   visit("sideMoveStartTime", sideMoveStartTime_);
   visit("sideMoveSec", sideMoveSec_);
@@ -570,9 +574,13 @@ void GameOverSequence::UpdateWing() {
 
   // 顔は、被弾から最初の一打ちまでに空の方へ向け、体の傾きによらず沈みきるまで同じ向きに保つ
   // 脚は空を掻いてから止まり、脚と尾は重さで垂れていく。最後の打ち下ろしで、垂れたまま脚が弱く一掻きする
+  // もがく間は、空へ向ける割合を弱め、頭を体の揺れについていかせる
   gesture_ = {};
-  gesture_.faceUp = EaseOutQuad(Progress(timer_, 0.0f, beats_.front().time));
+  const float headShake = HeadShakeAt(timer_);
+  gesture_.faceUp = EaseOutQuad(Progress(timer_, 0.0f, beats_.front().time)) *
+                    Lerp(1.0f, struggleFaceUpScale_, headShake);
   gesture_.faceUpAngle = faceUpAngle_;
+  gesture_.headFollow = headFollow_ * headShake;
   gesture_.hang = EaseOutQuad(Progress(timer_, hangStartTime_, hangSec_));
   gesture_.paddle = PaddleStrengthAt(timer_);
   gesture_.paddlePhase = PaddlePhaseAt(timer_);
@@ -647,6 +655,15 @@ float GameOverSequence::LastPaddleSwingAt(int leg, float time) const {
   // 一周期の sin で、前へ出して（負）後ろへ引き（正）、垂れた位置に戻す
   return -std::sin(2.0f * std::numbers::pi_v<float> * progress) *
          lastPaddleStrength_ * lastPaddleLegWeights_[leg];
+}
+
+float GameOverSequence::HeadShakeAt(float time) const {
+  // 掻き始めから強さが 1 になるまでに 0 → 1、畳まれる間に 1 → 0
+  const float rise =
+      EaseOutQuad(Progress(time, paddleStartTime_, paddleRiseSec_));
+  const float fall = EaseInOutQuad(
+      Progress(time, limpStartTime_, limpEndTime_ - limpStartTime_));
+  return rise * (1.0f - fall);
 }
 
 void GameOverSequence::UpdateCamera() {
@@ -779,7 +796,11 @@ void GameOverSequence::DrawImGui() {
   }
   ImGui::DragFloat("Fold Root Angle", &foldRootAngle_, 0.5f, -90.0f, 90.0f);
   ImGui::DragFloat("Face Up Angle", &faceUpAngle_, 0.5f, -60.0f, 80.0f);
-  ImGui::Text("face angle %.0f", faceAngle_);
+  ImGui::Text("face angle %.0f / face up %.2f / head follow %.2f", faceAngle_,
+              gesture_.faceUp, gesture_.headFollow);
+  ImGui::SliderFloat("Head Follow", &headFollow_, 0.0f, 1.0f);
+  ImGui::SliderFloat("Struggle Face Up Scale", &struggleFaceUpScale_, 0.0f,
+                     1.0f);
   ImGui::DragFloat("Hang Start", &hangStartTime_, 0.01f, 0.0f, 3.0f);
   ImGui::DragFloat("Hang Sec", &hangSec_, 0.01f, 0.0f, 3.0f);
   // 脚で掻く強さ・一掻きの長さと、最後の一掻き（時刻は被弾からの秒）
