@@ -1,10 +1,15 @@
 #include "MenuInput.h"
 #include "Input/Input.h"
 #include "Input/InputKeyState.h"
+#include "Scene/SceneManager.h"
 
 namespace MenuInput {
 
 bool IsDecideTriggered(Input *input) {
+  // シーンの切り替え中は、前のシーンの決定が次のシーンに届かないよう受け付けない
+  if (SceneManager::GetInstance()->IsTransitioning()) {
+    return false;
+  }
   return input->IsTriggerKey(DIK_SPACE) || input->IsPadTrigger(PadButton::A);
 }
 

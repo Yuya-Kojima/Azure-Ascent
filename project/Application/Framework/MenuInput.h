@@ -8,7 +8,7 @@ class Input;
 namespace MenuInput {
 
 /// <summary>
-/// 決定（スペース・パッドの A）
+/// 決定（スペース・パッドの A）。シーンの切り替え中は false
 /// </summary>
 bool IsDecideTriggered(Input *input);
 

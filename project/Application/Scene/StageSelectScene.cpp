@@ -151,10 +151,6 @@ void StageSelectScene::Update() {
       if (selectedName == "Stage1Text") {
         GameManager::GetInstance()->SetCurrentLevel("level_editor.json");
         StartLaunch(false);
-      } else if (selectedName == "Stage2Text") {
-        GameManager::GetInstance()->SetCurrentLevel(
-            "level_editor.json"); // とりあえず同じ
-        StartLaunch(false);
       } else if (selectedName == "BackText") {
         // タイトルも雲の上にあるので、出撃と同じく雲を突き抜けて上昇する
         SceneManager::GetInstance()->SetNextTransitionFade(

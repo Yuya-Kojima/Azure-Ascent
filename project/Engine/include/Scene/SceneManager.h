@@ -85,6 +85,14 @@ public:
 
   PostProcess* GetCurrentScenePostProcess() const;
 
+  /// <summary>
+  /// シーンの切り替え中か（次のシーンが決まってから、遷移のフェードが明けきるまで）
+  /// </summary>
+  bool IsTransitioning() const {
+    return nextScene_ != nullptr ||
+           transitionState_ != TransitionState::None;
+  }
+
   BaseScene* GetCurrentScene() const { return scene_.get(); }
   const std::string& GetCurrentSceneName() const { return currentSceneName_; }
 
