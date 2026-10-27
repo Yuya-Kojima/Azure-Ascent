@@ -32,6 +32,7 @@ public:
     float buckle = 0.0f;    // 翼の張りが保てない度合い（0〜1）。打ち下ろしの途中で腕・手首が折れ、先ほど遅れてついてくる
     float flail = 0.0f;     // 体が羽ばたきに振り回される度合い（0〜1）。尾と体の前後の揺れを大きくする
     float response = 0.0f;  // 今の状態が目標へ近づく速さ（1/秒）。0 なら Config::stateResponse を使う
+    float foldToGlide = 1.0f; // 畳み具合に応じて飛行姿勢の形を滑空へ戻す割合（0: 畳んでも hover のまま 〜 1: 畳みきると滑空）
   };
 
   /// <summary>
@@ -60,11 +61,12 @@ public:
     float paddle = 0.0f;
     // 掻く周期の中の位置（周期の数。左前脚の位置で、ほかの脚は Config::legPaddleLag ずつ遅れる）
     float paddlePhase = 0.0f;
-    // 揺れもので垂れた形のまま、脚を付け根から前後へ振る割合（-1〜1。正で後ろ、掻く振れ幅を掛ける）。重みの合計には数えない
-    // 脚の順は左前・右前・左後・右後
-    std::array<float, 4> limpLegSwing{};
     // 頭を体の揺れについていかせる割合（0〜1）。水平に保つ向きと高さの合わせを、この割合だけ弱める。重みの合計には数えない
     float headFollow = 0.0f;
+    // 首を下げる角度（度。正で頭が下がる）。首の骨に等分して足す。重みの合計には数えない
+    float headDrop = 0.0f;
+    // 風を受ける強さ（0〜1）。脚と尾の先は重さで垂れるのをやめて動く向きの後ろへなびき、翼の膜ははためき、尾と首は不規則に揺れる。重みの合計には数えない
+    float wind = 0.0f;
   };
 
   /// <summary>
@@ -163,6 +165,18 @@ public:
     float hangSpringGravity = 12.0f; // 脚と尾の先の下向きの重さ（1/秒）
     float hangLegMaxAngle = 45.0f;   // 脚の骨1本が姿勢から曲がる最大の角度（度）
     float hangTailDroop = 4.0f;      // 尾の根元側の骨1本を下げる角度（度）
+
+    // 風を受ける（Gesture::wind が 1 のとき）
+    float windAirDrag = 20.0f;         // 脚と尾の先を、動く向きと逆へ押す強さ（1/秒）
+    float windGust = 0.5f;             // 押す強さの揺らぎ（強さ ×（1 + 値 × 不規則な揺れ））
+    float windGustFrequency = 1.5f;    // 押す強さの揺らぎの 1秒あたりの回数
+    float windWingLift = 15.0f;        // 翼の付け根を上げる角度（度）
+    float windFlutter = 5.0f;          // 手首と指の節1つあたりの、はためく角度（度）
+    float windFlutterFrequency = 7.0f; // はためく 1秒あたりの回数
+    float windTailLift = 3.0f;         // 尾の根元側の骨1本を上げる角度（度）
+    float windTailSway = 2.0f;         // 尾の骨1本あたりの、左右に揺れる角度（度）
+    float windNeckSway = 3.0f;         // 首の骨1本あたりの、上下に揺れる角度（度）
+    float windSwayFrequency = 0.9f;    // 尾と首が揺れる 1秒あたりの回数
 
     // 脚で空を掻く（Gesture::paddle が 1 のときの角度、度）
     float frontLegPaddle = 30.0f; // 前脚の付け根を前後へ振る片側の角度
@@ -370,18 +384,11 @@ private:
   // 脚 leg（左前・右前・左後・右後）の掻く周期の中の角度（ラジアン）
   float PaddleCycle(int leg) const;
   // 脚 leg の前後の位置（-1: 前 〜 1: 後ろ。掻く振れ幅に対する割合）
-  // 掻く動きの分（PaddlePosition）と、垂れた形のまま振る分（LimpPosition）を足したもの
   float PaddlePosition(int leg) const;
-  float LimpPosition(int leg) const;
-  float LegPosition(int leg) const {
-    return PaddlePosition(leg) + LimpPosition(leg);
-  }
   // 脚の位置から、左右の差（左の平均 − 右の平均）と対角の差（左前・右後の平均 − 右前・左後の平均）を求める
   void UpdateLegReaction();
   // 脚で空を掻く角度を、脚の揺れものの骨の姿勢に足す
   void UpdateLegs() const;
-  // 揺れもので決まった脚の形のまま、付け根を Gesture::limpLegSwing の分だけ前後へ回す
-  void SwingLimpLegs() const;
 
   // 重ねる姿勢の角度を、重みで混ぜて求める（度）
   float GestureAngle(float GesturePose::*part) const;
@@ -422,6 +429,7 @@ private:
   float gestureWeight_ = 0.0f; // 重ねる姿勢の重みの合計（0〜1）
   float flapScale_ = 1.0f;     // 羽ばたきの強さに掛ける割合（1 - gestureWeight_）
   float trembleTime_ = 0.0f;   // 震えの経過時間（秒）
+  float windTime_ = 0.0f;      // 風の揺れの経過時間（秒）
   float leftRootAngle_ = 0.0f;  // 左の翼の付け根を上げた角度（度）
   float rightRootAngle_ = 0.0f; // 右の翼の付け根を上げた角度（度）
 

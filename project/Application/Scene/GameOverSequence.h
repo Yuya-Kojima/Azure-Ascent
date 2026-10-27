@@ -16,8 +16,9 @@ class SpriteRenderer;
 /// <summary>
 /// ゲームオーバーの空中の演出
 /// 被弾して時間がゆっくりになる → カメラがレールを離れてドラゴンの横に並ぶ → 頭は空を見上げたまま、翼と脚でもがき、脚の反動で体と頭が揺さぶられるが、
-/// 打つたびに弱くなる → 脚は先に止まって尾と一緒に力が抜けて垂れ、最後の打ち下ろしで一度だけ掻く → 翼が畳まれる → カメラが上へ引き、ドラゴンが雲海へ沈む
-/// → 見下ろしに「GAME OVER」のカードが出て、その後ろで場面が黒い幕で暗くなる → カードが閉じたら拠点への遷移の合図
+/// 打つたびに弱くなる → 最後の打ち下ろしで脚が強く掻き直す → 抜ける時刻に、翼が畳まれ、脚と尾が垂れ、頭が空を見るのをやめてがくっと落ちる
+/// → 少し遅れて体が加速しながら倒れ、風を受けて脚・尾・翼がなびき、体がぐらつく → カメラは落ちるのをやめて上がりながら見送り、ドラゴンが雲海へ沈む
+/// → 「GAME OVER」のカードが出て、その後ろで場面が黒い幕で暗くなる → カードが閉じたら拠点への遷移の合図
 /// 位置はすべて、Start の時点のドラゴンの位置と、レールの水平な右・前の向きを基準に求める
 /// </summary>
 class GameOverSequence {
@@ -177,15 +178,23 @@ private:
 
   // 時刻 time の、脚で掻く強さ（0〜1）
   float PaddleStrengthAt(float time) const;
-  // 時刻 time までに掻いた周期の数（掻き始めてから。一掻きの長さが遅くなる分を含む）
+  // 時刻 time までに掻いた周期の数（掻き始めてから。一掻きの長さが遅くなる分を含み、溜めの間は進めない）
   float PaddlePhaseAt(float time) const;
-  // 時刻 time の、最後の一掻きで脚 leg（左前・右前・左後・右後）を振る割合（正で後ろ）
-  float LastPaddleSwingAt(int leg, float time) const;
-  // 時刻 time の、頭を体の揺れについていかせる度合い（0〜1。掻き始めて 1 へ上げ、畳まれる間に 0 へ戻す）
+  // 時刻 time の、もがく間に頭を体の揺れについていかせる度合い（0〜1。掻き始めて 1 へ上げる）
   float HeadShakeAt(float time) const;
+  // 時刻 time の、抜ける時刻から releaseSec かけて 0 → 1 へ進む割合（最初が速い）
+  float ReleaseAt(float time, float releaseSec) const;
+  // 時刻 time の、体が倒れる割合（0〜1。抜ける時刻の bodyFallDelay_ 後から、ゆっくり始まって加速する）
+  float BodyFallAt(float time) const;
+  // 時刻 time の、抜けたときに首を下げる角度（度）
+  float HeadDropAt(float time) const;
 
   // 動きの時間 motionTime でのドラゴンの位置
   Vector3 DragonPositionAt(float motionTime) const;
+  // 時刻 time（動きの時間 motionTime）に、カメラが追う落ちる道筋の動きの時間（抜けたあとは遅れる）
+  float CameraMotionTimeAt(float time, float motionTime) const;
+  // 時刻 time の、風を受ける強さ（0〜1。抜ける時刻から加速しながら上がる）
+  float WindAt(float time) const;
 
   // 動きの時間（ゆっくりの間は遅く進む）で、落ち始めてから下がった距離
   float FallDistance(float motionTime) const;
@@ -247,11 +256,13 @@ private:
   float slowSec_ = 0.4f;            // 時間がゆっくりになる長さ（秒）
   float slowScale_ = 0.3f;          // ゆっくりの間の時間の速さ
   float slowRecoverSec_ = 0.1f;     // ゆっくりから普通の速さへ戻る長さ（slowSec_ の終わりに含む、秒）
-  float limpStartTime_ = 2.3f;      // 翼が畳まれ始める時刻（秒）
-  float limpEndTime_ = 2.6f;        // 力が抜けきる時刻（秒）
-  float pullStartTime_ = 2.5f;      // カメラが上へ引き始める時刻（秒）
-  float sinkTime_ = 3.3f;           // ドラゴンが雲海の面から sinkDepth_ だけ沈みきる時刻（秒）
-  float darkenStartTime_ = 3.1f;    // 黒い幕が下り始める時刻（秒）
+  float releaseTime_ = 2.0f;        // 全身から力が抜ける時刻（秒）
+  float releaseHoldSec_ = 0.0f;     // 抜ける時刻の直前に、脚が力んで止まる時間（秒）
+  float limpStartTime_ = 2.0f;      // 翼が畳まれ始める時刻（秒）
+  float limpEndTime_ = 2.25f;       // 翼が畳まれきる時刻（秒）
+  float pullStartTime_ = 2.3f;      // カメラが落ちるのをやめて見送り始める時刻（秒）
+  float sinkTime_ = 3.8f;           // ドラゴンが雲海の面から sinkDepth_ だけ沈みきる時刻（秒）
+  float darkenStartTime_ = 3.6f;    // 黒い幕が下り始める時刻（秒）
   float darkenSec_ = 0.8f;          // 黒い幕で真っ黒になるまでの時間（秒）
   float skipLockSec_ = 0.5f;        // 被弾してから飛ばせるようになるまでの時間（秒）
   float hudFadeSec_ = 0.3f;         // HUD が消えるまでの時間（秒）
@@ -269,6 +280,8 @@ private:
   float limpRoll_ = 0.35f;          // 力が抜けたあとの傾き（ラジアン）
   float hitPitch_ = -0.3f;          // 弾かれた瞬間の機首の角度（ラジアン。負で上を向く）
   float limpPitch_ = 0.6f;          // 力が抜けたときの機首の角度（ラジアン。正で下を向く）
+  float bodyFallDelay_ = 0.12f;     // 抜ける時刻から、体が倒れ始めるまでの遅れ（秒）
+  float bodyFallSec_ = 0.7f;        // 体が倒れ始めてから、機首が limpPitch_ まで加速しながら落ちる時間（秒）
   float sinkPitch_ = 0.9f;          // 雲へ沈むときの機首の角度（ラジアン）
   float struggleRoll_ = 0.0f;       // 左右の翼の打ち下ろしの差 1 のときに体が傾く角度（ラジアン）
   float liftSpeed_ = 9.0f;          // 打ち下ろしの強さ 1・浮く割合 1 のときに浮く速さ（単位/秒）
@@ -293,41 +306,51 @@ private:
   }};
   float foldRootAngle_ = 5.0f;     // 畳まれたときの付け根の角度（度）
   float faceUpAngle_ = 0.0f;       // もがく間から沈みきるまで保つ顔の向き（度。翼の Gesture::faceUpAngle。0 で鼻先が斜め上を向く）
-  float hangStartTime_ = 0.9f;     // 脚と尾が垂れ始める時刻（秒）
-  float hangSec_ = 0.5f;           // 脚と尾が垂れきるまでの時間（秒）
+  float hangStartTime_ = 2.0f;     // 脚と尾が垂れ始める時刻（秒）
+  float hangSec_ = 0.2f;           // 脚と尾が垂れきるまでの時間（秒）
   float neckTrembleRatio_ = 0.2f;  // 震えのうち首に効く割合（翼の Gesture::neckTrembleRatio）
   float struggleResponse_ = 20.0f; // 翼の状態（畳み具合・折れなど）が演出の値へ近づく速さ（1/秒）
 
   //---- 脚 ----
-  // 4 本がばらばらに空を掻き、だんだん弱く遅くなって止まる → 垂れる → 3 打目の打ち下ろしで、垂れたまま最後に弱く遅く一掻きする
+  // 4 本がばらばらに空を掻き、だんだん弱く遅くなる → 3 打目の打ち下ろしで強さを上げ直す → 抜ける時刻に止まる
   float paddleStartTime_ = 0.15f;    // 掻き始める時刻（秒）
   float paddleRiseSec_ = 0.15f;      // 掻く強さが 1 になるまでの時間（秒）
-  float paddleTiredTime_ = 1.25f;    // 掻く強さが paddleTiredStrength_ まで下がりきる時刻（秒）
-  float paddleTiredStrength_ = 0.8f; // 下がりきったときの掻く強さ
-  float paddleStopTime_ = 1.0f;      // 掻く強さが 0 になる時刻（秒）
+  float paddleTiredTime_ = 1.7f;     // 掻く強さが paddleTiredStrength_ まで下がりきる時刻（秒）
+  float paddleTiredStrength_ = 0.4f; // 下がりきったときの掻く強さ
+  float paddleSurgeTime_ = 1.7f;     // 掻く強さを上げ直し始める時刻（秒）
+  float paddleSurgeSec_ = 0.08f;     // 上げ直す時間（秒）
+  float paddleSurgeStrength_ = 1.0f; // 上げ直したあとの掻く強さ
+  float paddleReleaseSec_ = 0.1f;    // 抜ける時刻から、掻く強さが 0 になるまでの時間（秒）
   // 脚 1 本の一掻きの長さ（秒）。強さが 1 になったときの長さから、下がりきったときの長さへ遅くする
   float paddleStartSec_ = 0.45f;
   float paddleEndSec_ = 0.65f;
-  // 最後の一掻き：脚ごとに、垂れた形のまま前へ出して後ろへ引き、垂れた位置に戻す。掻き始めと同じ順で 1 本ずつずらす
-  float lastPaddleTime_ = 1.75f;     // 最初の脚が掻き始める時刻（秒）
-  float lastPaddleSec_ = 0.4f;       // 脚 1 本の一掻きの長さ（秒）
-  float lastPaddleLegDelay_ = 0.06f; // 掻く順で、1 本ごとに遅れる時間（秒）
-  float lastPaddleStrength_ = 0.6f;  // 大きさ（掻く振れ幅に対する割合）
-  // 脚ごとの大きさの割合（左前・右前・左後・右後）
-  std::array<float, 4> lastPaddleLegWeights_ = {1.0f, 0.4f, 0.7f, 1.0f};
 
   //---- 頭 ----
-  // もがく間（掻き始めて強さが 1 になるまでに強め、畳まれる間に戻す）、頭を体の揺れについていかせる
+  // もがく間（掻き始めて強さが 1 になるまでに強める）、頭を体の揺れについていかせる
   float headFollow_ = 0.5f;          // 頭を体についていかせる割合（翼の Gesture::headFollow）
   float struggleFaceUpScale_ = 0.5f; // 顔を空へ向ける割合（Gesture::faceUp）に掛ける値
+  // 抜ける時刻に、空へ向けるのをやめて頭を体に任せ、首を一度だけがくっと下げて少し跳ね返す
+  float releaseHeadSec_ = 0.1f;       // faceUp を 0・headFollow を 1 へ移す時間（秒）
+  float releaseHeadDrop_ = 25.0f;     // 首を下げる角度（度。首全体の合計）
+  float releaseHeadDropSec_ = 0.1f;   // 抜ける時刻から、下げきるまでの時間（秒）
+  float releaseHeadBackTime_ = 0.35f; // 抜ける時刻から、跳ね返りきるまでの時間（秒）
+  float releaseHeadRest_ = 0.6f;      // 跳ね返ったあとに残す、下げた角度の割合
+
+  //---- 風・ぐらつき（抜けたあと） ----
+  float windRiseSec_ = 0.8f;    // 抜ける時刻から、風を受ける強さが加速しながら 1 になるまでの時間（秒）
+  float wobbleRoll_ = 0.07f;    // 風の強さ 1 のときの、左右のぐらつきの角度（ラジアン）
+  float wobbleYaw_ = 0.05f;     // 風の強さ 1 のときの、ひねりのぐらつきの角度（ラジアン）
 
   //---- カメラ（オフセットはドラゴンからの右・上・前）----
   float sideMoveStartTime_ = 0.1f; // 横へ回り込み始める時刻（秒）
   float sideMoveSec_ = 0.45f;      // 横へ回り込む時間（秒）
   Vector3 sideCameraOffset_ = {7.0f, 1.0f, 1.5f};
   Vector3 sideLookOffset_ = {0.0f, 0.3f, 0.5f};
-  Vector3 pullCameraOffset_ = {3.0f, 14.0f, -3.0f}; // 引き始めたときのドラゴンの位置から
-  float pullSec_ = 0.8f;       // 上へ引ききるまでの時間（秒）
+  Vector3 pullCameraOffset_ = {6.0f, 20.0f, 0.0f}; // 見送るときのカメラの位置（カメラが止まった所から）
+  float pullSec_ = 1.0f;       // 見送るときのカメラの位置へ移りきるまでの時間（秒）
+  float pullBrakeSec_ = 0.3f;  // 見送り始めてから、カメラが落ちるのをやめるまでの時間（秒）
+  float cameraLagSec_ = 0.08f;     // 抜けたあと、カメラが落ちる道筋を追う遅れ（動きの時間、秒）
+  float cameraLagRiseSec_ = 0.5f;  // 抜ける時刻から、遅れが cameraLagSec_ になるまでの時間（秒）
   float hitShake_ = 0.3f;      // 被弾の瞬間のカメラの揺れの大きさ
   float hitShakeSec_ = 0.3f;   // 揺れが収まるまでの時間（秒）
 };

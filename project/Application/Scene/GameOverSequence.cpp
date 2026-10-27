@@ -27,21 +27,26 @@ const char *const kBeatCountKey = "beatCount";
 const float kFrameSec = 1.0f / 60.0f;
 // 真上
 const Vector3 kWorldUp = {0.0f, 1.0f, 0.0f};
+// 抜けたあとのぐらつきの 1秒あたりの回数と、揺れの位置（IrregularWave の offset、ラジアン）
+const float kWobbleRollFrequency = 0.7f;
+const float kWobbleYawFrequency = 0.5f;
+const float kWobbleRollOffset = 0.0f;
+const float kWobbleYawOffset = 1.0f;
 // UV は画像全体をそのまま使う
 const Transform kUvTransform = {
     {1.0f, 1.0f, 1.0f}, {0.0f, 0.0f, 0.0f}, {0.0f, 0.0f, 0.0f}};
 
 /// <summary>
 /// 「GAME OVER」のカードの時刻と置き場所（時刻は被弾からの秒）
-/// 翼が畳まれきった所で見下ろしに出て、黒い幕が下りたあとも黒の上に出たまま読ませる
+/// ドラゴンが雲海へ沈む頃に出て、黒い幕が下りたあとも黒の上に出たまま読ませる
 /// 縦の位置は、雲海へ沈むドラゴン（画面の高さの 0.45〜0.5）より上
 /// </summary>
 CaptionCard::Settings MakeGameOverCardSettings() {
   CaptionCard::Settings settings;
   settings.upperPath = "resources/UI/GameOver/gameover_title.png";
   settings.lowerPath = "resources/UI/GameOver/gameover_result.png";
-  settings.cardInTime = 2.6f;
-  settings.cardOutTime = 5.4f;
+  settings.cardInTime = 3.1f;
+  settings.cardOutTime = 5.9f;
   settings.lineY = 240.0f;
   settings.lineWidth = 590.0f;
   settings.upperY = 186.0f;
@@ -123,6 +128,8 @@ void GameOverSequence::VisitConfigValues(
   visit("slowSec", slowSec_);
   visit("slowScale", slowScale_);
   visit("slowRecoverSec", slowRecoverSec_);
+  visit("releaseTime", releaseTime_);
+  visit("releaseHoldSec", releaseHoldSec_);
   visit("limpStartTime", limpStartTime_);
   visit("limpEndTime", limpEndTime_);
   visit("pullStartTime", pullStartTime_);
@@ -145,6 +152,8 @@ void GameOverSequence::VisitConfigValues(
   visit("limpRoll", limpRoll_);
   visit("hitPitch", hitPitch_);
   visit("limpPitch", limpPitch_);
+  visit("bodyFallDelay", bodyFallDelay_);
+  visit("bodyFallSec", bodyFallSec_);
   visit("sinkPitch", sinkPitch_);
   visit("struggleRoll", struggleRoll_);
   visit("liftSpeed", liftSpeed_);
@@ -187,21 +196,26 @@ void GameOverSequence::VisitConfigValues(
   visit("paddleRiseSec", paddleRiseSec_);
   visit("paddleTiredTime", paddleTiredTime_);
   visit("paddleTiredStrength", paddleTiredStrength_);
-  visit("paddleStopTime", paddleStopTime_);
+  visit("paddleSurgeTime", paddleSurgeTime_);
+  visit("paddleSurgeSec", paddleSurgeSec_);
+  visit("paddleSurgeStrength", paddleSurgeStrength_);
+  visit("paddleReleaseSec", paddleReleaseSec_);
   visit("paddleStartSec", paddleStartSec_);
   visit("paddleEndSec", paddleEndSec_);
-  visit("lastPaddleTime", lastPaddleTime_);
-  visit("lastPaddleSec", lastPaddleSec_);
-  visit("lastPaddleLegDelay", lastPaddleLegDelay_);
-  visit("lastPaddleStrength", lastPaddleStrength_);
-  for (size_t leg = 0; leg < lastPaddleLegWeights_.size(); ++leg) {
-    visit("lastPaddleLegWeight" + std::to_string(leg + 1),
-          lastPaddleLegWeights_[leg]);
-  }
 
   // 頭
   visit("headFollow", headFollow_);
   visit("struggleFaceUpScale", struggleFaceUpScale_);
+  visit("releaseHeadSec", releaseHeadSec_);
+  visit("releaseHeadDrop", releaseHeadDrop_);
+  visit("releaseHeadDropSec", releaseHeadDropSec_);
+  visit("releaseHeadBackTime", releaseHeadBackTime_);
+  visit("releaseHeadRest", releaseHeadRest_);
+
+  // 風・ぐらつき
+  visit("windRiseSec", windRiseSec_);
+  visit("wobbleRoll", wobbleRoll_);
+  visit("wobbleYaw", wobbleYaw_);
 
   // カメラ
   visit("sideMoveStartTime", sideMoveStartTime_);
@@ -215,6 +229,9 @@ void GameOverSequence::VisitConfigValues(
   visitVector("sideLookOffset", sideLookOffset_);
   visitVector("pullCameraOffset", pullCameraOffset_);
   visit("pullSec", pullSec_);
+  visit("pullBrakeSec", pullBrakeSec_);
+  visit("cameraLagSec", cameraLagSec_);
+  visit("cameraLagRiseSec", cameraLagRiseSec_);
   visit("hitShake", hitShake_);
   visit("hitShakeSec", hitShakeSec_);
 }
@@ -432,6 +449,16 @@ Vector3 GameOverSequence::DragonPositionAt(float motionTime) const {
          kWorldUp * FallDistance(motionTime);
 }
 
+float GameOverSequence::CameraMotionTimeAt(float time, float motionTime) const {
+  return motionTime -
+         cameraLagSec_ *
+             EaseInOutQuad(Progress(time, releaseTime_, cameraLagRiseSec_));
+}
+
+float GameOverSequence::WindAt(float time) const {
+  return EaseInQuad(Progress(time, releaseTime_, windRiseSec_));
+}
+
 float GameOverSequence::FallDistance(float motionTime) const {
   return fallSpeed_ * UnitFallDistance(motionTime, fallAccelSec_);
 }
@@ -445,22 +472,32 @@ void GameOverSequence::UpdateDragon() {
       EaseOutCubic(Progress(motionTime_, 0.0f, hitPushSec_));
 
   //===========================
-  // 向き：弾かれて傾き機首が上がる → もがく間に力が抜けて機首が下がる → 雲へ頭から沈む
+  // 向き：弾かれて傾き機首が上がる → もがく間は機首を上げたまま
+  // → 抜けて少し遅れてから、機首がゆっくり落ち始めて加速する → limpPitch_ からはその速さのまま緩めて sinkPitch_ で止まる
   //===========================
   const float struggleStartTime = beats_.front().time;
   const float struggleToLimp = EaseInOutQuad(
       Progress(timer_, struggleStartTime, limpEndTime_ - struggleStartTime));
-  const float limpToSink = EaseInOutQuad(
-      Progress(timer_, limpEndTime_, sinkTime_ - limpEndTime_));
+  const float fallEnd = releaseTime_ + bodyFallDelay_ + bodyFallSec_;
 
   float roll = hitRoll_ * hitPush;
   float pitch = Lerp(startRot_.x, hitPitch_, hitPush);
   if (timer_ >= struggleStartTime) {
     roll = Lerp(hitRoll_, limpRoll_, struggleToLimp);
-    pitch = Lerp(hitPitch_, limpPitch_, struggleToLimp);
+    pitch = Lerp(hitPitch_, limpPitch_, BodyFallAt(timer_));
   }
-  if (timer_ >= limpEndTime_) {
-    pitch = Lerp(limpPitch_, sinkPitch_, limpToSink);
+  if (timer_ >= fallEnd) {
+    // 倒れる曲線（t²）の終わりの速さは 2 × 角度 / 時間、緩める曲線（EaseOutQuad）の始めの速さも 2 × 角度 / 時間
+    // 両方の速さがそろうように、緩める時間を角度の比で決める
+    const float kMinFallAngle = 1.0e-3f; // これより小さい倒れ方は、緩めずに止める（ラジアン）
+    const float fallAngle = limpPitch_ - hitPitch_;
+    const float settleSec =
+        std::abs(fallAngle) > kMinFallAngle
+            ? (std::max)(bodyFallSec_ * (sinkPitch_ - limpPitch_) / fallAngle,
+                         0.0f)
+            : 0.0f;
+    pitch = Lerp(limpPitch_, sinkPitch_,
+                 EaseOutQuad(Progress(timer_, fallEnd, settleSec)));
   }
 
   // もがく間：左右の打ち下ろしの差で体が傾き、打ち下ろしで機首が上がる。力が抜けると止まる
@@ -472,7 +509,14 @@ void GameOverSequence::UpdateDragon() {
     pitch -= heavePitch_ * CurrentBeat().lift * push * active;
   }
 
-  dragonRot_ = {pitch, startRot_.y, startRot_.z + roll};
+  // 抜けたあと：風にあおられて、左右とひねりに小さく不規則にぐらつく
+  const float wind = WindAt(timer_);
+  roll += wobbleRoll_ * wind *
+          IrregularWave(timer_, kWobbleRollFrequency, kWobbleRollOffset);
+  const float yaw = wobbleYaw_ * wind *
+                    IrregularWave(timer_, kWobbleYawFrequency, kWobbleYawOffset);
+
+  dragonRot_ = {pitch, startRot_.y + yaw, startRot_.z + roll};
 }
 
 void GameOverSequence::RecordWingAngle(float left, float right) {
@@ -522,8 +566,8 @@ float GameOverSequence::RootAngleAt(bool isRight, float time) const {
   if (time < limpStartTime_) {
     return StruggleRootAngleAt(isRight, time);
   }
-  // 畳まれる：もがき終わった角度から、畳まれたときの角度へ
-  const float limp = EaseInOutQuad(
+  // 畳まれる：もがき終わった角度から、畳まれたときの角度へ（最初が速い）
+  const float limp = EaseOutQuad(
       Progress(time, limpStartTime_, limpEndTime_ - limpStartTime_));
   return Lerp(StruggleRootAngleAt(isRight, limpStartTime_), foldRootAngle_,
               limp);
@@ -561,7 +605,7 @@ void GameOverSequence::UpdateWing() {
   // 被弾 → 一打ちごとに折れ・振り回されが変わる → 畳まれて体の力が抜ける
   //===========================
   const StruggleBeat &beat = CurrentBeat();
-  const float limp = EaseInOutQuad(
+  const float limp = EaseOutQuad(
       Progress(timer_, limpStartTime_, limpEndTime_ - limpStartTime_));
   DragonWingAnimator::State struggle = hitWing_;
   if (timer_ >= beats_.front().time) {
@@ -571,23 +615,26 @@ void GameOverSequence::UpdateWing() {
   }
   wingState_ = LerpWing(struggle, limpWing_, limp);
   wingState_.response = struggleResponse_;
+  // 翼は畳まれても体を起こした姿勢は保ち、体が倒れるのに合わせて滑空の姿勢へ寝かせる
+  wingState_.hover = Lerp(struggle.hover, limpWing_.hover, BodyFallAt(timer_));
+  wingState_.foldToGlide = 0.0f;
 
-  // 顔は、被弾から最初の一打ちまでに空の方へ向け、体の傾きによらず沈みきるまで同じ向きに保つ
-  // 脚は空を掻いてから止まり、脚と尾は重さで垂れていく。最後の打ち下ろしで、垂れたまま脚が弱く一掻きする
+  // 顔は、被弾から最初の一打ちまでに空の方へ向け、体の傾きによらず抜ける時刻まで同じ向きに保つ
   // もがく間は、空へ向ける割合を弱め、頭を体の揺れについていかせる
+  // 抜ける時刻に、空へ向けるのをやめて頭を体に任せ、首をがくっと下げる。脚は掻くのをやめ、脚と尾は重さで垂れる
   gesture_ = {};
   const float headShake = HeadShakeAt(timer_);
+  const float headRelease = ReleaseAt(timer_, releaseHeadSec_);
   gesture_.faceUp = EaseOutQuad(Progress(timer_, 0.0f, beats_.front().time)) *
-                    Lerp(1.0f, struggleFaceUpScale_, headShake);
+                    Lerp(1.0f, struggleFaceUpScale_, headShake) *
+                    (1.0f - headRelease);
   gesture_.faceUpAngle = faceUpAngle_;
-  gesture_.headFollow = headFollow_ * headShake;
+  gesture_.headFollow = Lerp(headFollow_ * headShake, 1.0f, headRelease);
+  gesture_.headDrop = HeadDropAt(timer_);
   gesture_.hang = EaseOutQuad(Progress(timer_, hangStartTime_, hangSec_));
   gesture_.paddle = PaddleStrengthAt(timer_);
   gesture_.paddlePhase = PaddlePhaseAt(timer_);
-  for (size_t leg = 0; leg < gesture_.limpLegSwing.size(); ++leg) {
-    gesture_.limpLegSwing[leg] =
-        LastPaddleSwingAt(static_cast<int>(leg), timer_);
-  }
+  gesture_.wind = WindAt(timer_);
 
   // 打ち上げの間は指と首が震え、上げ始めと上げきりで 0、真ん中で一番強い。畳まれ始めたら弱めて 0 にする
   if (timer_ >= beats_.front().time) {
@@ -601,21 +648,26 @@ void GameOverSequence::UpdateWing() {
 }
 
 float GameOverSequence::PaddleStrengthAt(float time) const {
-  // 0 → 1 へ素早く上げ、paddleTiredStrength_ まで一定の割合で下げてから、0 へ止める
+  // 0 → 1 へ素早く上げ、始めは保ちながら paddleTiredStrength_ まで下げる
   const float riseEnd = paddleStartTime_ + paddleRiseSec_;
-  if (time < riseEnd) {
-    return EaseOutQuad(Progress(time, paddleStartTime_, paddleRiseSec_));
-  }
-  if (time < paddleTiredTime_) {
-    return Lerp(1.0f, paddleTiredStrength_,
-                Progress(time, riseEnd, paddleTiredTime_ - riseEnd));
-  }
-  return Lerp(paddleTiredStrength_, 0.0f,
-              EaseOutQuad(Progress(time, paddleTiredTime_,
-                                   paddleStopTime_ - paddleTiredTime_)));
+  float strength =
+      time < riseEnd
+          ? EaseOutQuad(Progress(time, paddleStartTime_, paddleRiseSec_))
+          : Lerp(1.0f, paddleTiredStrength_,
+                 EaseInQuad(Progress(time, riseEnd, paddleTiredTime_ - riseEnd)));
+  // 最後の打ち下ろしで paddleSurgeStrength_ へ上げ直し、抜ける時刻から 0 へ
+  strength = Lerp(strength, paddleSurgeStrength_,
+                  EaseOutQuad(Progress(time, paddleSurgeTime_, paddleSurgeSec_)));
+  return strength * (1.0f - ReleaseAt(time, paddleReleaseSec_));
 }
 
 float GameOverSequence::PaddlePhaseAt(float time) const {
+  // 溜めの間（抜ける時刻の releaseHoldSec_ 前から抜ける時刻まで）は周期を進めず、そのあとは溜めの分だけ遅らせる
+  const float holdStart = releaseTime_ - releaseHoldSec_;
+  if (releaseHoldSec_ > 0.0f && time > holdStart) {
+    time = time < releaseTime_ ? holdStart : time - releaseHoldSec_;
+  }
+
   // 一掻きの長さ: 強さが 1 になるまでは paddleStartSec_、そこから下がりきるまでに一定の割合で paddleEndSec_ へ延ばし、そのあとはそのまま
   // 周期の数は、経過時間を一掻きの長さで割ったものを足し合わせる
   const float kMinPaddleSec = 0.05f; // 一掻きの長さの下限（秒）
@@ -644,34 +696,36 @@ float GameOverSequence::PaddlePhaseAt(float time) const {
   return cycles;
 }
 
-float GameOverSequence::LastPaddleSwingAt(int leg, float time) const {
-  // 掻く順（左前 → 右後 → 右前 → 左後）での、各脚の順番（左前・右前・左後・右後の順に並べたもの）
-  const int kLegOrder[] = {0, 2, 3, 1};
-  const float start = lastPaddleTime_ + lastPaddleLegDelay_ * kLegOrder[leg];
-  const float progress = Progress(time, start, lastPaddleSec_);
-  if (progress <= 0.0f || progress >= 1.0f) {
-    return 0.0f;
-  }
-  // 一周期の sin で、前へ出して（負）後ろへ引き（正）、垂れた位置に戻す
-  return -std::sin(2.0f * std::numbers::pi_v<float> * progress) *
-         lastPaddleStrength_ * lastPaddleLegWeights_[leg];
+float GameOverSequence::HeadShakeAt(float time) const {
+  // 掻き始めから強さが 1 になるまでに 0 → 1
+  return EaseOutQuad(Progress(time, paddleStartTime_, paddleRiseSec_));
 }
 
-float GameOverSequence::HeadShakeAt(float time) const {
-  // 掻き始めから強さが 1 になるまでに 0 → 1、畳まれる間に 1 → 0
-  const float rise =
-      EaseOutQuad(Progress(time, paddleStartTime_, paddleRiseSec_));
-  const float fall = EaseInOutQuad(
-      Progress(time, limpStartTime_, limpEndTime_ - limpStartTime_));
-  return rise * (1.0f - fall);
+float GameOverSequence::ReleaseAt(float time, float releaseSec) const {
+  return EaseOutQuad(Progress(time, releaseTime_, releaseSec));
+}
+
+float GameOverSequence::BodyFallAt(float time) const {
+  return EaseInQuad(
+      Progress(time, releaseTime_ + bodyFallDelay_, bodyFallSec_));
+}
+
+float GameOverSequence::HeadDropAt(float time) const {
+  // 抜ける時刻から releaseHeadDropSec_ で下げきり、releaseHeadBackTime_ までに releaseHeadRest_ の割合まで跳ね返る
+  const float drop = ReleaseAt(time, releaseHeadDropSec_);
+  const float backStart = releaseTime_ + releaseHeadDropSec_;
+  const float back = EaseInOutQuad(
+      Progress(time, backStart, releaseHeadBackTime_ - releaseHeadDropSec_));
+  return releaseHeadDrop_ * drop * Lerp(1.0f, releaseHeadRest_, back);
 }
 
 void GameOverSequence::UpdateCamera() {
   //===========================
   // レールカメラの位置から、ドラゴンの横へ回り込み、一緒に落ちる
   //===========================
-  // 落ちる道筋を追い、打ち下ろしで浮いた高さは追わない
-  const Vector3 pathPos = DragonPositionAt(motionTime_);
+  // 落ちる道筋を追い、打ち下ろしで浮いた高さは追わない。抜けたあとは道筋を遅れて追い、ドラゴンが画面の中で下へずれる
+  const float cameraMotionTime = CameraMotionTimeAt(timer_, motionTime_);
+  const Vector3 pathPos = DragonPositionAt(cameraMotionTime);
   const Vector3 sideCameraPos = ToWorld(pathPos, sideCameraOffset_);
   const Vector3 sideLookPos = ToWorld(pathPos, sideLookOffset_);
   const float sideEase =
@@ -684,21 +738,26 @@ void GameOverSequence::UpdateCamera() {
   Vector3 lookPos = Lerp(railLookPos_, sideLookPos, lookEase);
 
   //===========================
-  // 上へ引いて見下ろす（引き始めた位置で落ちるのをやめ、ドラゴンだけが雲海へ小さくなる）
+  // 見送る：カメラは落ちるのを pullBrakeSec_ で緩めて止まり、pullSec_ かけて上がりながら、落ちていくドラゴンへ下を向く
   //===========================
   if (timer_ >= pullStartTime_) {
-    // 引き始めた時刻のドラゴンの横（回り込みは終わっている）から、そのときのドラゴンの上へ
-    const Vector3 pullAnchorPos =
-        DragonPositionAt(MotionTimeAt(pullStartTime_));
-    const Vector3 pullStartCameraPos =
-        ToWorld(pullAnchorPos, sideCameraOffset_);
+    // 追う速さを 1 から 0 へ一定の割合で下げるので、追う道筋の動きの時間は pullBrakeSec_ ×（b − b² / 2）だけ進む
+    const float brake = Progress(timer_, pullStartTime_, pullBrakeSec_);
+    const float anchorMotionTime =
+        CameraMotionTimeAt(pullStartTime_, MotionTimeAt(pullStartTime_)) +
+        pullBrakeSec_ * (brake - 0.5f * brake * brake);
     const float pullEase =
-        EaseOutCubic(Progress(timer_, pullStartTime_, pullSec_));
-    cameraPos = Lerp(pullStartCameraPos,
-                     ToWorld(pullAnchorPos, pullCameraOffset_), pullEase);
+        EaseInOutCubic(Progress(timer_, pullStartTime_, pullSec_));
+    const Vector3 pullOffset =
+        Lerp(sideCameraOffset_, pullCameraOffset_, pullEase);
+    cameraPos = ToWorld(DragonPositionAt(anchorMotionTime), pullOffset);
+    // 見る点は、横から見ていたずらしを外しながら、浮いた高さを含むドラゴンへ移す
     // 沈みきったあとは、沈みきった所を見たまま止める（雲海の下へ落ち続けるのを追わない）
-    const float lookMotionTime = (std::min)(motionTime_, MotionTimeAt(sinkTime_));
-    lookPos = DragonPositionAt(lookMotionTime) + kWorldUp * lift_;
+    const float lookMotionTime =
+        (std::min)(cameraMotionTime, MotionTimeAt(sinkTime_));
+    lookPos = ToWorld(DragonPositionAt(lookMotionTime),
+                      sideLookOffset_ * (1.0f - pullEase)) +
+              kWorldUp * (lift_ * pullEase);
   }
 
   // 被弾の瞬間の揺れ：3つの周波数の sin でずらし、残り時間の2乗で弱める
@@ -738,6 +797,8 @@ void GameOverSequence::DrawImGui() {
   ImGui::DragFloat("Slow Sec", &slowSec_, 0.01f, 0.0f, 2.0f);
   ImGui::SliderFloat("Slow Scale", &slowScale_, 0.05f, 1.0f);
   ImGui::DragFloat("Slow Recover Sec", &slowRecoverSec_, 0.01f, 0.0f, 1.0f);
+  ImGui::DragFloat("Release Time", &releaseTime_, 0.01f, 0.0f, 5.0f);
+  ImGui::DragFloat("Release Hold Sec", &releaseHoldSec_, 0.01f, 0.0f, 1.0f);
   ImGui::DragFloat("Limp Start", &limpStartTime_, 0.01f, 0.0f, 5.0f);
   ImGui::DragFloat("Limp End", &limpEndTime_, 0.01f, 0.0f, 5.0f);
   ImGui::DragFloat("Pull Start", &pullStartTime_, 0.01f, 0.0f, 5.0f);
@@ -758,6 +819,8 @@ void GameOverSequence::DrawImGui() {
   ImGui::SliderAngle("Limp Roll", &limpRoll_, -90.0f, 90.0f);
   ImGui::SliderAngle("Hit Pitch", &hitPitch_, -90.0f, 90.0f);
   ImGui::SliderAngle("Limp Pitch", &limpPitch_, -90.0f, 90.0f);
+  ImGui::DragFloat("Body Fall Delay", &bodyFallDelay_, 0.01f, 0.0f, 1.0f);
+  ImGui::DragFloat("Body Fall Sec", &bodyFallSec_, 0.01f, 0.05f, 2.0f);
   ImGui::SliderAngle("Sink Pitch", &sinkPitch_, -90.0f, 90.0f);
   ImGui::SliderAngle("Struggle Roll", &struggleRoll_, 0.0f, 60.0f);
   ImGui::DragFloat("Lift Speed", &liftSpeed_, 0.1f, 0.0f, 50.0f);
@@ -801,29 +864,38 @@ void GameOverSequence::DrawImGui() {
   ImGui::SliderFloat("Head Follow", &headFollow_, 0.0f, 1.0f);
   ImGui::SliderFloat("Struggle Face Up Scale", &struggleFaceUpScale_, 0.0f,
                      1.0f);
+  // 抜ける時刻からの頭（秒・度）
+  ImGui::Text("head drop %.1f", gesture_.headDrop);
+  ImGui::DragFloat("Release Head Sec", &releaseHeadSec_, 0.01f, 0.0f, 1.0f);
+  ImGui::DragFloat("Release Head Drop", &releaseHeadDrop_, 0.5f, -60.0f, 60.0f);
+  ImGui::DragFloat("Release Head Drop Sec", &releaseHeadDropSec_, 0.01f, 0.0f,
+                   1.0f);
+  ImGui::DragFloat("Release Head Back Time", &releaseHeadBackTime_, 0.01f,
+                   0.0f, 2.0f);
+  ImGui::SliderFloat("Release Head Rest", &releaseHeadRest_, 0.0f, 1.0f);
+  // 抜けたあとに風を受ける強さと、体のぐらつき（角度はラジアン）
+  ImGui::Text("wind %.2f", gesture_.wind);
+  ImGui::DragFloat("Wind Rise Sec", &windRiseSec_, 0.01f, 0.0f, 3.0f);
+  ImGui::SliderAngle("Wobble Roll", &wobbleRoll_, 0.0f, 30.0f);
+  ImGui::SliderAngle("Wobble Yaw", &wobbleYaw_, 0.0f, 30.0f);
   ImGui::DragFloat("Hang Start", &hangStartTime_, 0.01f, 0.0f, 3.0f);
   ImGui::DragFloat("Hang Sec", &hangSec_, 0.01f, 0.0f, 3.0f);
-  // 脚で掻く強さ・一掻きの長さと、最後の一掻き（時刻は被弾からの秒）
-  ImGui::Text("leg paddle %.2f (phase %.2f) / last %.2f %.2f %.2f %.2f",
-              gesture_.paddle, gesture_.paddlePhase, gesture_.limpLegSwing[0],
-              gesture_.limpLegSwing[1], gesture_.limpLegSwing[2],
-              gesture_.limpLegSwing[3]);
+  // 脚で掻く強さ・一掻きの長さ（時刻は被弾からの秒）
+  ImGui::Text("leg paddle %.2f (phase %.2f)", gesture_.paddle,
+              gesture_.paddlePhase);
   ImGui::DragFloat("Paddle Start", &paddleStartTime_, 0.01f, 0.0f, 3.0f);
   ImGui::DragFloat("Paddle Rise Sec", &paddleRiseSec_, 0.01f, 0.0f, 1.0f);
   ImGui::DragFloat("Paddle Tired Time", &paddleTiredTime_, 0.01f, 0.0f, 3.0f);
   ImGui::SliderFloat("Paddle Tired Strength", &paddleTiredStrength_, 0.0f,
                      1.0f);
-  ImGui::DragFloat("Paddle Stop Time", &paddleStopTime_, 0.01f, 0.0f, 3.0f);
+  ImGui::DragFloat("Paddle Surge Time", &paddleSurgeTime_, 0.01f, 0.0f, 3.0f);
+  ImGui::DragFloat("Paddle Surge Sec", &paddleSurgeSec_, 0.01f, 0.0f, 1.0f);
+  ImGui::SliderFloat("Paddle Surge Strength", &paddleSurgeStrength_, 0.0f,
+                     1.0f);
+  ImGui::DragFloat("Paddle Release Sec", &paddleReleaseSec_, 0.01f, 0.0f,
+                   1.0f);
   ImGui::DragFloat2("Paddle Sec Start / End", &paddleStartSec_, 0.01f, 0.05f,
                     2.0f);
-  ImGui::DragFloat("Last Paddle Time", &lastPaddleTime_, 0.01f, 0.0f, 3.0f);
-  ImGui::DragFloat("Last Paddle Sec", &lastPaddleSec_, 0.01f, 0.05f, 2.0f);
-  ImGui::DragFloat("Last Paddle Leg Delay", &lastPaddleLegDelay_, 0.005f, 0.0f,
-                   0.5f);
-  ImGui::SliderFloat("Last Paddle Strength", &lastPaddleStrength_, 0.0f, 1.0f);
-  // 左前・右前・左後・右後
-  ImGui::SliderFloat4("Last Paddle Legs FL/FR/HL/HR",
-                      lastPaddleLegWeights_.data(), 0.0f, 1.0f);
   ImGui::SliderFloat("Neck Tremble", &neckTrembleRatio_, 0.0f, 1.0f);
   // 畳み具合と、羽ばたきの姿勢の割合（0: 滑空 〜 1: 体を起こす）
   ImGui::DragFloat("Hit Fold", &hitWing_.fold, 0.01f, 0.0f, 1.0f);
@@ -840,6 +912,10 @@ void GameOverSequence::DrawImGui() {
   ImGui::DragFloat3("Side Look Offset", &sideLookOffset_.x, 0.05f);
   ImGui::DragFloat3("Pull Camera Offset", &pullCameraOffset_.x, 0.05f);
   ImGui::DragFloat("Pull Sec", &pullSec_, 0.01f, 0.05f, 3.0f);
+  ImGui::DragFloat("Pull Brake Sec", &pullBrakeSec_, 0.01f, 0.0f, 2.0f);
+  ImGui::DragFloat("Camera Lag Sec", &cameraLagSec_, 0.005f, 0.0f, 0.5f);
+  ImGui::DragFloat("Camera Lag Rise Sec", &cameraLagRiseSec_, 0.01f, 0.0f,
+                   2.0f);
   ImGui::DragFloat("Hit Shake", &hitShake_, 0.01f, 0.0f, 2.0f);
   ImGui::DragFloat("Hit Shake Sec", &hitShakeSec_, 0.01f, 0.01f, 2.0f);
   ImGui::SeparatorText("Game Over Card");

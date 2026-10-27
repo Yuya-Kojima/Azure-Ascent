@@ -22,6 +22,7 @@ public:
     float stiffness = 3.0f;      // 姿勢どおりの向きへ引き戻す強さ（1/秒）
     float drag = 0.15f;          // 1/60 秒あたりに失う速さの割合（0: 減らない 〜 1: 止まる）
     float gravity = 0.0f;        // 下向きに引く強さ（1/秒）
+    float airDrag = 0.0f;        // 根元が動く向きと逆へ押す強さ（1/秒）。空気を受けて、動く向きの後ろへなびく
     float maxAngle = 0.61f;      // 姿勢から曲がる最大の角度（ラジアン）
     float resetDistance = 0.5f;  // 根元がこれ以上（モデルの単位）一度に動いたら置き直す
   };

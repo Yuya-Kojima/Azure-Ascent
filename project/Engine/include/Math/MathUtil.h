@@ -319,6 +319,20 @@ inline float EaseOutQuint(float t) {
 }
 
 /// <summary>
+/// 不規則な揺れ（-1〜1）。時刻 time の、1秒あたり frequency 回の波に、その 1.73 倍の速さの波を重ねる
+/// offset で波の位置をずらす（同じ offset なら同じ揺れ）
+/// </summary>
+inline float IrregularWave(float time, float frequency, float offset) {
+  const float kSecondRatio = 1.73f;  // 重ねる波の速さの倍率
+  const float kSecondWeight = 0.4f;  // 重ねる波の割合
+  const float kSecondOffset = 2.3f;  // 重ねる波の位置のずらし方の倍率
+  const float phase = 2.0f * 3.14159265f * frequency * time;
+  return (1.0f - kSecondWeight) * std::sin(phase + offset) +
+         kSecondWeight *
+             std::sin(kSecondRatio * phase + kSecondOffset * offset);
+}
+
+/// <summary>
 /// RGBをHSVに変換する
 /// </summary>
 /// <param name="rgb">RGB (0.0f～1.0f)</param>
