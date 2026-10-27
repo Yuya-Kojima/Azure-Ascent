@@ -1,8 +1,10 @@
 #pragma once
+#include "Actor/DragonModel.h"
 #include "Actor/DragonWingAnimator.h"
 #include "Math/MathUtil.h"
 #include <array>
 #include <memory>
+#include <string>
 
 class Input;
 class Sprite;
@@ -10,8 +12,9 @@ class SpriteRenderer;
 
 /// <summary>
 /// ゲームオーバーで拠点へ戻ったときの演出と UI
-/// 雲が晴れると拠点の真上の空 → 伏せて休むドラゴンの横へ降りていく → 横から見たまま首を持ち上げて空を見上げる
-/// → カメラは背中を回り込んで斜め後ろの低い位置から見上げる → 到達度と「再出撃」「拠点に残る」を出す
+/// 雲が晴れると拠点の真上の空 → 伏せて休むドラゴンの右斜め後ろ・肩より少し高い所へ降りる
+/// → 首を持ち上げるのに合わせてカメラも少し下がり、一緒に雲の天井を見上げる
+/// → 見上げたあと模様の光がかすかに戻る（傷は暗いまま） → 到達度と「再出撃」「拠点に残る」を出す
 /// 位置はすべて、拠点のドラゴンの位置と向き（水平な右・上・前）を基準に求める
 /// </summary>
 class StageSelectReturn {
@@ -70,6 +73,7 @@ public:
   const Vector3 &GetDragonRotation() const { return dragonRot_; }
   const DragonWingAnimator::State &GetWingState() const { return wingState_; }
   const DragonWingAnimator::Gesture &GetGesture() const { return gesture_; }
+  const DragonModel::Glow &GetGlow() const { return glow_; }
   const Vector3 &GetCameraPosition() const { return cameraPos_; }
   const Vector3 &GetCameraRotation() const { return cameraRot_; }
 
@@ -110,7 +114,13 @@ private:
   // 今の時刻での、節目を通る曲線の上のオフセット（offset は節目のどのオフセットを使うか）
   Vector3 SampleCameraKeys(Vector3 CameraKey::*offset) const;
 
+  // 調整値をキーと一緒に1つずつ visitor へ渡す（読み書きで同じ並びを使う）
+  template <class Visitor> void VisitConfigValues(Visitor &&visit);
+  void LoadConfig();
+  void SaveConfig();
+
   void UpdateWake();
+  void UpdateGlow();
   void UpdateCamera();
   void UpdateMenu(Input *input);
   void UpdateLeave();
@@ -138,6 +148,7 @@ private:
   Vector3 dragonRot_{};
   DragonWingAnimator::State wingState_;
   DragonWingAnimator::Gesture gesture_;
+  DragonModel::Glow glow_;
   Vector3 cameraPos_{};
   Vector3 cameraRot_{};
   // 選んだ瞬間の姿勢の重みと翼とカメラ（ここから消す・戻す）
@@ -149,40 +160,43 @@ private:
   //---- 時間 ----
   float lookUpTime_ = 2.5f;   // 首を持ち上げ始める時刻（秒）
   float lookUpSec_ = 1.2f;    // 首を持ち上げきるまでの時間（秒）。そのあとは見上げたまま止まる
-  float menuTime_ = 5.2f;     // UI を出し始める時刻（秒）
+  float menuTime_ = 3.7f;     // UI を出し始める時刻（秒）。見上げきった所
   float skipLockSec_ = 0.3f;  // 始めてから飛ばせるようになるまでの時間（秒）
   float menuFadeSec_ = 0.6f;  // UI が現れきるまでの時間（秒）
   float barFillSec_ = 0.8f;   // 到達度のバーが伸びきるまでの時間（UI が現れてから、秒）
   float leaveSec_ = 0.3f;     // 選んだあと、UI が消え、伏せて見上げる姿勢から立ち姿勢へ戻るまでの時間（秒）
   float stayCameraSec_ = 1.2f; // 拠点に残るとき、カメラがいつもの位置へ戻るまでの時間（秒）
+  float glowReturnTime_ = 3.4f; // 模様の光が戻り始める時刻（秒）
+  float glowReturnSec_ = 0.6f;  // 模様の光が戻りきるまでの時間（秒）
 
   //---- ドラゴン ----
   // 伏せの姿勢で沈める深さ。伏せると腹の下端がモデルの単位で 0.134 上がるので、その分 × 大きさ 1.7
   float lieDepth_ = 0.23f;
   float chestRaise_ = 0.2f; // 見上げきったときに胸を起こす量（0: 首と頭だけ 〜 1: 前脚で胸を起こす）
   float wingMotion_ = 0.3f; // 見上げきったあとの翼の動き（0: 動かない 〜 1: 地面の上で小さく打つ）
+  float stirSec_ = 1.5f;    // 見上げきってから、翼の動きが強まりきるまでの時間（秒）
   // 羽ばたき（強さ, 1秒あたりの回数, 畳み具合, 左右差, 姿勢, 羽ばたきの姿勢の割合）
   // 伏せの姿勢の翼（地面へ垂らす）をそのまま使うので、畳まない
   DragonWingAnimator::State lieWing_ = {0.0f, 0.4f, 0.0f, 0.0f, 0.0f, 0.0f};
   DragonWingAnimator::State stirWing_ = {0.08f, 0.5f, 0.0f, 0.0f, 0.0f, 0.0f}; // 翼の動きが 1 のとき（地面の上で小さく動く）
   DragonWingAnimator::State standWing_ = {0.05f, 0.4f, 0.5f, 0.0f, 0.0f, 0.0f}; // 選んだあとの立ち姿勢
+  // 戻りきった模様の光の強さ（ゲーム中の 0.25 より弱い）。傷は開いたまま光らない
+  float returnPattern_ = 0.1f;
 
   //---- カメラ ----
   // 最初の節目を出るときの速さ（最初の区間の平均の速さに対する倍率。3 を超えると行き過ぎることがある）
-  float descentStartSpeed_ = 2.0f;
+  float descentStartSpeed_ = 1.5f;
   bool isCameraMirrored_ = false; // カメラの節目の右を左に入れ替える（ドラゴンの左側から撮る）
-  std::array<CameraKey, 5> cameraKeys_ = {{
-      {0.0f, {2.0f, 28.0f, -3.0f}, {0.0f, 0.0f, 0.0f}},  // 拠点の真上の空
-      {1.5f, {3.2f, 0.8f, 0.4f}, {0.0f, 0.2f, 0.2f}},    // 伏せたドラゴンの横の低い位置
-      {3.7f, {3.0f, 0.5f, 0.9f}, {0.0f, 0.55f, 0.5f}},   // 横のまま少し下がり、持ち上がる首を見る
-      {4.0f, {2.95f, 0.5f, 0.8f}, {0.0f, 0.6f, 0.5f}},   // 見上げきった横顔
-      {5.2f, {-1.4f, 0.25f, -5.0f}, {0.85f, 1.66f, 4.74f}}, // 背中を回り込んだ左斜め後ろの低い位置から、頭と空を 8 度見上げる（体と翼まで入る）
+  std::array<CameraKey, 3> cameraKeys_ = {{
+      {0.6f, {2.0f, 28.0f, -3.0f}, {0.0f, 0.0f, 0.0f}},     // 拠点の真上の空
+      {2.5f, {2.4f, 1.6f, -3.4f}, {0.0f, 0.35f, 0.6f}},     // 右斜め後ろ・肩より少し高い所から、伏せた体を見下ろす
+      {3.7f, {2.1f, 0.6f, -3.6f}, {-0.66f, 1.32f, 4.94f}},  // 肩の高さへ下がり、5 度見上げる（ドラゴンは画面の左下、視線の先の右上が雲の天井）
   }};
 
   //---- UI（画面の位置は 1280x720 の px）----
-  float menuLeft_ = 110.0f;      // UI の左端
+  float menuLeft_ = 800.0f;      // UI の左端（画面の右下。左下はドラゴン）
   float labelY_ = 430.0f;        // 「到達度」の縦の中心
-  float digitsLeft_ = 330.0f;    // 数字の左端
+  float digitsLeft_ = 1020.0f;   // 数字の左端
   float digitAdvance_ = 30.0f;   // 数字1文字ぶん進める幅
   float barY_ = 478.0f;          // バーの縦の中心
   float barWidth_ = 360.0f;

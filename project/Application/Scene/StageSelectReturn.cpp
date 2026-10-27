@@ -1,9 +1,13 @@
 #include "StageSelectReturn.h"
+#include "../../externals/nlohmann/json.hpp"
 #include "Input/Input.h"
 #include "Input/InputKeyState.h"
 #include "Sprite/Sprite.h"
 #include <algorithm>
 #include <cmath>
+#include <filesystem>
+#include <fstream>
+#include <iomanip>
 #include <string>
 
 #ifdef USE_IMGUI
@@ -11,6 +15,10 @@
 #endif
 
 namespace {
+const char *const kConfigDirectory = "resources/config";
+const char *const kConfigPath = "resources/config/GameOverReturnConfig.json";
+// カメラの節目を左右入れ替えるかを書くキー
+const char *const kMirrorKey = "camera.mirrored";
 // 1フレームの時間（秒）
 const float kFrameSec = 1.0f / 60.0f;
 // 真上
@@ -94,7 +102,86 @@ StageSelectReturn::StageSelectReturn() = default;
 
 StageSelectReturn::~StageSelectReturn() = default;
 
+template <class Visitor>
+void StageSelectReturn::VisitConfigValues(Visitor &&visit) {
+  auto visitVector3 = [&](const std::string &key, Vector3 &v) {
+    visit(key + ".x", v.x);
+    visit(key + ".y", v.y);
+    visit(key + ".z", v.z);
+  };
+  auto visitWing = [&](const std::string &key, DragonWingAnimator::State &w) {
+    visit(key + ".strength", w.strength);
+    visit(key + ".frequency", w.frequency);
+    visit(key + ".fold", w.fold);
+    visit(key + ".asymmetry", w.asymmetry);
+  };
+  visit("time.lookUpTime", lookUpTime_);
+  visit("time.lookUpSec", lookUpSec_);
+  visit("time.menuTime", menuTime_);
+  visit("time.menuFadeSec", menuFadeSec_);
+  visit("time.barFillSec", barFillSec_);
+  visit("time.leaveSec", leaveSec_);
+  visit("time.stayCameraSec", stayCameraSec_);
+  visit("time.glowReturnTime", glowReturnTime_);
+  visit("time.glowReturnSec", glowReturnSec_);
+
+  visit("dragon.lieDepth", lieDepth_);
+  visit("dragon.chestRaise", chestRaise_);
+  visit("dragon.wingMotion", wingMotion_);
+  visit("dragon.stirSec", stirSec_);
+  visitWing("dragon.lieWing", lieWing_);
+  visitWing("dragon.stirWing", stirWing_);
+  visitWing("dragon.standWing", standWing_);
+  visit("dragon.returnPattern", returnPattern_);
+
+  visit("camera.descentStartSpeed", descentStartSpeed_);
+  for (size_t i = 0; i < cameraKeys_.size(); ++i) {
+    const std::string key = "camera.key" + std::to_string(i);
+    visit(key + ".time", cameraKeys_[i].time);
+    visitVector3(key + ".camera", cameraKeys_[i].cameraOffset);
+    visitVector3(key + ".look", cameraKeys_[i].lookOffset);
+  }
+}
+
+void StageSelectReturn::LoadConfig() {
+  std::ifstream file(kConfigPath);
+  if (!file.is_open()) {
+    return;
+  }
+  nlohmann::json root;
+  try {
+    file >> root;
+  } catch (const nlohmann::json::exception &) {
+    return;
+  }
+  // ファイルにないキーは今の値のまま
+  VisitConfigValues([&](const std::string &key, float &value) {
+    if (root.contains(key) && root[key].is_number()) {
+      value = root[key].get<float>();
+    }
+  });
+  if (root.contains(kMirrorKey) && root[kMirrorKey].is_boolean()) {
+    isCameraMirrored_ = root[kMirrorKey].get<bool>();
+  }
+}
+
+void StageSelectReturn::SaveConfig() {
+  nlohmann::json root;
+  VisitConfigValues(
+      [&](const std::string &key, float &value) { root[key] = value; });
+  root[kMirrorKey] = isCameraMirrored_;
+  if (!std::filesystem::exists(kConfigDirectory)) {
+    std::filesystem::create_directories(kConfigDirectory);
+  }
+  std::ofstream file(kConfigPath);
+  if (file.is_open()) {
+    file << std::setw(4) << root << std::endl;
+  }
+}
+
 void StageSelectReturn::Initialize(SpriteRenderer *spriteRenderer) {
+  LoadConfig();
+
   // 左端・縦の中心を位置に合わせ、画像の大きさに scale を掛けたスプライトを作る
   auto create = [spriteRenderer](const std::string &path, float scale) {
     auto sprite = std::make_unique<Sprite>();
@@ -141,6 +228,7 @@ void StageSelectReturn::Start(const Vector3 &dragonPos,
   right_ = Normalize(Cross(kWorldUp, forward_));
 
   UpdateWake();
+  UpdateGlow();
   UpdateCamera();
   UpdateSprites();
 }
@@ -168,6 +256,7 @@ void StageSelectReturn::Update(Input *input) {
       timer_ = menuTime_;
     }
     UpdateWake();
+    UpdateGlow();
     UpdateCamera();
     if (timer_ >= menuTime_) {
       phase_ = Phase::Menu;
@@ -176,6 +265,7 @@ void StageSelectReturn::Update(Input *input) {
     break;
   case Phase::Menu:
     UpdateWake();
+    UpdateGlow();
     UpdateCamera();
     UpdateMenu(input);
     break;
@@ -212,8 +302,7 @@ void StageSelectReturn::UpdateWake() {
   const float lookUp =
       EaseInOutCubic(Progress(timer_, lookUpTime_, lookUpSec_));
   const float lookUpEnd = lookUpTime_ + lookUpSec_;
-  const float stir =
-      EaseInOutCubic(Progress(timer_, lookUpEnd, menuTime_ - lookUpEnd));
+  const float stir = EaseInOutCubic(Progress(timer_, lookUpEnd, stirSec_));
 
   // 伏せの姿勢は腹が浮くので、その分沈める
   dragonPos_ = basePos_ - kWorldUp * lieDepth_;
@@ -225,6 +314,17 @@ void StageSelectReturn::UpdateWake() {
   gesture_.lookUp = lookUp;
 
   wingState_ = LerpWing(lieWing_, stirWing_, wingMotion_ * stir);
+}
+
+void StageSelectReturn::UpdateGlow() {
+  //===========================
+  // 竜の力の光：拠点に落ちてきたときは消えていて、見上げたあとかすかに戻る。傷は開いたまま暗い
+  //===========================
+  const float glowReturn =
+      EaseInOutCubic(Progress(timer_, glowReturnTime_, glowReturnSec_));
+  glow_.pattern = returnPattern_ * glowReturn;
+  glow_.woundOpen = 1.0f;
+  glow_.woundGlow = 0.0f;
 }
 
 Vector3 StageSelectReturn::SampleCameraKeys(Vector3 CameraKey::*offset) const {
@@ -414,6 +514,13 @@ void StageSelectReturn::Draw() {
 
 void StageSelectReturn::DrawImGui() {
 #ifdef USE_IMGUI
+  if (ImGui::Button("Save Return Config")) {
+    SaveConfig();
+  }
+  ImGui::SameLine();
+  if (ImGui::Button("Load Return Config")) {
+    LoadConfig();
+  }
   ImGui::Text("Time %.2f (phase %d)", timer_, static_cast<int>(phase_));
   // 止めて、つまみで時刻を動かし、その時刻の構図を見る（選ぶ前だけ）
   if (phase_ == Phase::Wake || phase_ == Phase::Menu) {
@@ -431,13 +538,17 @@ void StageSelectReturn::DrawImGui() {
   ImGui::DragFloat("Bar Fill Sec", &barFillSec_, 0.01f, 0.01f, 3.0f);
   ImGui::DragFloat("Leave Sec", &leaveSec_, 0.01f, 0.01f, 3.0f);
   ImGui::DragFloat("Stay Camera Sec", &stayCameraSec_, 0.01f, 0.01f, 3.0f);
+  ImGui::DragFloat("Glow Return Time", &glowReturnTime_, 0.01f, 0.0f, 10.0f);
+  ImGui::DragFloat("Glow Return Sec", &glowReturnSec_, 0.01f, 0.01f, 5.0f);
   ImGui::SeparatorText("Dragon");
   ImGui::DragFloat("Lie Depth", &lieDepth_, 0.01f, 0.0f, 3.0f);
   ImGui::SliderFloat("Chest Raise", &chestRaise_, 0.0f, 1.0f);
   ImGui::SliderFloat("Wing Motion", &wingMotion_, 0.0f, 1.0f);
+  ImGui::DragFloat("Stir Sec", &stirSec_, 0.01f, 0.01f, 5.0f);
   ImGui::DragFloat4("Lie Wing", &lieWing_.strength, 0.01f, 0.0f, 4.0f);
   ImGui::DragFloat4("Stir Wing", &stirWing_.strength, 0.01f, 0.0f, 4.0f);
   ImGui::DragFloat4("Stand Wing", &standWing_.strength, 0.01f, 0.0f, 4.0f);
+  ImGui::DragFloat("Return Pattern", &returnPattern_, 0.005f, 0.0f, 2.0f);
   ImGui::SeparatorText("Camera Keys (right, up, forward)");
   ImGui::SliderFloat("Descent Start Speed", &descentStartSpeed_, 0.0f, 3.0f);
   ImGui::Checkbox("Mirror Camera", &isCameraMirrored_);
