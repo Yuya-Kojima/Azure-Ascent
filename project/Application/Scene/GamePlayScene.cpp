@@ -2136,14 +2136,22 @@ void GamePlayScene::UpdateGameOver() {
   // HUD は被弾から消していく
   UIManager::GetInstance()->SetGlobalAlpha(gameOverSequence_->GetHudAlpha());
 
-  // 合図で、到達度（レールの進んだ割合）を拠点へ渡し、拠点へ切り替える
+  // 合図で、ボスまでの道のりのどこまで進んだか（ボスが出る位置で 1）を拠点へ渡し、拠点へ切り替える
   // ドラゴンが沈んだ雲海と同じ暗い灰青の雲が、黒い画面を下から覆い、拠点で下から晴れる
   if (gameOverSequence_->ConsumeTransitionCue()) {
     const size_t kMinWaypointCount = 2;
-    const float lastIndex = static_cast<float>(
+    float bossT = static_cast<float>(
         (std::max)(railCamera_->GetWaypoints().size(), kMinWaypointCount) - 1);
+    for (const auto &ev : spawnEvents_) {
+      if (ev.prefabName == "Boss") {
+        bossT = ev.spawnTime;
+        break;
+      }
+    }
+    const float progress =
+        bossT > 0.0f ? railCamera_->GetT() / bossT : 1.0f;
     GameManager::GetInstance()->SetGameOverReturn(
-        std::clamp(railCamera_->GetT() / lastIndex, 0.0f, 1.0f));
+        std::clamp(progress, 0.0f, 1.0f));
     const float kDarkCloudTransitionSec = 0.8f;
     DarkCloudTransition::SetNext(kDarkCloudTransitionSec,
                                  Fade::FadeType::CloudDescend);

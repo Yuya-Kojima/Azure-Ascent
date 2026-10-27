@@ -49,7 +49,7 @@ public:
     // --- ゲームオーバー ---
     // ゲームオーバーで拠点へ戻るところか（拠点が戻ってきたときの演出を始めたら下ろす）
     bool isReturningFromGameOver_ = false;
-    // ゲームオーバーになったときのステージの到達度（0〜1）
+    // ゲームオーバーになったとき、ボスまでの道のりのどこまで進んだか（0〜1。ボス戦まで来たら 1）
     float gameOverProgress_ = 0.0f;
     void SetGameOverReturn(float progress) {
         isReturningFromGameOver_ = true;

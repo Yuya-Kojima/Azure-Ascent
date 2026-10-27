@@ -1,7 +1,7 @@
-"""文字カード（ステージ開始演出の目標・ゲームオーバー）の文字画像を書き出す
+"""文字カード（ステージ開始演出の目標・ゲームオーバー・拠点に戻ったあとの UI）の文字画像を書き出す
 
 エンジンのフォントは ASCII しか焼いていないので、日本語の文字は画像にして Sprite で出す。
-M PLUS 1p Black で文字を描き、上から下への色のグラデーションと、縁のうっすらした光をつける。
+M PLUS 1p Black で文字を描き、上から下への色のグラデーションと、縁のうっすらした光（明るい背景に置く文字は暗い影）をつける。
 
 使い方（project/ から）:
   python tools/IntroText/make_intro_text.py            すべて書き出す
@@ -26,17 +26,32 @@ FADED_GOLD = ((214, 206, 186), (160, 140, 100), (190, 170, 120))  # 金の彩度
 # 縁の光の強さ（0〜1）
 GLOW_STRENGTH = 0.55
 
+# 縁に光ではなく暗い影を敷く色（明るい背景の上に置く文字用）: (上の色, 下の色, 影の色, 影の強さ, 影を太らせる幅 px)
+SHADOW = (12, 14, 20)
+GOLD_SHADOWED = (GOLD[0], GOLD[1], SHADOW, 0.85, 2)
+FADED_GOLD_SHADOWED = (FADED_GOLD[0], FADED_GOLD[1], SHADOW, 0.85, 2)
+RED_SHADOWED = (RED[0], RED[1], SHADOW, 0.85, 2)
+
 # 書き出す文字: (書き出し先, ファイル名, 文字, 文字の大きさ px, 字間（文字の大きさに対する割合）, 縁の光のぼかし半径 px, 色)
 TEXTS = [
     (INTRO_DIR, "stage_name", "第一空域", 30, 0.45, 4, GOLD),
     (INTRO_DIR, "objective", "天空を奪還せよ", 60, 0.12, 8, GOLD),
     (GAME_OVER_DIR, "gameover_title", "GAME OVER", 76, 0.28, 10, RED),
     (GAME_OVER_DIR, "gameover_result", "第一空域　奪還ならず", 24, 0.36, 4, FADED_GOLD),
+    # 拠点に戻ったあとの UI（空域名・選択肢・空路の線の下の名前）
+    (GAME_OVER_DIR, "route_title", "第一空域", 30, 0.25, 5, GOLD_SHADOWED),
+    (GAME_OVER_DIR, "retry", "再出撃", 36, 0.15, 5, GOLD_SHADOWED),
+    (GAME_OVER_DIR, "stay", "拠点に残る", 36, 0.15, 5, GOLD_SHADOWED),
+    (GAME_OVER_DIR, "route_start", "出撃", 22, 0.1, 4, FADED_GOLD_SHADOWED),
+    (GAME_OVER_DIR, "route_boss", "ボス", 22, 0.1, 4, RED_SHADOWED),
 ]
 
 
 def render_text(text, size, spacing, glow_radius, colors):
-    top_color, bottom_color, glow_color = colors
+    # colors は (上の色, 下の色, 縁の色) か、それに縁の強さと縁を太らせる幅を足したもの
+    top_color, bottom_color, glow_color = colors[:3]
+    glow_strength = colors[3] if len(colors) > 3 else GLOW_STRENGTH
+    glow_spread = colors[4] if len(colors) > 4 else 0
     font = ImageFont.truetype(str(FONT_PATH), size)
     gap = round(size * spacing)
 
@@ -65,8 +80,9 @@ def render_text(text, size, spacing, glow_radius, colors):
         gradient.putpixel((0, y), tuple(round(a + (b - a) * t) for a, b in zip(top_color, bottom_color)))
     gradient = gradient.resize((w, h))
 
-    # 縁の光：文字の形をぼかしたものを、光の色で下に敷く
-    glow_alpha = mask.filter(ImageFilter.GaussianBlur(glow_radius)).point(lambda v: round(v * GLOW_STRENGTH))
+    # 縁の光（影）：文字の形を太らせてぼかしたものを、縁の色で下に敷く
+    glow_source = mask.filter(ImageFilter.MaxFilter(glow_spread * 2 + 1)) if glow_spread > 0 else mask
+    glow_alpha = glow_source.filter(ImageFilter.GaussianBlur(glow_radius)).point(lambda v: round(v * glow_strength))
     out = Image.new("RGBA", (w, h), glow_color + (0,))
     out.putalpha(glow_alpha)
     body = gradient.convert("RGBA")

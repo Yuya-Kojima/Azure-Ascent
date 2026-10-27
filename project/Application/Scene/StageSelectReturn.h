@@ -14,7 +14,8 @@ class SpriteRenderer;
 /// ゲームオーバーで拠点へ戻ったときの演出と UI
 /// 雲が晴れると拠点の真上の空 → 伏せて休むドラゴンの右斜め後ろ・肩より少し高い所へ降りる
 /// → 首を持ち上げるのに合わせてカメラも少し下がり、一緒に雲の天井を見上げる
-/// → 見上げきって雲の天井に大きな雷が光ったあと、模様の光がかすかに戻る（傷は暗いまま） → 到達度と「再出撃」「拠点に残る」を出す
+/// → 見上げきって雲の天井に大きな雷が光ったあと、模様の光がかすかに戻る（傷は暗いまま）
+/// → 空路の線（出撃からボスまでの距離のどこまで届いたか）と「再出撃」「拠点に残る」を出す
 /// 位置はすべて、拠点のドラゴンの位置と向き（水平な右・上・前）を基準に求める
 /// </summary>
 class StageSelectReturn {
@@ -43,7 +44,7 @@ public:
   /// <param name="dragonRot">拠点で立っているときのドラゴンの向き</param>
   /// <param name="baseCameraPos">いつもの拠点のカメラの位置（拠点に残るとき、ここへ戻る）</param>
   /// <param name="baseCameraRot">いつもの拠点のカメラの向き</param>
-  /// <param name="progress">ステージの到達度（0〜1）</param>
+  /// <param name="progress">ボスまでの道のりのどこまで進んだか（0〜1。ボス戦まで来たら 1）</param>
   void Start(const Vector3 &dragonPos, const Vector3 &dragonRot,
              const Vector3 &baseCameraPos, const Vector3 &baseCameraRot,
              float progress);
@@ -131,6 +132,11 @@ private:
   void UpdateLeave();
   void UpdateSprites();
 
+  // UI が出てから、選択肢が現れきって選べるようになるまでの時間（秒）
+  float GetChoiceReadySec() const {
+    return routeFadeSec_ + routeFillSec_ + choiceFadeSec_;
+  }
+
   bool isActive_ = false;
   bool isPaused_ = false; // 時刻を止めているか（ImGui のつまみで時刻を動かして構図を見る）
   Phase phase_ = Phase::Wake;
@@ -138,7 +144,7 @@ private:
   float phaseTimer_ = 0.0f; // 今の段階に入ってからの時間（秒）
   Choice pendingChoice_ = Choice::None;
   Choice focused_ = Choice::Retry;
-  float progress_ = 0.0f;
+  float progress_ = 0.0f; // ボスまでの道のりのどこまで進んだか（1 ならボス戦まで来た）
 
   // 基準
   Vector3 basePos_{};
@@ -167,8 +173,12 @@ private:
   float lookUpSec_ = 1.2f;    // 首を持ち上げきるまでの時間（秒）。そのあとは見上げたまま止まる
   float menuTime_ = 4.4f;     // UI を出し始める時刻（秒）。大きな雷の残光が消えたあと
   float skipLockSec_ = 0.3f;  // 始めてから飛ばせるようになるまでの時間（秒）
-  float menuFadeSec_ = 0.6f;  // UI が現れきるまでの時間（秒）
-  float barFillSec_ = 0.8f;   // 到達度のバーが伸びきるまでの時間（UI が現れてから、秒）
+  // UI が出てからの段取り（秒）: 空域名と暗い線が現れる → 水色の線が伸びる → 選択肢が現れる
+  float routeFadeSec_ = 0.4f;  // 空域名と暗い線・印が現れきるまで
+  float routeFillSec_ = 0.8f;  // 水色の線が出撃から落ちた所まで伸びきるまで
+  float choiceFadeSec_ = 0.4f; // 選択肢が現れきるまで（ここから選べる）
+  float markPopSec_ = 0.35f;   // 線が着いた所の印が、大きく光ってから落ち着くまで
+  float focusMoveSec_ = 0.12f; // 選んでいる方の下線が、もう一方へ移りきるまで
   float leaveSec_ = 0.3f;     // 選んだあと、UI が消え、伏せて見上げる姿勢から立ち姿勢へ戻るまでの時間（秒）
   float stayCameraSec_ = 1.2f; // 拠点に残るとき、カメラがいつもの位置へ戻るまでの時間（秒）
   float glowReturnTime_ = 4.0f; // 模様の光が戻り始める時刻（秒）。大きな雷に応える
@@ -198,28 +208,37 @@ private:
       {3.7f, {2.1f, 0.6f, -3.6f}, {-0.66f, 1.32f, 4.94f}},  // 肩の高さへ下がり、5 度見上げる（ドラゴンは画面の左下、視線の先の右上が雲の天井）
   }};
 
-  //---- UI（画面の位置は 1280x720 の px）----
-  float menuLeft_ = 800.0f;      // UI の左端（画面の右下。左下はドラゴン）
-  float labelY_ = 430.0f;        // 「到達度」の縦の中心
-  float digitsLeft_ = 1020.0f;   // 数字の左端
-  float digitAdvance_ = 30.0f;   // 数字1文字ぶん進める幅
-  float barY_ = 478.0f;          // バーの縦の中心
-  float barWidth_ = 360.0f;
-  float barHeight_ = 8.0f;
-  float retryY_ = 560.0f;        // 「再出撃」の縦の中心
-  float stayY_ = 640.0f;         // 「拠点に残る」の縦の中心
-  float choiceScale_ = 0.8f;     // 選択肢の画像の大きさ
-  float markerWidth_ = 8.0f;     // 選んでいる方の印の幅
-  float markerGap_ = 18.0f;      // 印と選択肢の間
-  float unfocusedAlpha_ = 0.45f; // 選んでいない方の不透明度
+  //---- UI（画面の位置は 1280x720 の px。文字の位置は、画像の縁の余白を除いた文字の左端）----
+  float menuLeft_ = 820.0f;   // 空路の線の左端（出撃の点）。画面の右下（左下はドラゴン）
+  // UI の後ろに敷く暗い板（右端は画面の右端。上・左・下の縁に金の細い線）
+  float plateLeft_ = 765.0f;
+  float plateTop_ = 375.0f;
+  float plateHeight_ = 304.0f;
+  float plateAlpha_ = 0.9f;
+  float titleY_ = 420.0f;     // 空域名の縦の中心
+  float routeY_ = 462.0f;     // 空路の線の縦の位置
+  float routeWidth_ = 380.0f; // 空路の線の長さ（出撃 〜 ボス）
+  float routeLabelY_ = 492.0f; // 線の下の名前（出撃・ボス）の縦の中心
+  float retryY_ = 556.0f;     // 「再出撃」の縦の中心
+  float stayY_ = 618.0f;      // 「拠点に残る」の縦の中心
+  float underlineOffset_ = 26.0f; // 選択肢の縦の中心から、下線までの距離
+  float unfocusedBrightness_ = 1.0f;  // 選んでいない方の明るさ
+  float unfocusedAlpha_ = 0.6f;       // 選んでいない方の不透明度
 
-  std::unique_ptr<Sprite> label_;
-  std::array<std::unique_ptr<Sprite>, 4> digits_; // 「100%」まで
-  std::unique_ptr<Sprite> barBack_;
-  std::unique_ptr<Sprite> barFill_;
+  std::unique_ptr<Sprite> plate_;      // UI の後ろの暗い板
+  std::array<std::unique_ptr<Sprite>, 3> plateEdges_; // 板の上・左・下の縁の線
+  std::unique_ptr<Sprite> title_;      // 空域名
+  std::unique_ptr<Sprite> routeTrack_; // 出撃 〜 ボスの暗い線
+  std::unique_ptr<Sprite> routeGlow_;  // 水色の線のまわりの光
+  std::unique_ptr<Sprite> routeCore_;  // 水色の線の芯
+  std::unique_ptr<Sprite> startMark_;  // 出撃の点
+  std::unique_ptr<Sprite> reachMark_;  // 落ちた所のひし形
+  std::unique_ptr<Sprite> bossMark_;   // ボスのひし形
+  std::unique_ptr<Sprite> startLabel_;
+  std::unique_ptr<Sprite> bossLabel_;
   std::unique_ptr<Sprite> retry_;
   std::unique_ptr<Sprite> stay_;
-  std::unique_ptr<Sprite> marker_;
-  int digitCount_ = 0;  // 描く数字の数
-  float uiAlpha_ = 0.0f;
+  std::unique_ptr<Sprite> underline_;  // 選んでいる方の下線
+  float leaveAlpha_ = 1.0f; // 選んだあと UI を消していく不透明度
+  float focusPos_ = 0.0f;   // 下線の位置（0: 再出撃 〜 1: 拠点に残る）
 };

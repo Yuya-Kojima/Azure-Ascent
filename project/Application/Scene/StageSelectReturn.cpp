@@ -26,17 +26,34 @@ const Vector3 kWorldUp = {0.0f, 1.0f, 0.0f};
 // UV は画像全体をそのまま使う
 const Transform kUvTransform = {
     {1.0f, 1.0f, 1.0f}, {0.0f, 0.0f, 0.0f}, {0.0f, 0.0f, 0.0f}};
-// 数字の画像（0〜9 と % を横に並べたもの）の1文字の大きさ（px）と、% の位置
-const Vector2 kDigitCellSize = {48.0f, 72.0f};
-const int kPercentCell = 10;
-// 数字を描く大きさ（画像に対する倍率）
-const float kDigitScale = 0.75f;
-// 「到達度」の画像を描く大きさ（画像に対する倍率）
-const float kLabelScale = 0.8f;
-// 選んでいる方の印の高さ（px）
-const float kMarkerHeight = 44.0f;
-// 到達度のバーの下地の不透明度
-const float kBarBackAlpha = 0.45f;
+// 文字の画像のまわりの縁（影）の余白（px）。make_intro_text.py の縁のぼかし半径 × 3
+const float kTitlePad = 15.0f;  // 空域名（ぼかし 5）
+const float kChoicePad = 15.0f; // 選択肢（ぼかし 5）
+const float kLabelPad = 12.0f;  // 線の下の名前（ぼかし 4）
+// 空路の線と印の大きさ（px）
+const float kTrackHeight = 2.0f;     // 暗い線の太さ
+const float kCoreHeight = 2.0f;      // 水色の線の芯の太さ
+const float kGlowHeight = 18.0f;     // 水色の線のまわりの光の高さ
+const float kDiamondSize = 34.0f;    // ひし形の画像の大きさ（光の余白を含む）
+const float kDotSize = 16.0f;        // 点の画像の大きさ
+const float kMarkPopScale = 0.7f;    // 線が着いた所の印が、着いた瞬間に大きくなる量（1 に足す倍率）
+const float kBossPopWhiten = 0.6f;   // ボスの印が光る瞬間に、白へ寄せる割合
+const float kUnderlineHeight = 2.0f; // 選んでいる方の下線の太さ
+// UI の後ろの板
+const float kScreenWidth = 1280.0f;  // 画面の幅（px）。板の右端
+const float kPlateEdgeWidth = 1.0f;  // 板の縁の線の太さ（px）
+// 色（敵の赤・竜の水色・空域名と同じ金）
+const Vector3 kGold = {0.91f, 0.78f, 0.51f};
+const Vector3 kCyan = {0.5f, 0.88f, 0.94f};
+const Vector3 kCyanCore = {0.86f, 0.98f, 1.0f};
+const Vector3 kBossRed = {1.0f, 0.2f, 0.27f};
+const Vector3 kTrackGray = {0.75f, 0.77f, 0.8f};
+const Vector3 kPlateColor = {0.03f, 0.04f, 0.07f}; // UI の後ろの板（暗い空に寄せた黒）
+// 不透明度
+const float kPlateEdgeAlpha = 0.6f;  // 板の縁の線
+const float kTrackAlpha = 0.35f;     // 出撃 〜 ボスの暗い線
+const float kGlowAlpha = 0.75f;      // 水色の線のまわりの光
+const float kStartMarkAlpha = 0.7f;  // 出撃の点
 
 /// <summary>
 /// 時刻 time が start から sec かけて進む割合（0〜1）
@@ -118,8 +135,11 @@ void StageSelectReturn::VisitConfigValues(Visitor &&visit) {
   visit("time.lookUpTime", lookUpTime_);
   visit("time.lookUpSec", lookUpSec_);
   visit("time.menuTime", menuTime_);
-  visit("time.menuFadeSec", menuFadeSec_);
-  visit("time.barFillSec", barFillSec_);
+  visit("time.routeFadeSec", routeFadeSec_);
+  visit("time.routeFillSec", routeFillSec_);
+  visit("time.choiceFadeSec", choiceFadeSec_);
+  visit("time.markPopSec", markPopSec_);
+  visit("time.focusMoveSec", focusMoveSec_);
   visit("time.leaveSec", leaveSec_);
   visit("time.stayCameraSec", stayCameraSec_);
   visit("time.glowReturnTime", glowReturnTime_);
@@ -133,6 +153,21 @@ void StageSelectReturn::VisitConfigValues(Visitor &&visit) {
   visitWing("dragon.stirWing", stirWing_);
   visitWing("dragon.standWing", standWing_);
   visit("dragon.returnPattern", returnPattern_);
+
+  visit("ui.menuLeft", menuLeft_);
+  visit("ui.plateLeft", plateLeft_);
+  visit("ui.plateTop", plateTop_);
+  visit("ui.plateHeight", plateHeight_);
+  visit("ui.plateAlpha", plateAlpha_);
+  visit("ui.titleY", titleY_);
+  visit("ui.routeY", routeY_);
+  visit("ui.routeWidth", routeWidth_);
+  visit("ui.routeLabelY", routeLabelY_);
+  visit("ui.retryY", retryY_);
+  visit("ui.stayY", stayY_);
+  visit("ui.underlineOffset", underlineOffset_);
+  visit("ui.unfocusedBrightness", unfocusedBrightness_);
+  visit("ui.unfocusedAlpha", unfocusedAlpha_);
 
   visit("camera.descentStartSpeed", descentStartSpeed_);
   for (size_t i = 0; i < cameraKeys_.size(); ++i) {
@@ -182,27 +217,33 @@ void StageSelectReturn::SaveConfig() {
 void StageSelectReturn::Initialize(SpriteRenderer *spriteRenderer) {
   LoadConfig();
 
-  // 左端・縦の中心を位置に合わせ、画像の大きさに scale を掛けたスプライトを作る
-  auto create = [spriteRenderer](const std::string &path, float scale) {
+  // 画像を読み、基準点（anchor）を決めたスプライトを作る。大きさは画像のまま
+  auto create = [spriteRenderer](const std::string &path,
+                                 const Vector2 &anchor) {
     auto sprite = std::make_unique<Sprite>();
     sprite->Initialize(spriteRenderer, path);
-    sprite->SetAnchorPoint({0.0f, 0.5f});
-    const Vector2 size = sprite->GetSize();
-    sprite->SetSize({size.x * scale, size.y * scale});
+    sprite->SetAnchorPoint(anchor);
     return sprite;
   };
-  label_ = create("resources/UI/GameOver/progress_label.png", kLabelScale);
-  retry_ = create("resources/UI/GameOver/retry.png", choiceScale_);
-  stay_ = create("resources/UI/GameOver/stay.png", choiceScale_);
-  barBack_ = create("resources/white1x1.png", 1.0f);
-  barFill_ = create("resources/white1x1.png", 1.0f);
-  marker_ = create("resources/white1x1.png", 1.0f);
-  for (auto &digit : digits_) {
-    digit = create("resources/UI/GameOver/digits.png", 1.0f);
-    digit->SetTextureSize(kDigitCellSize);
-    digit->SetSize(
-        {kDigitCellSize.x * kDigitScale, kDigitCellSize.y * kDigitScale});
+  const Vector2 kLeftCenter = {0.0f, 0.5f};
+  const Vector2 kCenter = {0.5f, 0.5f};
+  const std::string dir = "resources/UI/GameOver/";
+  plate_ = create("resources/white1x1.png", {0.0f, 0.0f});
+  for (auto &edge : plateEdges_) {
+    edge = create("resources/white1x1.png", {0.0f, 0.0f});
   }
+  title_ = create(dir + "route_title.png", kLeftCenter);
+  routeTrack_ = create("resources/white1x1.png", kLeftCenter);
+  routeGlow_ = create(dir + "route_glow.png", kLeftCenter);
+  routeCore_ = create("resources/white1x1.png", kLeftCenter);
+  startMark_ = create(dir + "route_dot.png", kCenter);
+  reachMark_ = create(dir + "route_diamond.png", kCenter);
+  bossMark_ = create(dir + "route_diamond.png", kCenter);
+  startLabel_ = create(dir + "route_start.png", kCenter);
+  bossLabel_ = create(dir + "route_boss.png", kCenter);
+  retry_ = create(dir + "retry.png", kLeftCenter);
+  stay_ = create(dir + "stay.png", kLeftCenter);
+  underline_ = create("resources/white1x1.png", kLeftCenter);
 }
 
 void StageSelectReturn::Start(const Vector3 &dragonPos,
@@ -216,7 +257,8 @@ void StageSelectReturn::Start(const Vector3 &dragonPos,
   pendingChoice_ = Choice::None;
   focused_ = Choice::Retry;
   progress_ = std::clamp(progress, 0.0f, 1.0f);
-  uiAlpha_ = 0.0f;
+  leaveAlpha_ = 1.0f;
+  focusPos_ = 0.0f;
 
   basePos_ = dragonPos;
   baseRot_ = dragonRot;
@@ -391,10 +433,22 @@ void StageSelectReturn::UpdateCamera() {
 }
 
 void StageSelectReturn::UpdateMenu(Input *input) {
-  uiAlpha_ = Progress(phaseTimer_, 0.0f, menuFadeSec_);
+  // 下線を、選んでいる方へ動かす
+  const float focusTarget = (focused_ == Choice::Retry) ? 0.0f : 1.0f;
+  const float focusStep =
+      focusMoveSec_ > 0.0f ? kFrameSec / focusMoveSec_ : 1.0f;
+  focusPos_ += std::clamp(focusTarget - focusPos_, -focusStep, focusStep);
 
-  // UI が現れきってから操作を受ける
-  if (!input || uiAlpha_ < 1.0f) {
+  if (!input) {
+    return;
+  }
+  // 選択肢が現れきる前に決定を押すと、現れきった所まで飛ばす（その押下では選ばない）
+  const float readySec = GetChoiceReadySec();
+  if (phaseTimer_ < readySec) {
+    if (IsDecidePressed(input)) {
+      timer_ = menuTime_ + readySec;
+      phaseTimer_ = readySec;
+    }
     return;
   }
   const bool isUp = input->IsTriggerKey(DIK_UP) || input->IsTriggerKey(DIK_W) ||
@@ -422,7 +476,7 @@ void StageSelectReturn::UpdateLeave() {
   // UI を消し、伏せて見上げる姿勢から立ち姿勢へ戻す。拠点に残るときは、カメラをいつもの位置へ戻す
   //===========================
   const float fade = Progress(phaseTimer_, 0.0f, leaveSec_);
-  uiAlpha_ = 1.0f - fade;
+  leaveAlpha_ = 1.0f - fade;
   const float remain = 1.0f - EaseInOutQuad(fade);
   gesture_ = {};
   gesture_.lie = leaveGesture_.lie * remain;
@@ -448,66 +502,132 @@ void StageSelectReturn::UpdateLeave() {
 }
 
 void StageSelectReturn::UpdateSprites() {
-  // 到達度：UI が出てから、バーと数字を 0 から伸ばす
-  const float fill =
-      EaseOutCubic(Progress(timer_, menuTime_, barFillSec_));
-  const float shown = progress_ * fill;
-  const int percent = static_cast<int>(std::lround(shown * 100.0f));
-  const std::string text = std::to_string(percent) + "%";
-  digitCount_ = static_cast<int>((std::min)(text.size(), digits_.size()));
+  //===========================
+  // UI が出てからの時刻で、空域名と暗い線 → 水色の線 → 選択肢の順に出す
+  //===========================
+  const float t = timer_ - menuTime_;
+  // 空域名と選択肢の左端は、出撃の点の真下に置く「出撃」の文字の左端にそろえる
+  const float textLeft =
+      menuLeft_ - (startLabel_->GetSize().x - kLabelPad * 2.0f) * 0.5f;
+  const bool isShown = phase_ != Phase::Wake;
+  const float routeAlpha =
+      isShown ? EaseOutCubic(Progress(t, 0.0f, routeFadeSec_)) * leaveAlpha_
+              : 0.0f;
+  const float fillStart = routeFadeSec_;
+  const float fillEnd = fillStart + routeFillSec_;
+  const float fill = EaseInOutCubic(Progress(t, fillStart, routeFillSec_));
+  const float choiceAlpha =
+      isShown ? EaseOutCubic(Progress(t, fillEnd, choiceFadeSec_)) * leaveAlpha_
+              : 0.0f;
+  // 線が着いた瞬間に印が大きく光り、落ち着く（1 → 0）
+  const float pop = isShown && t >= fillEnd
+                        ? 1.0f - EaseOutCubic(Progress(t, fillEnd, markPopSec_))
+                        : 0.0f;
 
-  const Vector4 white = {1.0f, 1.0f, 1.0f, uiAlpha_};
-  for (int i = 0; i < digitCount_; ++i) {
-    const char c = text[i];
-    const int cell = (c == '%') ? kPercentCell : (c - '0');
-    Sprite &digit = *digits_[i];
-    digit.SetTextureLeftTop({kDigitCellSize.x * cell, 0.0f});
-    digit.SetPosition({digitsLeft_ + digitAdvance_ * i, labelY_});
-    digit.SetColor(white);
-    digit.Update(kUvTransform);
-  }
+  // 線の位置（出撃・ボス・落ちた所）
+  const float startX = menuLeft_;
+  const float bossX = menuLeft_ + routeWidth_;
+  const float reachX = Lerp(startX, bossX, progress_);
+  const bool isBossReached = progress_ >= 1.0f;
+  const float fillWidth = (reachX - startX) * fill;
 
-  label_->SetPosition({menuLeft_, labelY_});
-  label_->SetColor(white);
-  label_->Update(kUvTransform);
+  auto place = [](Sprite &sprite, const Vector2 &pos, const Vector2 &size,
+                  const Vector3 &color, float alpha) {
+    sprite.SetPosition(pos);
+    sprite.SetSize(size);
+    sprite.SetColor({color.x, color.y, color.z, alpha});
+    sprite.Update(kUvTransform);
+  };
+  // 画像の大きさのまま置く
+  auto placeImage = [](Sprite &sprite, const Vector2 &pos, const Vector3 &color,
+                       float alpha) {
+    sprite.SetPosition(pos);
+    sprite.SetColor({color.x, color.y, color.z, alpha});
+    sprite.Update(kUvTransform);
+  };
+  const Vector3 kWhite = {1.0f, 1.0f, 1.0f};
 
-  barBack_->SetPosition({menuLeft_, barY_});
-  barBack_->SetSize({barWidth_, barHeight_});
-  barBack_->SetColor({0.0f, 0.0f, 0.0f, kBarBackAlpha * uiAlpha_});
-  barBack_->Update(kUvTransform);
-  barFill_->SetPosition({menuLeft_, barY_});
-  barFill_->SetSize({barWidth_ * shown, barHeight_});
-  barFill_->SetColor(white);
-  barFill_->Update(kUvTransform);
+  // 後ろの板と縁の線は、空域名と同時に現れる
+  const float plateWidth = kScreenWidth - plateLeft_;
+  const float plateBottom = plateTop_ + plateHeight_ - kPlateEdgeWidth;
+  const float edgeAlpha = kPlateEdgeAlpha * routeAlpha;
+  place(*plate_, {plateLeft_, plateTop_}, {plateWidth, plateHeight_},
+        kPlateColor, plateAlpha_ * routeAlpha);
+  place(*plateEdges_[0], {plateLeft_, plateTop_},
+        {plateWidth, kPlateEdgeWidth}, kGold, edgeAlpha);
+  place(*plateEdges_[1], {plateLeft_, plateTop_},
+        {kPlateEdgeWidth, plateHeight_}, kGold, edgeAlpha);
+  place(*plateEdges_[2], {plateLeft_, plateBottom},
+        {plateWidth, kPlateEdgeWidth}, kGold, edgeAlpha);
 
-  // 選択肢：選んでいる方を濃く、左に印を付ける
-  const float choiceLeft = menuLeft_ + markerWidth_ + markerGap_;
-  const bool isRetry = focused_ == Choice::Retry;
-  retry_->SetPosition({choiceLeft, retryY_});
-  retry_->SetColor(
-      {1.0f, 1.0f, 1.0f, (isRetry ? 1.0f : unfocusedAlpha_) * uiAlpha_});
-  retry_->Update(kUvTransform);
-  stay_->SetPosition({choiceLeft, stayY_});
-  stay_->SetColor(
-      {1.0f, 1.0f, 1.0f, (isRetry ? unfocusedAlpha_ : 1.0f) * uiAlpha_});
-  stay_->Update(kUvTransform);
-  marker_->SetPosition({menuLeft_, isRetry ? retryY_ : stayY_});
-  marker_->SetSize({markerWidth_, kMarkerHeight});
-  marker_->SetColor(white);
-  marker_->Update(kUvTransform);
+  // 空域名と暗い線
+  placeImage(*title_, {textLeft - kTitlePad, titleY_}, kWhite, routeAlpha);
+  place(*routeTrack_, {startX, routeY_}, {bossX - startX, kTrackHeight},
+        kTrackGray, kTrackAlpha * routeAlpha);
+
+  // 水色の線（光と芯）
+  place(*routeGlow_, {startX, routeY_}, {fillWidth, kGlowHeight}, kCyan,
+        kGlowAlpha * routeAlpha);
+  place(*routeCore_, {startX, routeY_}, {fillWidth, kCoreHeight}, kCyanCore,
+        routeAlpha);
+
+  // 印と、その下の名前
+  place(*startMark_, {startX, routeY_}, {kDotSize, kDotSize}, kTrackGray,
+        kStartMarkAlpha * routeAlpha);
+  // ボスの印：ボス戦まで来ていたら、線が着いた瞬間に大きく白く光る
+  const float bossPop = isBossReached ? pop : 0.0f;
+  const float bossSize = kDiamondSize * (1.0f + kMarkPopScale * bossPop);
+  place(*bossMark_, {bossX, routeY_}, {bossSize, bossSize},
+        Lerp(kBossRed, kWhite, bossPop * kBossPopWhiten), routeAlpha);
+  // 落ちた所の印：道中で落ちたときだけ、線が着いてから現れる
+  const float reachAlpha =
+      (!isBossReached && isShown && t >= fillEnd) ? leaveAlpha_ : 0.0f;
+  const float reachSize = kDiamondSize * (1.0f + kMarkPopScale * pop);
+  place(*reachMark_, {reachX, routeY_}, {reachSize, reachSize},
+        Lerp(kCyan, kCyanCore, pop), reachAlpha);
+  placeImage(*startLabel_, {startX, routeLabelY_}, kWhite, routeAlpha);
+  placeImage(*bossLabel_, {bossX, routeLabelY_}, kWhite, routeAlpha);
+
+  //===========================
+  // 選択肢：選んでいない方を透かし（unfocusedBrightness_ で暗くもできる）、選んでいる方に下線を引く
+  //===========================
+  const float choiceLeft = textLeft - kChoicePad;
+  const Vector3 dim = {unfocusedBrightness_, unfocusedBrightness_,
+                       unfocusedBrightness_};
+  const float retryFocus = 1.0f - focusPos_;
+  const float stayFocus = focusPos_;
+  placeImage(*retry_, {choiceLeft, retryY_}, Lerp(dim, kWhite, retryFocus),
+             Lerp(unfocusedAlpha_, 1.0f, retryFocus) * choiceAlpha);
+  placeImage(*stay_, {choiceLeft, stayY_}, Lerp(dim, kWhite, stayFocus),
+             Lerp(unfocusedAlpha_, 1.0f, stayFocus) * choiceAlpha);
+  // 下線の長さは、選んでいる方の文字の幅（縁の余白を除く）
+  const float retryWidth = retry_->GetSize().x - kChoicePad * 2.0f;
+  const float stayWidth = stay_->GetSize().x - kChoicePad * 2.0f;
+  const float easedFocus = EaseInOutCubic(focusPos_);
+  place(*underline_,
+        {textLeft, Lerp(retryY_, stayY_, easedFocus) + underlineOffset_},
+        {Lerp(retryWidth, stayWidth, easedFocus), kUnderlineHeight}, kGold,
+        choiceAlpha);
 }
 
 void StageSelectReturn::Draw() {
-  if (!isActive_ || uiAlpha_ <= 0.0f) {
+  if (!isActive_ || phase_ == Phase::Wake || leaveAlpha_ <= 0.0f) {
     return;
   }
-  label_->Draw();
-  for (int i = 0; i < digitCount_; ++i) {
-    digits_[i]->Draw();
+  plate_->Draw();
+  for (auto &edge : plateEdges_) {
+    edge->Draw();
   }
-  barBack_->Draw();
-  barFill_->Draw();
-  marker_->Draw();
+  routeTrack_->Draw();
+  routeGlow_->Draw();
+  routeCore_->Draw();
+  startMark_->Draw();
+  bossMark_->Draw();
+  reachMark_->Draw();
+  startLabel_->Draw();
+  bossLabel_->Draw();
+  title_->Draw();
+  underline_->Draw();
   retry_->Draw();
   stay_->Draw();
 }
@@ -527,15 +647,18 @@ void StageSelectReturn::DrawImGui() {
     ImGui::Checkbox("Pause", &isPaused_);
     if (isPaused_) {
       ImGui::SliderFloat("Scrub Time", &timer_, 0.0f,
-                         menuTime_ + menuFadeSec_ + barFillSec_);
+                         menuTime_ + GetChoiceReadySec() + markPopSec_);
     }
   }
   ImGui::SeparatorText("Timing");
   ImGui::DragFloat("Look Up Time", &lookUpTime_, 0.01f, 0.0f, 10.0f);
   ImGui::DragFloat("Look Up Sec", &lookUpSec_, 0.01f, 0.01f, 5.0f);
   ImGui::DragFloat("Menu Time", &menuTime_, 0.01f, 0.0f, 10.0f);
-  ImGui::DragFloat("Menu Fade Sec", &menuFadeSec_, 0.01f, 0.01f, 3.0f);
-  ImGui::DragFloat("Bar Fill Sec", &barFillSec_, 0.01f, 0.01f, 3.0f);
+  ImGui::DragFloat("Route Fade Sec", &routeFadeSec_, 0.01f, 0.0f, 3.0f);
+  ImGui::DragFloat("Route Fill Sec", &routeFillSec_, 0.01f, 0.0f, 3.0f);
+  ImGui::DragFloat("Choice Fade Sec", &choiceFadeSec_, 0.01f, 0.0f, 3.0f);
+  ImGui::DragFloat("Mark Pop Sec", &markPopSec_, 0.01f, 0.01f, 3.0f);
+  ImGui::DragFloat("Focus Move Sec", &focusMoveSec_, 0.01f, 0.0f, 1.0f);
   ImGui::DragFloat("Leave Sec", &leaveSec_, 0.01f, 0.01f, 3.0f);
   ImGui::DragFloat("Stay Camera Sec", &stayCameraSec_, 0.01f, 0.01f, 3.0f);
   ImGui::DragFloat("Glow Return Time", &glowReturnTime_, 0.01f, 0.0f, 10.0f);
@@ -562,14 +685,19 @@ void StageSelectReturn::DrawImGui() {
   }
   ImGui::SeparatorText("UI");
   ImGui::DragFloat("Menu Left", &menuLeft_, 1.0f, 0.0f, 1280.0f);
-  ImGui::DragFloat("Label Y", &labelY_, 1.0f, 0.0f, 720.0f);
-  ImGui::DragFloat("Digits Left", &digitsLeft_, 1.0f, 0.0f, 1280.0f);
-  ImGui::DragFloat("Digit Advance", &digitAdvance_, 0.5f, 0.0f, 100.0f);
-  ImGui::DragFloat("Bar Y", &barY_, 1.0f, 0.0f, 720.0f);
-  ImGui::DragFloat("Bar Width", &barWidth_, 1.0f, 0.0f, 1280.0f);
-  ImGui::DragFloat("Bar Height", &barHeight_, 0.5f, 1.0f, 50.0f);
+  ImGui::DragFloat("Plate Left", &plateLeft_, 1.0f, 0.0f, 1280.0f);
+  ImGui::DragFloat("Plate Top", &plateTop_, 1.0f, 0.0f, 720.0f);
+  ImGui::DragFloat("Plate Height", &plateHeight_, 1.0f, 0.0f, 720.0f);
+  ImGui::SliderFloat("Plate Alpha", &plateAlpha_, 0.0f, 1.0f);
+  ImGui::DragFloat("Title Y", &titleY_, 1.0f, 0.0f, 720.0f);
+  ImGui::DragFloat("Route Y", &routeY_, 1.0f, 0.0f, 720.0f);
+  ImGui::DragFloat("Route Width", &routeWidth_, 1.0f, 0.0f, 1280.0f);
+  ImGui::DragFloat("Route Label Y", &routeLabelY_, 1.0f, 0.0f, 720.0f);
   ImGui::DragFloat("Retry Y", &retryY_, 1.0f, 0.0f, 720.0f);
   ImGui::DragFloat("Stay Y", &stayY_, 1.0f, 0.0f, 720.0f);
+  ImGui::DragFloat("Underline Offset", &underlineOffset_, 0.5f, 0.0f, 60.0f);
+  ImGui::SliderFloat("Unfocused Brightness", &unfocusedBrightness_, 0.0f, 1.0f);
   ImGui::SliderFloat("Unfocused Alpha", &unfocusedAlpha_, 0.0f, 1.0f);
+  ImGui::SliderFloat("Progress", &progress_, 0.0f, 1.0f);
 #endif
 }
