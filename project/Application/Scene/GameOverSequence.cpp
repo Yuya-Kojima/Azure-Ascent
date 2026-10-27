@@ -234,6 +234,27 @@ void GameOverSequence::VisitConfigValues(
   visit("cameraLagRiseSec", cameraLagRiseSec_);
   visit("hitShake", hitShake_);
   visit("hitShakeSec", hitShakeSec_);
+
+  // 竜の力の光（長さはモデルの単位）
+  visitVector("glow.patternColor", glowLook_.patternColor);
+  visit("glow.pattern", glowLook_.pattern);
+  visit("glow.patternLow", glowLook_.patternLow);
+  visit("glow.patternHigh", glowLook_.patternHigh);
+  visitVector("glow.woundColor", glowLook_.woundColor);
+  visit("glow.woundRadius", glowLook_.woundRadius);
+  visit("glow.crackLength", glowLook_.crackLength);
+  visit("glow.crackWidth", glowLook_.crackWidth);
+  visit("glow.rimWidth", glowLook_.rimWidth);
+  visit("glow.rimJag", glowLook_.rimJag);
+  visit("glow.spill", glowLook_.spill);
+  visit("glow.offSec", glowOffSec_);
+  visit("glow.woundOpenSec", woundOpenSec_);
+  visit("glow.woundHitGlow", woundHitGlow_);
+  for (size_t i = 0; i < kMaxBeatCount_; ++i) {
+    visit("glow.woundBeat" + std::to_string(i + 1), woundBeatGlow_[i]);
+  }
+  visit("glow.woundRestRatio", woundRestRatio_);
+  visit("glow.woundGlowScale", woundGlowScale_);
 }
 
 void GameOverSequence::LoadConfig() {
@@ -457,6 +478,52 @@ float GameOverSequence::CameraMotionTimeAt(float time, float motionTime) const {
 
 float GameOverSequence::WindAt(float time) const {
   return EaseInQuad(Progress(time, releaseTime_, windRiseSec_));
+}
+
+float GameOverSequence::GlowRemainAt(float time) const {
+  return 1.0f - EaseOutCubic(Progress(time, releaseTime_, glowOffSec_));
+}
+
+float GameOverSequence::WoundPulseAt(float time) const {
+  // 被弾：あふれた光が、最初の一打ちまでに、一打ち目の休みの強さへ下がる
+  const float firstRest = woundBeatGlow_.front() * woundRestRatio_;
+  if (time < beats_.front().time) {
+    return Lerp(woundHitGlow_, firstRest,
+                EaseOutQuad(Progress(time, 0.0f, beats_.front().time)));
+  }
+
+  // 一打ち：前の一打ちの休みの強さから、打ち下ろしで山へ強まり、打ち上げで休みの強さへ弱まる
+  const StruggleBeat &beat = BeatAt(time);
+  const size_t index = static_cast<size_t>(&beat - beats_.data());
+  const float peak = woundBeatGlow_[index];
+  const float rest = peak * woundRestRatio_;
+  const float previousRest =
+      (index == 0) ? firstRest : woundBeatGlow_[index - 1] * woundRestRatio_;
+  const float downEnd = beat.time + beat.downSec;
+  if (time < downEnd) {
+    return Lerp(previousRest, peak,
+                EaseOutQuad(Progress(time, beat.time, beat.downSec)));
+  }
+  return Lerp(peak, rest,
+              EaseInOutQuad(Progress(time, downEnd, beat.upSec)));
+}
+
+float GameOverSequence::WoundGlowAt(float time) const {
+  return WoundPulseAt(time) * GlowRemainAt(time);
+}
+
+DragonModel::Glow GameOverSequence::GetDragonGlow() const {
+  DragonModel::Glow glow = glowLook_;
+  glow.woundOpen = 0.0f;
+  glow.woundGlow = 0.0f;
+  if (!isActive_) {
+    return glow;
+  }
+  // 模様と傷の光は抜ける時刻に一緒に消え、穴とひびは暗いまま残る
+  glow.pattern = glowLook_.pattern * GlowRemainAt(timer_);
+  glow.woundOpen = EaseOutCubic(Progress(timer_, 0.0f, woundOpenSec_));
+  glow.woundGlow = woundGlowScale_ * WoundGlowAt(timer_);
+  return glow;
 }
 
 float GameOverSequence::FallDistance(float motionTime) const {
@@ -918,6 +985,37 @@ void GameOverSequence::DrawImGui() {
                    2.0f);
   ImGui::DragFloat("Hit Shake", &hitShake_, 0.01f, 0.0f, 2.0f);
   ImGui::DragFloat("Hit Shake Sec", &hitShakeSec_, 0.01f, 0.01f, 2.0f);
+  ImGui::SeparatorText("Dragon Glow");
+  // 今の値（傷の光は強さ 1 が打ち下ろしの山の基準）
+  ImGui::Text("pattern %.2f / wound %.2f (pulse %.2f)",
+              glowLook_.pattern * GlowRemainAt(timer_), WoundGlowAt(timer_),
+              WoundPulseAt(timer_));
+  // 模様の光：テクスチャの水色らしさ（min(緑, 青) − 赤）が Low〜High の所が光る
+  ImGui::ColorEdit3("Pattern Color", &glowLook_.patternColor.x);
+  ImGui::DragFloat("Pattern Strength", &glowLook_.pattern, 0.01f, 0.0f, 5.0f);
+  ImGui::DragFloat2("Pattern Low / High", &glowLook_.patternLow, 0.005f,
+                    -0.5f, 1.0f);
+  ImGui::DragFloat("Glow Off Sec", &glowOffSec_, 0.01f, 0.0f, 1.0f);
+  // 傷の形（長さはモデルの単位。穴の半径 0.035 ≒ 胴の高さの 1/3）
+  ImGui::DragFloat("Wound Open Sec", &woundOpenSec_, 0.01f, 0.0f, 1.0f);
+  ImGui::DragFloat("Wound Radius", &glowLook_.woundRadius, 0.0005f, 0.0f,
+                   0.1f, "%.4f");
+  ImGui::DragFloat("Crack Length", &glowLook_.crackLength, 0.0005f, 0.0f,
+                   0.2f, "%.4f");
+  ImGui::DragFloat("Crack Width", &glowLook_.crackWidth, 0.0001f, 0.0f,
+                   0.02f, "%.4f");
+  ImGui::DragFloat("Rim Width", &glowLook_.rimWidth, 0.01f, 0.0f, 2.0f);
+  ImGui::DragFloat("Rim Jag", &glowLook_.rimJag, 0.01f, 0.0f, 0.9f);
+  ImGui::DragFloat("Spill", &glowLook_.spill, 0.01f, 0.0f, 3.0f);
+  // 傷の光の強さ：被弾の瞬間 → 一打ちごとの山 → 打ち上げで山 × Rest Ratio まで弱まる
+  ImGui::ColorEdit3("Wound Color", &glowLook_.woundColor.x);
+  ImGui::DragFloat("Wound Glow Scale", &woundGlowScale_, 0.05f, 0.0f, 20.0f);
+  ImGui::DragFloat("Wound Hit Glow", &woundHitGlow_, 0.01f, 0.0f, 3.0f);
+  for (size_t i = 0; i < UsedBeatCount(); ++i) {
+    const std::string label = "Wound Beat " + std::to_string(i + 1);
+    ImGui::DragFloat(label.c_str(), &woundBeatGlow_[i], 0.01f, 0.0f, 3.0f);
+  }
+  ImGui::SliderFloat("Wound Rest Ratio", &woundRestRatio_, 0.0f, 1.0f);
   ImGui::SeparatorText("Game Over Card");
   card_->DrawImGui();
 #endif

@@ -80,6 +80,16 @@ public:
     Matrix4x4 ComputeJointModelMatrix(int32_t jointIndex) const;
 
     /// <summary>
+    /// モデル空間の点に一番近い頂点の番号
+    /// </summary>
+    uint32_t FindNearestVertex(const Vector3& modelPosition) const;
+
+    /// <summary>
+    /// 頂点 1 つを、スキニングの ComputeShader と同じ計算で動かしたワールドの位置と法線（最後の Update の時点）
+    /// </summary>
+    void ComputeSkinnedVertex(uint32_t vertexIndex, Vector3& position, Vector3& normal) const;
+
+    /// <summary>
     /// アニメーションが入っているか
     /// </summary>
     bool HasAnimation() const { return animation_.duration > 0.0f; }

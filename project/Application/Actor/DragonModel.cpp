@@ -26,6 +26,9 @@ const char *const kHeadJoint = "Head_3";
 
 // 鏡面反射の倍率（1 で Object3d の標準の強さ）
 const float kSpecularScale = 0.3f;
+
+// 傷の中心にする、右の胸〜脇腹（翼の付け根の下、前脚の後ろ）の表面の点（モデル空間。+X が右、+Z が前）
+const Vector3 kWoundModelPosition = {0.05f, 0.21f, 0.17f};
 } // namespace
 
 DragonModel::DragonModel() = default;
@@ -51,6 +54,8 @@ void DragonModel::Initialize(Object3dRenderer *object3dRenderer,
   rightTipJoint_ = skinned_->FindJoint(kRightTipJoint).value_or(-1);
   headJoint_ = skinned_->FindJoint(kHeadJoint).value_or(-1);
   assert(leftTipJoint_ >= 0 && rightTipJoint_ >= 0 && headJoint_ >= 0);
+
+  woundVertex_ = skinned_->FindNearestVertex(kWoundModelPosition);
 }
 
 void DragonModel::SetWingState(const DragonWingAnimator::State &state) {
@@ -65,6 +70,42 @@ void DragonModel::SetWingStateImmediate(
 void DragonModel::Update(float deltaTime) {
   wing_.Update(deltaTime, ComputeWorldMatrix());
   skinned_->Update(deltaTime);
+  UpdateGlow();
+}
+
+void DragonModel::UpdateGlow() {
+  Object3d *object = skinned_->GetObject3d();
+  object->SetPatternGlow(glow_.patternColor, glow_.pattern, glow_.patternLow,
+                         glow_.patternHigh);
+
+  //===========================
+  // 傷の場所：体の表面の頂点を、スキニングと同じ計算で動かして追いかける
+  // 面に沿った向きは、体の前の向きから外向きの成分を除いたもの
+  //===========================
+  skinned_->ComputeSkinnedVertex(woundVertex_, woundFrame_.center,
+                                 woundFrame_.normal);
+  const Matrix4x4 &world = object->GetWorldMatrix();
+  const Vector3 bodyForward = {world.m[2][0], world.m[2][1], world.m[2][2]};
+  woundFrame_.scale =
+      Length(Vector3{world.m[0][0], world.m[0][1], world.m[0][2]});
+  woundFrame_.tangent =
+      Normalize(bodyForward -
+                woundFrame_.normal * Dot(bodyForward, woundFrame_.normal));
+
+  Object3d::Wound wound;
+  wound.center = woundFrame_.center;
+  wound.normal = woundFrame_.normal;
+  wound.tangent = woundFrame_.tangent;
+  wound.radius = glow_.woundRadius * woundFrame_.scale;
+  wound.crackLength = glow_.crackLength * woundFrame_.scale;
+  wound.crackWidth = glow_.crackWidth * woundFrame_.scale;
+  wound.rimWidth = glow_.rimWidth;
+  wound.rimJag = glow_.rimJag;
+  wound.open = glow_.woundOpen;
+  wound.glowColor = glow_.woundColor;
+  wound.glow = glow_.woundGlow;
+  wound.spill = glow_.spill;
+  object->SetWound(wound);
 }
 
 Matrix4x4 DragonModel::ComputeWorldMatrix() const {

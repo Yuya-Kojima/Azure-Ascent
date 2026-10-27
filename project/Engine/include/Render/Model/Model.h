@@ -75,6 +75,20 @@ public:
     float backRimScale = 0.0f; // 平行光源の逆光の縁を掛ける倍率（0で無効）
     float specularScale = 1.0f; // 鏡面反射の倍率（0で鏡面反射なし）
     float padding3 = 0.0f;
+    // 模様の光（テクスチャの水色の所に足す光）: rgb=色, w=強さ(0で無効)
+    Vector4 patternGlow = {0.0f, 0.0f, 0.0f, 0.0f};
+    // 模様とみなす水色らしさ（min(緑, 青) − 赤。リニアの色）: x=光り始める値, y=光りきる値, zw=未使用
+    Vector4 patternRange = {0.45f, 0.6f, 0.0f, 0.0f};
+    // 傷の中心: xyz=ワールド座標, w=穴の半径（ワールドの長さ）
+    Vector4 woundCenter = {0.0f, 0.0f, 0.0f, 0.0f};
+    // 傷の外向きの向き: xyz=単位ベクトル, w=ひびの長さ（中心から。ワールドの長さ）
+    Vector4 woundNormal = {0.0f, 1.0f, 0.0f, 0.0f};
+    // 傷の面に沿った向き（ひびの向きの基準）: xyz=単位ベクトル, w=開いた割合（0で傷なし、1で開ききる）
+    Vector4 woundTangent = {1.0f, 0.0f, 0.0f, 0.0f};
+    // 傷から漏れる光: rgb=色, w=強さ（0で穴とひびは暗いまま）
+    Vector4 woundGlow = {0.0f, 0.0f, 0.0f, 0.0f};
+    // 傷の形: x=ひびの根元の太さ（ワールドの長さ）, y=縁の欠けた殻の幅（穴の半径に対する割合）, z=縁のぎざぎざの深さ（穴の半径に対する割合）, w=周りの面ににじむ光の強さ
+    Vector4 woundShape = {0.0f, 0.0f, 0.0f, 0.0f};
   };
 
   /// <summary>

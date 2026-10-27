@@ -53,6 +53,8 @@ public:
   }
   // 羽ばたく自機ドラゴンを使う（SetModel の Object3d より優先して描く）
   void SetDragonModel(std::unique_ptr<DragonModel> model);
+  // 自機ドラゴン（なければ nullptr）
+  DragonModel *GetDragonModel() const { return dragonModel_.get(); }
 
   /// <summary>
   /// 頭のワールド座標（ドラゴンのモデルがなければ自機の位置）

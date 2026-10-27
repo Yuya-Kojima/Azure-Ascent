@@ -1,4 +1,5 @@
 #pragma once
+#include "Actor/DragonModel.h"
 #include "Actor/DragonWingAnimator.h"
 #include "Math/MathUtil.h"
 #include <array>
@@ -122,6 +123,12 @@ public:
   const ICamera *GetCamera() const;
 
   /// <summary>
+  /// 竜の力の光（模様の光と傷）の今の値。演出の外では、模様だけがふだんの強さで光り、傷はない
+  /// 被弾で傷が開いて光があふれ、打ち下ろしのたびに光が強まり、抜ける時刻に模様と傷の光が一緒に消える
+  /// </summary>
+  DragonModel::Glow GetDragonGlow() const;
+
+  /// <summary>
   /// 調整値の ImGui
   /// </summary>
   void DrawImGui();
@@ -195,6 +202,13 @@ private:
   float CameraMotionTimeAt(float time, float motionTime) const;
   // 時刻 time の、風を受ける強さ（0〜1。抜ける時刻から加速しながら上がる）
   float WindAt(float time) const;
+
+  // 時刻 time の、竜の力の光が残っている割合（抜ける時刻から glowOffSec_ で 1 → 0。最初が速い）
+  float GlowRemainAt(float time) const;
+  // 時刻 time の、傷から漏れる光の強さ（0〜。1 が打ち下ろしの山の基準）。抜けたあとの消え方は含まない
+  float WoundPulseAt(float time) const;
+  // 時刻 time の、傷の光の強さ（WoundPulseAt に、抜けて消える割合を掛けたもの）
+  float WoundGlowAt(float time) const;
 
   // 動きの時間（ゆっくりの間は遅く進む）で、落ち始めてから下がった距離
   float FallDistance(float motionTime) const;
@@ -353,4 +367,15 @@ private:
   float cameraLagRiseSec_ = 0.5f;  // 抜ける時刻から、遅れが cameraLagSec_ になるまでの時間（秒）
   float hitShake_ = 0.3f;      // 被弾の瞬間のカメラの揺れの大きさ
   float hitShakeSec_ = 0.3f;   // 揺れが収まるまでの時間（秒）
+
+  //---- 竜の力の光（模様の光・傷） ----
+  // 見た目。pattern はふだんの模様の光の強さ。woundOpen・woundGlow は使わず、時刻から決める
+  DragonModel::Glow glowLook_;
+  float glowOffSec_ = 0.15f;      // 抜ける時刻から、模様と傷の光が消えきるまでの時間（秒）
+  float woundOpenSec_ = 0.12f;    // 被弾から、傷が開ききるまでの時間（秒）
+  float woundHitGlow_ = 1.0f;     // 被弾の瞬間の、傷の光の強さ（最初の一打ちまでに、一打ち目の休みの強さへ下がる）
+  // 一打ちごとの、打ち下ろしで強まった山の強さ（打つたびに低く、最後のあがきで大きい）
+  std::array<float, kMaxBeatCount_> woundBeatGlow_ = {0.8f, 0.6f, 0.9f, 0.5f};
+  float woundRestRatio_ = 0.35f;  // 打ち上げで弱まったときの強さ（その一打ちの山に対する割合）
+  float woundGlowScale_ = 15.0f;  // 強さ 1 のときの、傷の光の明るさ
 };

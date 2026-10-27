@@ -860,6 +860,10 @@ void GamePlayScene::Update() {
       const bool isSequenceMoving = isPlayMode_ && !isPaused_;
       wingDeltaTime = isSequenceMoving ? kWingDeltaTime_ : 0.0f;
     }
+    // 竜の力の光（模様の光と傷）。ゲームオーバーの間は演出が強さを決める
+    if (DragonModel *dragonModel = player_->GetDragonModel()) {
+      dragonModel->SetGlow(gameOverSequence_->GetDragonGlow());
+    }
     player_->UpdateWing(wingDeltaTime);
   }
 

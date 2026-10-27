@@ -4,6 +4,7 @@
 #include "Render/Renderer/Object3dRenderer.h"
 #include <cassert>
 #include <cmath>
+#include <limits>
 
 void SkinnedObject::Initialize(Object3dRenderer *object3dRenderer,
                                SrvManager *srvManager,
@@ -179,6 +180,59 @@ Matrix4x4 SkinnedObject::GetJointWorldMatrix(int32_t jointIndex) const {
   // 関節のモデル空間での行列に、Object3d のワールド行列を掛ける
   return Multiply(skeleton_.joints[jointIndex].skeletonSpaceMatrix,
                   object3d_->GetWorldMatrix());
+}
+
+uint32_t SkinnedObject::FindNearestVertex(const Vector3 &modelPosition) const {
+  const std::vector<Model::VertexData> &vertices =
+      model_->GetModelData().vertices;
+  assert(!vertices.empty());
+  uint32_t nearest = 0;
+  float nearestDistanceSq = (std::numeric_limits<float>::max)();
+  for (uint32_t i = 0; i < static_cast<uint32_t>(vertices.size()); ++i) {
+    const Vector4 &p = vertices[i].position;
+    const float distanceSq =
+        LengthSq(Vector3{p.x, p.y, p.z} - modelPosition);
+    if (distanceSq < nearestDistanceSq) {
+      nearestDistanceSq = distanceSq;
+      nearest = i;
+    }
+  }
+  return nearest;
+}
+
+void SkinnedObject::ComputeSkinnedVertex(uint32_t vertexIndex,
+                                         Vector3 &position,
+                                         Vector3 &normal) const {
+  const std::vector<Model::VertexData> &vertices =
+      model_->GetModelData().vertices;
+  assert(vertexIndex < vertices.size());
+  const Model::VertexData &vertex = vertices[vertexIndex];
+  const VertexInfluence &influence = skinCluster_.mappedInfluence[vertexIndex];
+  const Vector3 restPosition = {vertex.position.x, vertex.position.y,
+                                vertex.position.z};
+
+  // 影響する関節ごとに（初期姿勢の逆行列 × 今の関節の行列）で動かし、重みで足し合わせる
+  Vector3 skinnedPosition{};
+  Vector3 skinnedNormal{};
+  for (uint32_t i = 0; i < kNumMaxInfluence; ++i) {
+    const float weight = influence.weights[i];
+    if (weight <= 0.0f) {
+      continue;
+    }
+    const int32_t jointIndex = influence.jointIndices[i];
+    const Matrix4x4 skinMatrix =
+        Multiply(skinCluster_.inverseBindPoseMatrices[jointIndex],
+                 skeleton_.joints[jointIndex].skeletonSpaceMatrix);
+    skinnedPosition += TransformPoint(restPosition, skinMatrix) * weight;
+    skinnedNormal +=
+        TransformNormal(vertex.normal, Transpose(Inverse(skinMatrix))) * weight;
+  }
+
+  // モデル空間からワールドへ
+  const Matrix4x4 &world = object3d_->GetWorldMatrix();
+  position = TransformPoint(skinnedPosition, world);
+  normal = Normalize(
+      TransformNormal(skinnedNormal, Transpose(Inverse(world))));
 }
 
 Matrix4x4 SkinnedObject::ComputeJointModelMatrix(int32_t jointIndex) const {
