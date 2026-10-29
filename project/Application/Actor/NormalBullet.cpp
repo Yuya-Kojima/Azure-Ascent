@@ -88,6 +88,7 @@ void NormalBullet::OnCollision(Collider* other) {
   if (other->GetAttribute() & kCollisionAttributeEnemy) {
     Enemy* enemy = dynamic_cast<Enemy*>(other->GetOwner());
     if (enemy && !enemy->IsDead()) {
+      enemy->SetLastHitVolley(kNoVolleyId);
       enemy->TakeDamage(damage_);
       isDead_ = true;
 

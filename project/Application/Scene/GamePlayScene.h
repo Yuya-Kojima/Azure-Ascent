@@ -24,12 +24,16 @@ class StageLighting;
 class RoarDistortion;
 class CloudSea;
 class CloudSeaEvents;
+class GameHud;
+class ResultSequence;
+class ScoreKeeper;
 
 #include "Actor/Boss.h"
 #include "Actor/Enemy.h"
 #include "Actor/Player.h"
 #include "Camera/RailCamera.h"
 #include "Render/SkyBox/SkyBox.h"
+#include "Score/ScoreConfig.h"
 
 struct SpawnEvent {
   float spawnTime = 0.0f;
@@ -79,10 +83,11 @@ private: // メンバ変数(ゲーム用)
   // ゲーム状態
   GameState gameState_ = GameState::Play;
 
-  // クリア画面に入ってからの経過時間（秒）
-  float clearTimer_ = 0.0f;
-  // クリア画面で決定を受け付け始めるまでの時間（秒）
-  static constexpr float kClearDecideLockSec_ = 0.5f;
+  // 評価: 点の入り方とランクの基準、1 回のプレイの点と撃墜率、HUD、クリアしたあとのリザルト
+  ScoreConfig scoreConfig_;
+  std::unique_ptr<ScoreKeeper> scoreKeeper_;
+  std::unique_ptr<GameHud> hud_;
+  std::unique_ptr<ResultSequence> resultSequence_;
 
   // ステージ開始演出
   std::unique_ptr<StageIntro> stageIntro_;
@@ -171,9 +176,6 @@ private: // メンバ変数(ゲーム用)
   // プレハブ編集用
   std::string selectedPrefabName_ = "";
   std::unique_ptr<Enemy> tempPrefabEditEnemy_ = nullptr;
-
-  // HPバー用
-  float hpBarBaseWidth_ = 0.0f;
 
 public: // Undo/Redo用アクセッサ
   std::vector<SpawnEvent> &GetSpawnEvents() { return spawnEvents_; }
@@ -266,6 +268,26 @@ private:
   /// ゲームオーバーの空中の演出の更新（自機の位置・向き・翼を渡し、合図で拠点への遷移を始める）
   /// </summary>
   void UpdateGameOver();
+
+  /// <summary>
+  /// クリアしてリザルトを出し始める（点を確定し、記録を書く）
+  /// </summary>
+  void StartClear();
+
+  /// <summary>
+  /// リザルトの更新（選んだら次のシーンへ）
+  /// </summary>
+  void UpdateClear();
+
+  /// <summary>
+  /// ボスが出るレールの進み具合（ボスがいなければレールの終わり）
+  /// </summary>
+  float GetBossSpawnTime() const;
+
+  /// <summary>
+  /// 出ているボス（いなければ nullptr）
+  /// </summary>
+  const Boss *FindBoss() const;
 
   /// <summary>
   /// 空・雲海・光・霧・ポストエフェクトを設定する

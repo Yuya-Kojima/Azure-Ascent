@@ -4,6 +4,7 @@
 #include <functional>
 #include <memory>
 #include <vector>
+#include "Score/VolleyId.h"
 
 class Object3d;
 class Object3dRenderer;
@@ -35,6 +36,12 @@ public:
   // 弾消滅時（着弾・寿命切れ）のコールバックを設定
   void SetOnDestroyCallback(std::function<void(BaseActor*)> callback) {
     onDestroyCallback_ = callback;
+  }
+
+  // この弾の射撃番号と、弾が当たった・狙った敵を失った・消えたときに一度だけ呼ぶコールバック
+  void SetVolley(int volleyId, std::function<void(int)> onFinished) {
+    volleyId_ = volleyId;
+    onVolleyFinished_ = onFinished;
   }
 
   void Update() override;
@@ -69,4 +76,12 @@ private:
 
   // 消滅時コールバック
   std::function<void(BaseActor*)> onDestroyCallback_;
+
+  // 射撃番号と、射撃の弾が終わったことを知らせるコールバック
+  int volleyId_ = kNoVolleyId;
+  std::function<void(int)> onVolleyFinished_;
+  bool hasFinishedVolley_ = false;
+
+  // 射撃の弾が終わったことを一度だけ知らせる
+  void FinishVolley();
 };

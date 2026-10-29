@@ -15,6 +15,7 @@
 #include "Scene/SceneManager.h"
 #include "Scene/DarkCloudTransition.h"
 #include "Scene/StageLighting.h"
+#include "Scene/StageBriefing.h"
 #include "Scene/StageSelectReturn.h"
 #include "Scene/StageSelectReturnSky.h"
 #include "Texture/TextureManager.h"
@@ -85,6 +86,11 @@ void StageSelectScene::Initialize(EngineBase *engine) {
   SoundManager::GetInstance()->Load("title_bgm",
                                     "resources/Sounds/title_bgm.mp3");
 
+  // 出撃前の確認画面
+  scoreConfig_.Load();
+  briefing_ = std::make_unique<StageBriefing>();
+  briefing_->Initialize(engine_->GetSpriteRenderer());
+
   // ゲームオーバーから戻ったときは、倒れたドラゴンが起き上がる演出から始め、BGM は UI が出てから流す
   returnSequence_ = std::make_unique<StageSelectReturn>();
   returnSequence_->Initialize(engine_->GetSpriteRenderer());
@@ -114,9 +120,10 @@ void StageSelectScene::Update() {
   // Sound更新
   SoundManager::GetInstance()->Update();
 
-  // スプライト（UI）の更新。出撃演出中と、ゲームオーバーから戻ったときの演出中はメニューを操作させない
+  // スプライト（UI）の更新。出撃演出中・確認画面・ゲームオーバーから戻ったときの演出中はメニューを操作させない
   Input *input = GameManager::GetInstance()->IsGlobalPlayMode() &&
-                         !isLaunching_ && !returnSequence_->IsActive()
+                         !isLaunching_ && !returnSequence_->IsActive() &&
+                         !briefing_->IsActive()
                      ? engine_->GetInputManager()
                      : nullptr;
   UIManager::GetInstance()->Update(input);
@@ -135,9 +142,14 @@ void StageSelectScene::Update() {
     UpdateReturn();
   }
 
+  // 出撃前の確認画面
+  if (briefing_->IsActive()) {
+    UpdateBriefing();
+  }
+
   // 決定の処理
   if (GameManager::GetInstance()->IsGlobalPlayMode() && !isLaunching_ &&
-      !returnSequence_->IsActive()) {
+      !returnSequence_->IsActive() && !briefing_->IsActive()) {
     if (MenuInput::IsDecideTriggered(engine_->GetInputManager())) {
       SoundManager::GetInstance()->PlaySE("ui_decide");
       std::string selectedName = UIManager::GetInstance()->GetFocusedNodeName();
@@ -147,10 +159,12 @@ void StageSelectScene::Update() {
       const float kCloudTransitionSec = 1.0f;
       const Vector4 kCloudColor = {1.0f, 1.0f, 1.0f, 1.0f};
 
-      // ステージへの出撃は、ドラゴンが飛び立つ演出のあとで雲のフェードに入る
+      // ステージを選ぶと、確認画面を出す（出撃を選ぶと、ドラゴンが飛び立つ演出のあとで雲のフェードに入る）
       if (selectedName == "Stage1Text") {
         GameManager::GetInstance()->SetCurrentLevel("level_editor.json");
-        StartLaunch(false);
+        briefing_->Start(GameManager::GetInstance()->GetCurrentLevel(),
+                         scoreConfig_);
+        UIManager::GetInstance()->SetGlobalAlpha(0.0f);
       } else if (selectedName == "BackText") {
         // タイトルも雲の上にあるので、出撃と同じく雲を突き抜けて上昇する
         SceneManager::GetInstance()->SetNextTransitionFade(
@@ -222,6 +236,28 @@ void StageSelectScene::Update() {
     dragonModel_->SetGlow(returnSequence_->GetGlow());
   }
   dragonModel_->Update(kWingDeltaTime_);
+}
+
+void StageSelectScene::UpdateBriefing() {
+  Input *input = GameManager::GetInstance()->IsGlobalPlayMode()
+                     ? engine_->GetInputManager()
+                     : nullptr;
+  briefing_->Update(input);
+  switch (briefing_->ConsumeChoice()) {
+  case StageBriefing::Choice::Sortie:
+    SoundManager::GetInstance()->PlaySE("ui_decide");
+    StartLaunch(false);
+    break;
+  case StageBriefing::Choice::Back:
+    SoundManager::GetInstance()->PlaySE("ui_decide");
+    break;
+  case StageBriefing::Choice::None:
+    break;
+  }
+  // 戻ると決めて板が消えきったら、いつものメニューを出す
+  if (!briefing_->IsActive() && !isLaunching_) {
+    UIManager::GetInstance()->SetGlobalAlpha(1.0f);
+  }
 }
 
 void StageSelectScene::UpdateReturn() {
@@ -479,6 +515,7 @@ void StageSelectScene::Draw3D() {
 void StageSelectScene::Draw2D() {
   // ここから下で2DオブジェクトのDrawを呼ぶ
   UIManager::GetInstance()->Draw();
+  briefing_->Draw();
   returnSequence_->Draw();
 }
 

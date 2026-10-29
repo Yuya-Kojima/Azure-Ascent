@@ -3,6 +3,7 @@
 #include "Framework/BaseActor.h"
 #include "Math/Vector2.h"
 #include "ReticleTunnel.h"
+#include "Score/VolleyId.h"
 #include <cassert>
 #include <functional>
 #include <memory>
@@ -17,6 +18,7 @@ class DragonModel;
 class Sprite;
 class Input;
 class Enemy;
+class ScoreKeeper;
 
 class Player : public BaseActor {
 public:
@@ -115,8 +117,14 @@ public:
   int GetHp() const { return hp_; }
   int GetMaxHp() const { return kMaxHp; }
 
-  int GetScore() const { return score_; }
-  void AddScore(int amount) { score_ += amount; }
+  // ロックオンの一斉射撃を数える係（nullptr なら数えない）
+  void SetScoreKeeper(ScoreKeeper *scoreKeeper) { scoreKeeper_ = scoreKeeper; }
+
+  // 今ロックしている（まだ撃っていない）数
+  int GetLockingCount() const;
+
+  // 照準の画面上の位置（1280x720 の px）
+  Vector2 GetReticlePosition() const;
 
   bool IsDead() const { return isDead_; }
 
@@ -186,9 +194,6 @@ private:
   static constexpr int kMaxHp = 10;
   int hp_ = kMaxHp;
 
-  // スコア
-  int score_ = 0;
-
   std::unique_ptr<class SphereCollider> collider_;
   std::unique_ptr<LockOn> lockOn_;
   std::shared_ptr<bool> isAliveToken_ = std::make_shared<bool>(true);
@@ -198,6 +203,7 @@ private:
   const ICamera *camera_ = nullptr;
   class Input *input_ = nullptr;
   std::vector<BaseActor *> lockOnTargets_;
+  ScoreKeeper *scoreKeeper_ = nullptr;
 
   void FireHomingShot();
   void FireNormalShot(); // 追加
@@ -243,11 +249,15 @@ private:
     BaseActor *target = nullptr;
     int index = 0;
     int totalCount = 0;
+    int volleyId = kNoVolleyId; // 射撃番号
   };
   std::vector<HomingQueueItem> homingQueue_;
   int homingFireTimer_ = 0;
   static constexpr int kHomingFireInterval = 3; // 3フレーム（約0.05秒）間隔で連続射出
 
   void UpdateHomingQueue();
-  void SpawnHomingBullet(BaseActor *target, int index, int totalCount);
+  void SpawnHomingBullet(BaseActor *target, int index, int totalCount,
+                         int volleyId);
+  // 射撃の弾が 1 発終わったことを数える係へ知らせる
+  void FinishVolleyBullet(int volleyId);
 };

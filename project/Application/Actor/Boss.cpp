@@ -155,20 +155,6 @@ void Boss::InitializeUI(SpriteRenderer *spriteRenderer) {
   if (!spriteRenderer)
     return;
 
-  hpBarBg_ = std::make_unique<Sprite>();
-  hpBarBg_->Initialize(spriteRenderer, "resources/white1x1.png");
-  hpBarBg_->SetAnchorPoint({0.5f, 0.5f});
-  hpBarBg_->SetPosition({1280.0f / 2.0f, 60.0f}); // 画面上部中央
-  hpBarBg_->SetSize({800.0f, 20.0f});
-  hpBarBg_->SetColor({0.2f, 0.2f, 0.2f, 0.8f});
-
-  hpBarFg_ = std::make_unique<Sprite>();
-  hpBarFg_->Initialize(spriteRenderer, "resources/white1x1.png");
-  hpBarFg_->SetAnchorPoint({0.0f, 0.5f}); // スケール用に左端アンカー
-  hpBarFg_->SetPosition({(1280.0f / 2.0f) - 400.0f, 60.0f});
-  hpBarFg_->SetSize({800.0f, 20.0f});
-  hpBarFg_->SetColor({1.0f, 0.2f, 0.2f, 1.0f});
-
   dangerUI_ = std::make_unique<Sprite>();
   dangerUI_->Initialize(spriteRenderer, "resources/white1x1.png"); 
   dangerUI_->SetAnchorPoint({0.5f, 0.5f});
@@ -812,34 +798,10 @@ void Boss::Draw2D() {
   if (!isUIInitialized_ || isDead_)
     return;
 
-  // HPの割合でスケール(Size)を更新
-  float hpRatio = static_cast<float>(hp_) / maxHp_;
-  if (hpRatio < 0.0f)
-    hpRatio = 0.0f;
-
-  hpBarFg_->SetSize({800.0f * hpRatio, 20.0f});
-
-  // 色もフェーズによって変える（例: Phase2でオレンジ色に）
-  if (phase_ == BossPhase::Phase2) {
-    hpBarFg_->SetColor({1.0f, 0.6f, 0.0f, 1.0f});
-  } else if (phase_ == BossPhase::PhaseTransition) {
-    // 移行中は点滅させる
-    float flashIntensity = (std::sin(stateTimer_ * 30.0f) + 1.0f) * 0.5f;
-    hpBarFg_->SetColor({1.0f, 1.0f - flashIntensity * 0.4f, 1.0f - flashIntensity * 0.8f, 1.0f});
-  } else {
-    hpBarFg_->SetColor({1.0f, 0.2f, 0.2f, 1.0f});
-  }
-
   Transform defaultUv;
   defaultUv.scale = {1.0f, 1.0f, 1.0f};
   defaultUv.rotate = {0.0f, 0.0f, 0.0f};
   defaultUv.translate = {0.0f, 0.0f, 0.0f};
-
-  hpBarBg_->Update(defaultUv);
-  hpBarFg_->Update(defaultUv);
-
-  hpBarBg_->Draw();
-  hpBarFg_->Draw();
 
   // 突進予兆時の警告UI描画
   if (currentState_ == BossState::DashTelegraph) {
