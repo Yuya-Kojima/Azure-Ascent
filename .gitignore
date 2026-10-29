@@ -414,3 +414,6 @@ project/externals/assimp/bin/
 **/AGENTS.md
 /project/create_presentation.py
 /project/PR1_Presentation.pptx
+
+# ---- save data (records written by the game) ----
+project/Application/save/

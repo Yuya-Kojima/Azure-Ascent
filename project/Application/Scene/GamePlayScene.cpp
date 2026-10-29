@@ -38,6 +38,10 @@
 #include "Sprite/Sprite.h"
 #include "StageIntro.h"
 #include "GameOverSequence.h"
+#include "GameHud.h"
+#include "ResultSequence.h"
+#include "Score/ScoreKeeper.h"
+#include "Score/StageRecord.h"
 #include "SkipHold.h"
 #include "Texture/TextureManager.h"
 #include <filesystem>
@@ -298,6 +302,14 @@ void GamePlayScene::Initialize(EngineBase *engine) {
   stageIntro_->Initialize(engine_->GetSpriteRenderer(), cloudSeaEvents_.get());
   gameOverSequence_ = std::make_unique<GameOverSequence>();
   gameOverSequence_->Initialize(engine_->GetSpriteRenderer());
+
+  // 評価
+  scoreConfig_.Load();
+  scoreKeeper_ = std::make_unique<ScoreKeeper>();
+  hud_ = std::make_unique<GameHud>();
+  hud_->Initialize(engine_->GetSpriteRenderer());
+  resultSequence_ = std::make_unique<ResultSequence>();
+  resultSequence_->Initialize(engine_->GetSpriteRenderer());
   skipHold_ = std::make_unique<SkipHold>();
   skipHold_->Initialize(engine_->GetSpriteRenderer());
 
@@ -311,6 +323,7 @@ void GamePlayScene::Initialize(EngineBase *engine) {
   player_->SetObject3dRenderer(engine_->GetObject3dRenderer());
   player_->SetInput(engine_->GetInputManager());
   player_->SetHitStopCallback([this](int frames) { RequestHitStop(frames); });
+  player_->SetScoreKeeper(scoreKeeper_.get());
 
   // プレイヤーの初期化（照準やコライダーの生成など）
   player_->Initialize();
@@ -337,9 +350,6 @@ void GamePlayScene::Initialize(EngineBase *engine) {
 
   // UIの読み込み
   UIManager::GetInstance()->Load("resources/UI/GamePlayUI.json");
-  if (auto hpNode = UIManager::GetInstance()->GetNodeByName("HPBarImage")) {
-    hpBarBaseWidth_ = hpNode->scale.x;
-  }
 
   // リボントレイル用テクスチャのロード
   TextureManager::GetInstance()->LoadTexture("resources/gradationLine.png");
@@ -373,6 +383,10 @@ void GamePlayScene::Update() {
         ev.hasSpawned = false;
       }
     }
+
+    // 点と撃墜率を数え直す
+    scoreKeeper_->Reset(&scoreConfig_, GetBossSpawnTime());
+    hud_->Reset();
 
     if (playIntroOnStart_) {
       StartIntro();
@@ -458,26 +472,6 @@ void GamePlayScene::Update() {
                      : nullptr;
   UIManager::GetInstance()->Update(input);
 
-  // HPバーUI
-  if (player_) {
-    float playerMaxHp = static_cast<float>(player_->GetMaxHp());
-    float playerCurrentHp = static_cast<float>(player_->GetHp());
-
-    // Hp割合計算
-    float hpRatio = (std::max)(playerCurrentHp / playerMaxHp, 0.0f);
-
-    if (auto hpNode = UIManager::GetInstance()->GetNodeByName("HPBarImage")) {
-      hpNode->scale.x = hpBarBaseWidth_ * hpRatio;
-
-      // HPが3割以下になったら赤色にする
-      if (hpRatio <= 0.3f) {
-        hpNode->color = {1.0f, 0.0f, 0.0f, 1.0f}; // 赤色
-      } else {
-        hpNode->color = {0.0f, 1.0f, 0.0f, 1.0f}; // 緑色
-      }
-    }
-  }
-
   // デバッグカメラ切り替え
   if (engine_->GetInputManager()->IsTriggerKey(DIK_P)) {
     if (useDebugCamera_) {
@@ -504,28 +498,11 @@ void GamePlayScene::Update() {
       }
 
       if (!isBossActive) {
-        gameState_ = GameState::Clear;
-        clearTimer_ = 0.0f;
-        SoundManager::GetInstance()->StopBGM();
-        SoundManager::GetInstance()->PlaySE("victory_jingle");
-        if (railCamera_)
-          railCamera_->SetAutoMove(false);
-        UIManager::GetInstance()->Load("resources/UI/ClearUI.json");
+        StartClear();
       }
     }
   } else if (gameState_ == GameState::Clear) {
-    // リザルト画面で決定を押したらステージセレクト（雲の下の拠点）へ戻るので、雲を抜けて降下する
-    // 入ってすぐの間は、射撃の押下が決定にならないよう受け付けない
-    clearTimer_ += 1.0f / 60.0f;
-    if (clearTimer_ >= kClearDecideLockSec_ &&
-        MenuInput::IsDecideTriggered(engine_->GetInputManager())) {
-      const float kCloudTransitionSec = 1.0f;
-      const Vector4 kCloudColor = {1.0f, 1.0f, 1.0f, 1.0f};
-      SceneManager::GetInstance()->SetNextTransitionFade(
-          kCloudTransitionSec, Fade::FadeType::CloudDescend, kCloudColor,
-          Fade::EasingType::Linear);
-      SceneManager::GetInstance()->ChangeScene("STAGE_SELECT");
-    }
+    UpdateClear();
   }
 
   if (hitStopTimer_ > 0) {
@@ -732,47 +709,28 @@ void GamePlayScene::Update() {
           }
         }
 
-        // ボス撃破時はクリア画面へ移行するコールバックを登録
-        if (ev.prefabName == "Boss") {
-          newEnemy->SetOnDestroyedCallback([this](bool isSelfDestruct) {
-            gameState_ = GameState::Clear;
-            clearTimer_ = 0.0f;
-            SoundManager::GetInstance()->StopBGM();
-            SoundManager::GetInstance()->PlaySE("victory_jingle");
-            if (railCamera_)
-              railCamera_->SetAutoMove(false);
-            UIManager::GetInstance()->Load("resources/UI/ClearUI.json");
-
-            if (auto scoreNode =
-                    UIManager::GetInstance()->GetNodeByName("ScoreText")) {
-              if (player_) {
-                player_->AddScore(10000); // ボス撃破スコアを加算
-                char scoreBuf[64];
-                snprintf(scoreBuf, sizeof(scoreBuf), "SCORE: %06d",
-                         player_->GetScore());
-                scoreNode->textString = scoreBuf;
-              }
-            }
-          });
-        }
-
         // カメラとオフセット、プレイヤー情報をセット
         newEnemy->SetCamera(railCamera_.get());
         newEnemy->SetPlayer(player_.get());
         newEnemy->SetSpawnOffset(ev.spawnOffset);
 
-        auto prevCallback = newEnemy->GetOnDestroyedCallback();
-        newEnemy->SetOnDestroyedCallback(
-            [this, prevCallback](bool isSelfDestruct) {
-              if (!isSelfDestruct) {
-                if (player_) {
-                  player_->AddScore(100);
+        // 撃破を数える。ボスを倒したらクリア、それ以外は自機の弾で倒したときだけ撃破に数える
+        if (ev.prefabName == "Boss") {
+          newEnemy->SetOnDestroyedCallback([this](bool) {
+            scoreKeeper_->OnBossKilled();
+            StartClear();
+          });
+        } else if (isPlayMode_) {
+          const int scoreId = scoreKeeper_->OnEnemySpawned(ev.spawnTime);
+          newEnemy->SetOnDestroyedCallback(
+              [this, scoreId, enemyPtr](bool isSelfDestruct) {
+                if (!isSelfDestruct) {
+                  scoreKeeper_->OnEnemyKilled(scoreId,
+                                              enemyPtr->GetLastHitVolley(),
+                                              enemyPtr->GetTransform().translate);
                 }
-              }
-              if (prevCallback) {
-                prevCallback(isSelfDestruct);
-              }
-            });
+              });
+        }
 
         // Playモード時のみ実際の敵を生成
         if (isPlayMode_) {
@@ -851,7 +809,8 @@ void GamePlayScene::Update() {
 
   if (player_) {
     // プレイヤーの照準や挙動の計算には常にレールカメラを使用する
-    if (shouldUpdateWorld) {
+    // クリアしたあと（リザルト中）は操作を受けず、位置と見た目だけ更新する
+    if (shouldUpdateWorld && gameState_ != GameState::Clear) {
       player_->Update();
       // 開始演出から操作へ移る間は、演出が決める位置・向きと操作の位置・向きを混ぜる
       if (!stageIntro_->IsFinished()) {
@@ -885,6 +844,16 @@ void GamePlayScene::Update() {
   // 当たり判定の更新
   if (shouldUpdateWorld) {
     CollisionManager::GetInstance()->Update();
+  }
+
+  // HUD（開始演出のあとに現し、ゲームオーバーでは被弾から消していく）
+  if (player_ && railCamera_) {
+    float hudAlpha = hudFadeSec_ > 0.0f ? hudFadeTimer_ / hudFadeSec_ : 1.0f;
+    if (gameState_ == GameState::GameOver) {
+      hudAlpha = gameOverSequence_->GetHudAlpha();
+    }
+    hud_->Update(*player_, *scoreKeeper_, FindBoss(),
+                 railCamera_->GetViewProjectionMatrix(), hudAlpha);
   }
 
 #ifdef USE_IMGUI
@@ -1671,6 +1640,13 @@ void GamePlayScene::DrawEditorUI() {
     player_->Kill();
   }
   gameOverSequence_->DrawImGui();
+  if (ImGui::CollapsingHeader("Score")) {
+    scoreConfig_.DrawImGui();
+    ImGui::Text("Score %d  Kills %d / %d  Worst Section %d",
+                scoreKeeper_->GetScore(), scoreKeeper_->GetKilledCount(),
+                scoreKeeper_->GetSpawnedCount(),
+                scoreKeeper_->GetWorstSection());
+  }
   if (ImGui::CollapsingHeader("Skip Hold")) {
     skipHold_->DrawImGui();
   }
@@ -2015,9 +1991,15 @@ void GamePlayScene::Draw2D() {
     }
   }
 
-  // スプライト（UI）の描画。開始演出中は HUD を出さない
+  // スプライト（UI）の描画。開始演出中は HUD を出さない。クリアしたあとはリザルトを出す
   if (gameState_ != GameState::Intro) {
     UIManager::GetInstance()->Draw();
+  }
+  if (gameState_ == GameState::Play || gameState_ == GameState::GameOver) {
+    hud_->Draw();
+  }
+  if (gameState_ == GameState::Clear) {
+    resultSequence_->Draw();
   }
 
   // 目標カードは HUD より手前に出す
@@ -2153,15 +2135,7 @@ void GamePlayScene::UpdateGameOver() {
   // 合図で、ボスまでの道のりのどこまで進んだか（ボスが出る位置で 1）を拠点へ渡し、拠点へ切り替える
   // ドラゴンが沈んだ雲海と同じ暗い灰青の雲が、黒い画面を下から覆い、拠点で下から晴れる
   if (gameOverSequence_->ConsumeTransitionCue()) {
-    const size_t kMinWaypointCount = 2;
-    float bossT = static_cast<float>(
-        (std::max)(railCamera_->GetWaypoints().size(), kMinWaypointCount) - 1);
-    for (const auto &ev : spawnEvents_) {
-      if (ev.prefabName == "Boss") {
-        bossT = ev.spawnTime;
-        break;
-      }
-    }
+    const float bossT = GetBossSpawnTime();
     const float progress =
         bossT > 0.0f ? railCamera_->GetT() / bossT : 1.0f;
     GameManager::GetInstance()->SetGameOverReturn(
@@ -2171,6 +2145,101 @@ void GamePlayScene::UpdateGameOver() {
                                  Fade::FadeType::CloudDescend);
     SceneManager::GetInstance()->ChangeScene("STAGE_SELECT");
   }
+}
+
+void GamePlayScene::StartClear() {
+  if (gameState_ == GameState::Clear) {
+    return;
+  }
+  gameState_ = GameState::Clear;
+  SoundManager::GetInstance()->StopBGM();
+  SoundManager::GetInstance()->PlaySE("victory_jingle");
+  if (railCamera_) {
+    railCamera_->SetAutoMove(false);
+  }
+
+  // まだ弾が飛んでいる射撃を確定し、ランクを決める
+  scoreKeeper_->FinishAllVolleys();
+  ResultSequence::Result result;
+  result.breakdown = scoreKeeper_->GetBreakdown();
+  result.spawned = scoreKeeper_->GetSpawnedCount();
+  result.scoreRank = scoreConfig_.GetScoreRank(scoreKeeper_->GetScore());
+  result.killRateRank =
+      scoreConfig_.GetKillRateRank(scoreKeeper_->GetKillRate());
+  result.overallRank =
+      ScoreConfig::GetOverallRank(result.scoreRank, result.killRateRank);
+  result.hintSection = scoreKeeper_->GetWorstSection();
+
+  // 記録を書く（ベストはスコア・ランク・撃墜率それぞれの最高）
+  const std::string stageName = GameManager::GetInstance()->GetCurrentLevel();
+  StageRecord record = StageRecord::Load(stageName);
+  result.hasPreviousBest = record.hasRecord;
+  result.previousBestScore = record.bestScore;
+  result.isNewBest =
+      !record.hasRecord || scoreKeeper_->GetScore() > record.bestScore;
+  record.bestScore = (std::max)(record.bestScore, scoreKeeper_->GetScore());
+  record.bestRank = record.hasRecord
+                        ? (std::max)(record.bestRank, result.overallRank)
+                        : result.overallRank;
+  record.bestKillRate =
+      (std::max)(record.bestKillRate, scoreKeeper_->GetKillRate());
+  record.hasRecord = true;
+  StageRecord::Save(stageName, record);
+  result.bestScore = record.bestScore;
+
+  resultSequence_->Start(result);
+}
+
+void GamePlayScene::UpdateClear() {
+  Input *input = GameManager::GetInstance()->IsGlobalPlayMode()
+                     ? engine_->GetInputManager()
+                     : nullptr;
+  resultSequence_->Update(input);
+
+  const float kCloudTransitionSec = 1.0f;
+  const Vector4 kCloudColor = {1.0f, 1.0f, 1.0f, 1.0f};
+  switch (resultSequence_->ConsumeChoice()) {
+  case ResultSequence::Choice::Again:
+    // 拠点へ降りずに、雲を抜けてもう一度ステージの開始演出から
+    SoundManager::GetInstance()->PlaySE("ui_decide");
+    SceneManager::GetInstance()->SetNextTransitionFade(
+        kCloudTransitionSec, Fade::FadeType::Cloud, kCloudColor,
+        Fade::EasingType::Linear);
+    SceneManager::GetInstance()->ChangeScene("GAMEPLAY");
+    break;
+  case ResultSequence::Choice::Base:
+    // ステージセレクト（雲の下の拠点）へ戻るので、雲を抜けて降下する
+    SoundManager::GetInstance()->PlaySE("ui_decide");
+    SceneManager::GetInstance()->SetNextTransitionFade(
+        kCloudTransitionSec, Fade::FadeType::CloudDescend, kCloudColor,
+        Fade::EasingType::Linear);
+    SceneManager::GetInstance()->ChangeScene("STAGE_SELECT");
+    break;
+  case ResultSequence::Choice::None:
+    break;
+  }
+}
+
+float GamePlayScene::GetBossSpawnTime() const {
+  const size_t kMinWaypointCount = 2;
+  float bossT = static_cast<float>(
+      (std::max)(railCamera_->GetWaypoints().size(), kMinWaypointCount) - 1);
+  for (const auto &ev : spawnEvents_) {
+    if (ev.prefabName == "Boss") {
+      bossT = ev.spawnTime;
+      break;
+    }
+  }
+  return bossT;
+}
+
+const Boss *GamePlayScene::FindBoss() const {
+  for (const auto &enemy : runtimeEnemies_) {
+    if (const Boss *boss = dynamic_cast<const Boss *>(enemy.get())) {
+      return boss;
+    }
+  }
+  return nullptr;
 }
 
 void GamePlayScene::ApplySkyAndLighting() {

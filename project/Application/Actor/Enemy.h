@@ -12,6 +12,7 @@ class IParticleEmitter;
 class ParticleEmitter;
 class Player;
 #include "Behavior/IEnemyBehavior.h"
+#include "Score/VolleyId.h"
 
 enum class MoveType {
   Straight,
@@ -103,6 +104,10 @@ public:
     return onDestroyedCallback_;
   }
 
+  // 最後に当たった自機の弾の射撃番号（ロックオンの一斉射撃でなければ kNoVolleyId）
+  void SetLastHitVolley(int volleyId) { lastHitVolley_ = volleyId; }
+  int GetLastHitVolley() const { return lastHitVolley_; }
+
 protected:
   std::unique_ptr<Object3d> model_;
   std::unique_ptr<SphereCollider> collider_;
@@ -136,4 +141,6 @@ protected:
   Vector4 baseColor_ = {1.0f, 1.0f, 1.0f, 1.0f}; // 基本色
 
   std::function<void(bool)> onDestroyedCallback_ = nullptr;
+
+  int lastHitVolley_ = kNoVolleyId;
 };

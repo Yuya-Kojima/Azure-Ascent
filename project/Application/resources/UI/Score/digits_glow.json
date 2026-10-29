@@ -1,0 +1,72 @@
+{
+  "size": 64,
+  "pad": 21,
+  "height": 132,
+  "glyphs": {
+    "0": {
+      "x": 0,
+      "width": 84,
+      "advance": 45
+    },
+    "1": {
+      "x": 84,
+      "width": 84,
+      "advance": 45
+    },
+    "2": {
+      "x": 168,
+      "width": 84,
+      "advance": 45
+    },
+    "3": {
+      "x": 252,
+      "width": 84,
+      "advance": 45
+    },
+    "4": {
+      "x": 336,
+      "width": 84,
+      "advance": 45
+    },
+    "5": {
+      "x": 420,
+      "width": 84,
+      "advance": 45
+    },
+    "6": {
+      "x": 504,
+      "width": 84,
+      "advance": 45
+    },
+    "7": {
+      "x": 588,
+      "width": 84,
+      "advance": 45
+    },
+    "8": {
+      "x": 672,
+      "width": 84,
+      "advance": 45
+    },
+    "9": {
+      "x": 756,
+      "width": 84,
+      "advance": 45
+    },
+    ",": {
+      "x": 840,
+      "width": 67,
+      "advance": 28
+    },
+    "%": {
+      "x": 907,
+      "width": 104,
+      "advance": 65
+    },
+    "/": {
+      "x": 1011,
+      "width": 79,
+      "advance": 40
+    }
+  }
+}

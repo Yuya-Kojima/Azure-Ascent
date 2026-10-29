@@ -118,8 +118,6 @@ private:
   Vector3 targetPos_ = {0.0f, 0.0f, 0.0f};
 
   // --- UI ---
-  std::unique_ptr<Sprite> hpBarBg_;
-  std::unique_ptr<Sprite> hpBarFg_;
   std::unique_ptr<Sprite> dangerUI_; // 突進時の警告UI
   bool isUIInitialized_ = false;
 

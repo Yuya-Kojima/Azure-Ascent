@@ -4,6 +4,7 @@
 #include "Core/EngineBase.h"
 #include "Math/MathUtil.h"
 #include "Scene/BaseScene.h"
+#include "Score/ScoreConfig.h"
 #include <vector>
 
 class Sprite;
@@ -17,6 +18,7 @@ class Skybox;
 class ICamera;
 class StageSelectReturn;
 class StageSelectReturnSky;
+class StageBriefing;
 
 class StageSelectScene : public BaseScene {
 
@@ -124,6 +126,16 @@ private: // メンバ変数(拠点)
   // 地上からやや見上げるカメラ
   Vector3 cameraPos_ = {0.0f, 1.2f, -6.0f};
   Vector3 cameraRot_ = {-0.07f, 0.0f, 0.0f};
+
+private: // メンバ変数(出撃前の確認画面)
+  std::unique_ptr<StageBriefing> briefing_;
+  // 次のランクの基準
+  ScoreConfig scoreConfig_;
+
+  /// <summary>
+  /// 確認画面の更新（「出撃」なら飛び立ち、「戻る」ならいつものメニューへ）
+  /// </summary>
+  void UpdateBriefing();
 
 private: // メンバ変数(ゲームオーバーから戻ったとき)
   std::unique_ptr<StageSelectReturn> returnSequence_;

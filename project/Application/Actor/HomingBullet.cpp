@@ -16,6 +16,7 @@
 
 HomingBullet::HomingBullet() {}
 HomingBullet::~HomingBullet() {
+  FinishVolley();
   if (onDestroyCallback_) {
     onDestroyCallback_(originalTarget_);
   }
@@ -83,6 +84,10 @@ void HomingBullet::Update() {
       target_ =
           nullptr; // ターゲットが死んだら誘導をやめ、そのまま直進・落下させる
     }
+  }
+  // 狙う敵がいなければ、射撃の弾としては終わり
+  if (!target_) {
+    FinishVolley();
   }
 
   if (target_) {
@@ -164,8 +169,10 @@ void HomingBullet::OnCollision(Collider *other) {
   if (other->GetAttribute() & kCollisionAttributeEnemy) {
     Enemy *enemy = dynamic_cast<Enemy *>(owner);
     if (enemy && !enemy->IsDead()) {
+      enemy->SetLastHitVolley(volleyId_);
       enemy->TakeDamage(damage_);
       isDead_ = true;
+      FinishVolley();
 
       // ホーミング専用着弾演出（太く鋭い十字グリント＋高速プラズマリング）
       EffectManager::GetInstance()->PlayEffect(
@@ -178,6 +185,7 @@ void HomingBullet::OnCollision(Collider *other) {
     }
   } else if (other->GetAttribute() & kCollisionAttributeEnemyBullet) {
     isDead_ = true;
+    FinishVolley();
 
     // ホーミング専用着弾演出（迎撃時）
     EffectManager::GetInstance()->PlayEffect(
@@ -187,6 +195,16 @@ void HomingBullet::OnCollision(Collider *other) {
     );
 
     Logger::Log("Homing Bullet Intercepted Target EnemyBullet!\n");
+  }
+}
+
+void HomingBullet::FinishVolley() {
+  if (hasFinishedVolley_) {
+    return;
+  }
+  hasFinishedVolley_ = true;
+  if (onVolleyFinished_) {
+    onVolleyFinished_(volleyId_);
   }
 }
 

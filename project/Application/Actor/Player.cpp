@@ -6,6 +6,7 @@
 #include "Actor/HomingBullet.h"
 #include "Actor/LockOn.h"
 #include "Actor/NormalBullet.h"
+#include "Score/ScoreKeeper.h"
 #include "Camera/ICamera.h"
 #include "Camera/RailCamera.h"
 #include "Collision/CollisionConfig.h"
@@ -349,11 +350,20 @@ void Player::FireHomingShot() {
   if (targets.empty())
     return;
 
-  // 発射キューにロックオン対象をすべて登録
+  // 前の射撃でまだ出ていない弾は捨てるので、その射撃の弾としては終わりにする
+  for (const HomingQueueItem &item : homingQueue_) {
+    FinishVolleyBullet(item.volleyId);
+  }
+
+  // 射撃に番号を振り、発射キューにロックオン対象をすべて登録
+  const int volleyId =
+      scoreKeeper_ ? scoreKeeper_->BeginVolley(static_cast<int>(targets.size()))
+                   : kNoVolleyId;
   homingQueue_.clear();
   homingQueue_.reserve(targets.size());
   for (size_t i = 0; i < targets.size(); ++i) {
-    homingQueue_.push_back({targets[i], static_cast<int>(i), static_cast<int>(targets.size())});
+    homingQueue_.push_back({targets[i], static_cast<int>(i),
+                            static_cast<int>(targets.size()), volleyId});
   }
 
   // 捕捉中の敵をすべて追尾中（Tracking）マーカーへ昇格（targets_がクリアされる）
@@ -384,12 +394,31 @@ void Player::UpdateHomingQueue() {
     validTarget = nullptr;
   }
 
-  SpawnHomingBullet(validTarget, item.index, item.totalCount);
+  SpawnHomingBullet(validTarget, item.index, item.totalCount, item.volleyId);
 }
 
-void Player::SpawnHomingBullet(BaseActor *target, int index, int totalCount) {
-  if (!object3dRenderer_ || !GetBodyObject() || !camera_)
+void Player::FinishVolleyBullet(int volleyId) {
+  if (scoreKeeper_ && volleyId != kNoVolleyId) {
+    scoreKeeper_->FinishVolleyBullet(volleyId);
+  }
+}
+
+int Player::GetLockingCount() const {
+  return lockOn_ ? static_cast<int>(lockOn_->GetTargets().size()) : 0;
+}
+
+Vector2 Player::GetReticlePosition() const {
+  return reticleTunnel_ ? reticleTunnel_->Get2DPosition()
+                        : Vector2{640.0f, 360.0f};
+}
+
+void Player::SpawnHomingBullet(BaseActor *target, int index, int totalCount,
+                               int volleyId) {
+  // 弾を出せないときは、射撃の弾としては終わりにする
+  if (!object3dRenderer_ || !GetBodyObject() || !camera_) {
+    FinishVolleyBullet(volleyId);
     return;
+  }
 
   // カメラ空間の各基底ベクトル（正面、右、上）を取得
   Matrix4x4 viewMatrix = camera_->GetViewMatrix();
@@ -444,6 +473,17 @@ void Player::SpawnHomingBullet(BaseActor *target, int index, int totalCount) {
       lockOnPtr->RemoveTrackingTarget(t);
     }
   });
+
+  // 射撃の弾が終わったら数える係へ知らせる（係が先に消えていれば何もしない）
+  if (scoreKeeper_ && volleyId != kNoVolleyId) {
+    ScoreKeeper *keeper = scoreKeeper_;
+    std::weak_ptr<bool> keeperAlive = scoreKeeper_->GetAliveToken();
+    bullet->SetVolley(volleyId, [keeper, keeperAlive](int id) {
+      if (!keeperAlive.expired()) {
+        keeper->FinishVolleyBullet(id);
+      }
+    });
+  }
 
   ActorManager::GetInstance()->AddActor(std::move(bullet));
 
