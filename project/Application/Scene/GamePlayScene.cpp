@@ -771,8 +771,17 @@ void GamePlayScene::Update() {
   lockOnTargets.insert(lockOnTargets.end(), bulletTargets.begin(),
                        bulletTargets.end());
 
+  // 敵を隠す箱。箱のモデルは -1〜1 の立方体なので、ワールド行列の逆で箱の中の座標へ移せる
+  lockOnOccluders_.clear();
+  for (const auto &obj : sceneObjects_) {
+    if (obj->GetModelPath() == kOccluderModelPath_) {
+      lockOnOccluders_.push_back(Inverse(obj->GetWorldMatrix()));
+    }
+  }
+
   if (player_) {
     player_->SetLockOnTargets(lockOnTargets);
+    player_->SetLockOnOccluders(&lockOnOccluders_);
   }
 
   // 死亡済みの敵を削除（デストラクタ内でコライダーも自動登録解除される）

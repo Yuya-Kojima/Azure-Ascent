@@ -329,12 +329,19 @@ void Player::Update() {
     bool isLockOnMode = (attackState_ == AttackState::LockOn);
     Vector2 rPos = reticleTunnel_ ? reticleTunnel_->Get2DPosition() : Vector2{640.0f, 360.0f};
     lockOn_->Update(lockOnTargets_, camera_->GetViewProjectionMatrix(),
-                    rPos, isLockOnMode, actionConfig_.lockOnRadius);
+                    rPos, isLockOnMode, actionConfig_.lockOnRadius,
+                    camera_->GetTranslate());
   }
 
   // 連続衝突判定用に速度を計算してコライダーに渡す
   if (collider_) {
     collider_->SetVelocity(CalculateVelocityForCollision());
+  }
+}
+
+void Player::SetLockOnOccluders(const std::vector<Matrix4x4> *worldToBoxes) {
+  if (lockOn_) {
+    lockOn_->SetOccluders(worldToBoxes);
   }
 }
 

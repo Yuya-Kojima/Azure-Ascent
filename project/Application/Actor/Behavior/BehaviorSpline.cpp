@@ -23,10 +23,9 @@ void BehaviorSpline::Update(Enemy* enemy) {
     float totalT = (aliveTime / duration_) * static_cast<float>(maxSegments);
 
     
-    // 終端でストップするか、消滅させるか
+    // 走り終わったら、爆発させずに消す（撃破に数えないので、点数では逃した敵になる）
     if (totalT >= maxSegments) {
-        totalT = static_cast<float>(maxSegments);
-        enemy->TakeDamage(9999, true); // 走り終わったら消滅させる
+        enemy->Destroy();
         return;
     }
 

@@ -65,8 +65,9 @@ void LockOn::RemoveTrackingTarget(BaseActor *target) {
 void LockOn::Update(const std::vector<BaseActor *> &inputTargets,
                     const Matrix4x4 &viewProjectionMatrix,
                     const Vector2 &reticlePos,
-                    bool isLockOnMode, float lockOnRadius) {
-  
+                    bool isLockOnMode, float lockOnRadius,
+                    const Vector3 &eyePosition) {
+
   viewProjectionMatrix_ = viewProjectionMatrix; // 描画用にキャッシュ
 
   // 撃破などで消滅した敵をリストから除外
@@ -119,7 +120,8 @@ void LockOn::Update(const std::vector<BaseActor *> &inputTargets,
       float dy = screenPos.y - reticlePos.y;
       float dist = std::sqrt(dx * dx + dy * dy);
 
-      if (dist <= lockOnRadius) {
+      // 照準の範囲内でも、箱の陰にいる敵はロックしない
+      if (dist <= lockOnRadius && !IsHidden(eyePosition, worldPos)) {
         targetInfos_.push_back({target, 0.0f, TargetState::Locking});
 
         // 現在ロックオン中の敵数（今回のターゲットを含む）をカウント
@@ -151,6 +153,43 @@ void LockOn::Update(const std::vector<BaseActor *> &inputTargets,
       targets_.push_back(info.actor);
     }
   }
+}
+
+bool LockOn::IsHidden(const Vector3 &from, const Vector3 &to) const {
+  if (!occluders_) {
+    return false;
+  }
+  for (const Matrix4x4 &worldToBox : *occluders_) {
+    // 線分を箱の中の座標へ移すと、箱は -1〜1 の立方体になる
+    const Vector3 a = TransformPoint(from, worldToBox);
+    const Vector3 b = TransformPoint(to, worldToBox);
+    const float start[3] = {a.x, a.y, a.z};
+    const float delta[3] = {b.x - a.x, b.y - a.y, b.z - a.z};
+
+    // 軸ごとに、線分が -1〜1 の幅に入っている範囲（線分上の割合 0〜1）を重ねていく
+    float enter = 0.0f;
+    float leave = 1.0f;
+    for (int axis = 0; axis < 3 && enter <= leave; ++axis) {
+      if (std::abs(delta[axis]) < kParallelEpsilon) {
+        // この軸に平行な線分は、幅の外にあれば箱に当たらない
+        if (std::abs(start[axis]) > 1.0f) {
+          leave = -1.0f;
+        }
+        continue;
+      }
+      float t1 = (-1.0f - start[axis]) / delta[axis];
+      float t2 = (1.0f - start[axis]) / delta[axis];
+      if (t1 > t2) {
+        std::swap(t1, t2);
+      }
+      enter = (std::max)(enter, t1);
+      leave = (std::min)(leave, t2);
+    }
+    if (enter <= leave) {
+      return true;
+    }
+  }
+  return false;
 }
 
 void LockOn::Draw() {

@@ -1,6 +1,7 @@
 #pragma once
 #include "Actor/DragonWingAnimator.h"
 #include "Framework/BaseActor.h"
+#include "Math/Matrix4x4.h"
 #include "Math/Vector2.h"
 #include "ReticleTunnel.h"
 #include "Score/VolleyId.h"
@@ -113,6 +114,8 @@ public:
   void SetLockOnTargets(const std::vector<BaseActor *> &targets) {
     lockOnTargets_ = targets;
   }
+  // 敵を隠す箱を LockOn に渡す（LockOn::SetOccluders）
+  void SetLockOnOccluders(const std::vector<Matrix4x4> *worldToBoxes);
 
   int GetHp() const { return hp_; }
   int GetMaxHp() const { return kMaxHp; }
