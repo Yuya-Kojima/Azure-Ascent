@@ -28,15 +28,16 @@ void BehaviorTurret::Update(Enemy* enemy) {
   Vector3 playerPos = player->GetTransform().translate;
   Vector3 myPos = enemy->GetTransform().translate;
 
-  // 自機との直線距離およびZ差分を計算
+  // 自機との直線距離と、レールの進む向きに沿った前後の距離（正なら自機より前）を計算
   Vector3 d0 = {playerPos.x - myPos.x, playerPos.y - myPos.y, playerPos.z - myPos.z};
   float currentDist = std::sqrt(d0.x * d0.x + d0.y * d0.y + d0.z * d0.z);
-  float zDistToPlayer = myPos.z - playerPos.z;
+  const Vector3& railForward = enemy->GetBaseForward();
+  float forwardDistToPlayer = -(d0.x * railForward.x + d0.y * railForward.y + d0.z * railForward.z);
 
   // 1. 感知判定（Dormant -> Active への遷移）
   if (state_ == State::Dormant) {
     // 感知範囲（senseDistance）に入り、かつ自機の前方にいる場合に起動
-    if (currentDist <= config_.senseDistance && zDistToPlayer > 0.0f) {
+    if (currentDist <= config_.senseDistance && forwardDistToPlayer > 0.0f) {
       state_ = State::Active;
       activeTimer_ = 0.0f;
       shotTimer_ = 0.0f;
@@ -107,14 +108,14 @@ void BehaviorTurret::Update(Enemy* enemy) {
   Vector3 aimDir = {futurePlayerPos.x - myPos.x, futurePlayerPos.y - myPos.y, futurePlayerPos.z - myPos.z};
   float aimDist = std::sqrt(aimDir.x * aimDir.x + aimDir.y * aimDir.y + aimDir.z * aimDir.z);
 
-  if (aimDist > 0.001f && zDistToPlayer >= -5.0f) {
+  if (aimDist > 0.001f && forwardDistToPlayer >= -5.0f) {
     enemy->GetTransform().rotate.y = std::atan2(aimDir.x, aimDir.z);
     enemy->GetTransform().rotate.x = -std::asin(std::clamp(aimDir.y / aimDist, -1.0f, 1.0f));
   }
 
   // 4. 射撃処理
   // すれ違い直前・通過後の理不尽な横殴り・背後射撃を防止するフェア設計
-  bool isFairDistance = (zDistToPlayer >= config_.minFairDistance);
+  bool isFairDistance = (forwardDistToPlayer >= config_.minFairDistance);
   bool isVisibleOnScreen = enemy->IsInScreen(0.1f);
 
   if (state_ == State::Active) {

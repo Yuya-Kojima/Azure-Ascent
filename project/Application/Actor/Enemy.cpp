@@ -87,6 +87,13 @@ void Enemy::Update() {
 
   aliveTime_ += 1.0f / 60.0f; // 簡易的に60FPS固定で時間計算
 
+  // 画面の外に続けている時間を数える（画面に戻ったら 0 に戻す）
+  if (camera_ && !IsInScreen(kLeaveScreenMargin_)) {
+    offScreenTime_ += 1.0f / 60.0f;
+  } else {
+    offScreenTime_ = 0.0f;
+  }
+
   if (behavior_) {
     behavior_->Update(this);
   }

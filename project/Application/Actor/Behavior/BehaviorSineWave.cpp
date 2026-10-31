@@ -15,6 +15,7 @@ void BehaviorSineWave::Update(Enemy* enemy) {
         isInitialized_ = true;
         moveDirection_ = enemy->GetBaseForward();
         rightDirection_ = enemy->GetBaseRight();
+        prevBasePos_ = enemy->GetBasePosition();
         if (!enemy->GetCamera()) {
             Vector3 moveDir = enemy->GetMoveDirection();
             moveDirection_ = { moveDir.x, moveDir.y, moveDir.z };
@@ -22,10 +23,16 @@ void BehaviorSineWave::Update(Enemy* enemy) {
         }
     }
 
+    // 前進量（カメラがあるときはレールがこのフレームに進んだ分だけ進み、カメラからの奥行きを保つ）
+    Vector3 forwardStep = { moveDirection_.x * flySpeed, moveDirection_.y * flySpeed, moveDirection_.z * flySpeed };
+
     // カメラの最新基準方向を取得（レールのカーブに自然に追従）
     if (enemy->GetCamera()) {
         moveDirection_ = enemy->GetBaseForward();
         rightDirection_ = enemy->GetBaseRight();
+        const Vector3& basePos = enemy->GetBasePosition();
+        forwardStep = { basePos.x - prevBasePos_.x, basePos.y - prevBasePos_.y, basePos.z - prevBasePos_.z };
+        prevBasePos_ = basePos;
     }
 
     // 出現位置のXオフセットに基づいて横断方向を決定（左から出たら右へ、右から出たら左へ横断）
@@ -39,20 +46,20 @@ void BehaviorSineWave::Update(Enemy* enemy) {
     // 画面外から出現し、画面中央を横断して反対側へ抜ける水平滑空移動
     float lateralSpeed = crossDir * 0.85f;
 
-    // コサイン波による上下方向の周期運動（振幅 0.18m/frame）
+    // コサイン波による上下方向の周期運動（振幅 0.18m/frame）。追従遅延の間は上下に動かず、出現した高さを中心にうねる
     Vector3 upDir = enemy->GetBaseUp();
-    float waveSpeed = std::cos(t * 1.4f) * 0.18f;
+    float waveSpeed = (aliveTime < phaseDelay) ? 0.0f : std::cos(t * 1.4f) * 0.18f;
 
     // 前進 ＋ 横断 ＋ 上下うねりの合成移動
-    enemy->GetTransform().translate.x += moveDirection_.x * flySpeed + rightDirection_.x * lateralSpeed + upDir.x * waveSpeed;
-    enemy->GetTransform().translate.y += moveDirection_.y * flySpeed + rightDirection_.y * lateralSpeed + upDir.y * waveSpeed;
-    enemy->GetTransform().translate.z += moveDirection_.z * flySpeed + rightDirection_.z * lateralSpeed + upDir.z * waveSpeed;
+    enemy->GetTransform().translate.x += forwardStep.x + rightDirection_.x * lateralSpeed + upDir.x * waveSpeed;
+    enemy->GetTransform().translate.y += forwardStep.y + rightDirection_.y * lateralSpeed + upDir.y * waveSpeed;
+    enemy->GetTransform().translate.z += forwardStep.z + rightDirection_.z * lateralSpeed + upDir.z * waveSpeed;
 
     // 進行方向ベクトルに合わせて機首（Y回転）をスムーズに向ける
     Vector3 totalMoveDir = {
-        moveDirection_.x * flySpeed + rightDirection_.x * lateralSpeed,
-        moveDirection_.y * flySpeed + rightDirection_.y * lateralSpeed + upDir.y * waveSpeed,
-        moveDirection_.z * flySpeed + rightDirection_.z * lateralSpeed
+        forwardStep.x + rightDirection_.x * lateralSpeed,
+        forwardStep.y + rightDirection_.y * lateralSpeed + upDir.y * waveSpeed,
+        forwardStep.z + rightDirection_.z * lateralSpeed
     };
     enemy->GetTransform().rotate.y = std::atan2(totalMoveDir.x, totalMoveDir.z);
 
@@ -61,22 +68,8 @@ void BehaviorSineWave::Update(Enemy* enemy) {
     enemy->GetTransform().rotate.z = targetRoll;
     enemy->GetTransform().rotate.x = -waveSpeed * 0.5f; // 上下移動に連動したピッチ角
 
-    // カメラから見た左右位置（カメラのRightベクトルへの射影）
-    Vector3 diff = {
-        enemy->GetTransform().translate.x - enemy->GetBasePosition().x,
-        enemy->GetTransform().translate.y - enemy->GetBasePosition().y,
-        enemy->GetTransform().translate.z - enemy->GetBasePosition().z
-    };
-    float localX = diff.x * rightDirection_.x + diff.y * rightDirection_.y + diff.z * rightDirection_.z;
-
-    // 左から来た敵（crossDir > 0）は画面右側（localX > 50.0f）で画面外へ抜けきったら消滅
-    // 右から来た敵（crossDir < 0）は画面左側（localX < -50.0f）で画面外へ抜けきったら消滅
-    bool hasCrossedCenter = (crossDir > 0.0f) ? (localX > 50.0f) : (localX < -50.0f);
-    if (hasCrossedCenter && !enemy->IsInScreen(50.0f)) {
-        enemy->Destroy();
-    }
-    // 万が一の保険（12秒経過で安全に消去）
-    else if (aliveTime > 12.0f) {
+    // 出現から 12 秒で消滅（カメラの後ろへ回った敵は Enemy::Update で消える）
+    if (aliveTime > 12.0f) {
         enemy->Destroy();
     }
 }

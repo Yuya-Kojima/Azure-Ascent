@@ -49,6 +49,8 @@ public:
 
   // 画面内に映っているかどうかの判定（マージン付き）
   bool IsInScreen(float margin = 0.0f) const;
+  // 画面の外（余白 kLeaveScreenMargin_ の外）に kLeaveScreenTime_ 秒以上続けているか
+  bool HasLeftScreen() const { return offScreenTime_ >= kLeaveScreenTime_; }
 
   // 表示用の3Dモデルを外から渡してセットする
   virtual void SetModel(std::unique_ptr<Object3d> model) {
@@ -123,6 +125,9 @@ protected:
   std::unique_ptr<IEnemyBehavior> behavior_;
   const ICamera *camera_ = nullptr;
   const Player *player_ = nullptr;
+  static constexpr float kLeaveScreenMargin_ = 50.0f; // 画面の外とみなす余白（ピクセル）
+  static constexpr float kLeaveScreenTime_ = 1.0f;    // 画面から去ったとみなす、画面の外に続けている時間（秒）
+  float offScreenTime_ = 0.0f;                        // 画面の外に続けている時間（秒）
   Vector3 spawnOffset_ = {0.0f, 0.0f, 0.0f};
   float aliveTime_ = 0.0f;
 

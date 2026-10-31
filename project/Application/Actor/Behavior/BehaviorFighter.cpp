@@ -155,8 +155,8 @@ void BehaviorFighter::UpdateRetreat(Enemy *enemy, const Vector3& cameraPos, cons
   enemy->GetTransform().translate.y += cameraForward.y * retreatSpeed + 0.3f;
   enemy->GetTransform().translate.z += cameraForward.z * retreatSpeed;
 
-  // 画面外に完全に抜けたら安全に自動消滅（貫通やメモリリークを完全防止）
-  if (stateTimer_ > 0.5f && !enemy->IsInScreen(50.0f)) {
+  // 画面の外に 1 秒続けていたら消滅
+  if (stateTimer_ > 0.5f && enemy->HasLeftScreen()) {
     enemy->Destroy();
   } else if (stateTimer_ > 5.0f) {
     enemy->Destroy(); // 安全マージン
