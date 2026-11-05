@@ -36,11 +36,16 @@ public:
   void Update();
 
   /// <summary>
-  /// 描画
+  /// 描画。3D の描画の列（B）に積み、深度だけの描画を記録中なら P にも同じ物を積む
   /// </summary>
   void Draw();
 
 private:
+  /// <summary>
+  /// 指定した命令の列に、ルートの設定（0〜11）とモデルの描画を積む
+  /// </summary>
+  void RecordDraw(ID3D12GraphicsCommandList *commandList);
+
   Object3dRenderer *object3dRenderer_ = nullptr;
 
   Dx12Core *dx12Core_ = nullptr;

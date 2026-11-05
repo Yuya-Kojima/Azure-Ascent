@@ -240,12 +240,22 @@ void Dx12Core::EndFrame() {
   TransitionResource(swapChainResources[backBufferIndex].Get(), D3D12_RESOURCE_STATE_PRESENT);
 
   // コマンドリストの内容を確定させる。すべてのコマンドを積んでからCloseすること
-  hr = commandList->Close();
+  // （A は分けたときに BeginScene3DCommandLists で閉じている）
+  if (!isSceneSplit_) {
+    hr = commandLists_[kCommandListA_]->Close();
+    assert(SUCCEEDED(hr));
+  }
+  hr = commandLists_[kCommandListPrepass_]->Close();
+  assert(SUCCEEDED(hr));
+  hr = commandLists_[kCommandListB_]->Close();
   assert(SUCCEEDED(hr));
 
-  // GPUにコマンドリストの実行を行わせる
-  ID3D12CommandList *commandLists[] = {commandList.Get()};
-  commandQueue->ExecuteCommandLists(1, commandLists);
+  // GPUにコマンドリストの実行を行わせる。分けたフレームは A → P → B の順、分けなかったフレームは A だけ
+  ID3D12CommandList *executeLists[] = {commandLists_[kCommandListA_].Get(),
+                                       commandLists_[kCommandListPrepass_].Get(),
+                                       commandLists_[kCommandListB_].Get()};
+  const UINT executeCount = isSceneSplit_ ? UINT(kCommandListCount_) : 1u;
+  commandQueue->ExecuteCommandLists(executeCount, executeLists);
 
   // GPUとOSに画面の交換を行うように通知する
   swapChain->Present(1, 0);
@@ -271,14 +281,28 @@ void Dx12Core::EndFrame() {
     UpdateFixFPS();
   }
 
-  // 次のフレーム用のコマンドリストを準備
-  // コマンドアロケータのリセット
-  hr = commandAllocator->Reset();
+  // 次のフレーム用のコマンドリストを準備（3 本とも開いた状態にし、A から積み始める）
+  for (uint32_t i = 0; i < kCommandListCount_; ++i) {
+    hr = commandAllocators_[i]->Reset();
+    assert(SUCCEEDED(hr));
+    hr = commandLists_[i]->Reset(commandAllocators_[i].Get(), nullptr);
+    assert(SUCCEEDED(hr));
+  }
+  commandList = commandLists_[kCommandListA_].Get();
+  isSceneSplit_ = false;
+}
+
+void Dx12Core::BeginScene3DCommandLists() {
+  assert(!isSceneSplit_ && "BeginScene3DCommandLists は 1 フレームに 1 回だけ呼ぶ");
+
+  HRESULT hr = commandLists_[kCommandListA_]->Close();
   assert(SUCCEEDED(hr));
 
-  // コマンドリストのリセット
-  hr = commandList->Reset(commandAllocator.Get(), nullptr);
-  assert(SUCCEEDED(hr));
+  isSceneSplit_ = true;
+  commandList = commandLists_[kCommandListB_].Get();
+
+  commandList->RSSetViewports(1, &viewport);
+  commandList->RSSetScissorRects(1, &scissorRect);
 }
 
 void Dx12Core::InitializeDevice() {
@@ -414,23 +438,26 @@ void Dx12Core::InitializeCommand() {
   // コマンドキューの生成がうまくいかなかったので起動できない
   assert(SUCCEEDED(hr));
 
-  // コマンドアロケータを生成する
-  commandAllocator = nullptr;
-  hr = device->CreateCommandAllocator(
-      D3D12_COMMAND_LIST_TYPE_DIRECT,
-      IID_PPV_ARGS(commandAllocator.GetAddressOf()));
+  // 命令の列 A・P・B のそれぞれに、コマンドアロケータとコマンドリストを生成する（作った直後は開いた状態）
+  for (uint32_t i = 0; i < kCommandListCount_; ++i) {
+    hr = device->CreateCommandAllocator(
+        D3D12_COMMAND_LIST_TYPE_DIRECT,
+        IID_PPV_ARGS(commandAllocators_[i].GetAddressOf()));
 
-  // コマンドアロケータの生成がうまくいかなかったので起動できない
-  assert(SUCCEEDED(hr));
+    // コマンドアロケータの生成がうまくいかなかったので起動できない
+    assert(SUCCEEDED(hr));
 
-  // コマンドリストを生成する
-  commandList = nullptr;
-  hr = device->CreateCommandList(0, D3D12_COMMAND_LIST_TYPE_DIRECT,
-                                 commandAllocator.Get(), nullptr,
-                                 IID_PPV_ARGS(commandList.GetAddressOf()));
+    hr = device->CreateCommandList(0, D3D12_COMMAND_LIST_TYPE_DIRECT,
+                                   commandAllocators_[i].Get(), nullptr,
+                                   IID_PPV_ARGS(commandLists_[i].GetAddressOf()));
 
-  // コマンドリストの生成がうまくいかなかったので起動できない
-  assert(SUCCEEDED(hr));
+    // コマンドリストの生成がうまくいかなかったので起動できない
+    assert(SUCCEEDED(hr));
+  }
+
+  // 初期化中の転送とフレームの始めの命令は A に積む
+  commandList = commandLists_[kCommandListA_].Get();
+  isSceneSplit_ = false;
 }
 
 void Dx12Core::InitializeSwapChain() {
@@ -851,7 +878,7 @@ Microsoft::WRL::ComPtr<ID3D12Resource> Dx12Core::UploadTextureData(
   Microsoft::WRL::ComPtr<ID3D12Resource> intermediateResource =
       CreateBufferResource(intermediateSize);
 
-  UpdateSubresources(commandList.Get(), texture.Get(),
+  UpdateSubresources(commandList, texture.Get(),
                      intermediateResource.Get(), 0, 0,
                      UINT(subresources.size()), subresources.data());
 

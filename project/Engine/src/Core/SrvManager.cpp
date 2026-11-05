@@ -157,11 +157,13 @@ void SrvManager::CreateUAVforStructuredBuffer(uint32_t srvIndex,
 }
 
 
-void SrvManager::PreDraw() {
+void SrvManager::PreDraw() { PreDraw(dx12Core_->GetCommandList()); }
+
+void SrvManager::PreDraw(ID3D12GraphicsCommandList *commandList) {
 
   // 描画用のDescriptorHeapの設定
   ID3D12DescriptorHeap *descriptorHeaps[] = {descriptorHeap.Get()};
-  dx12Core_->GetCommandList()->SetDescriptorHeaps(1, descriptorHeaps);
+  commandList->SetDescriptorHeaps(1, descriptorHeaps);
 }
 
 void SrvManager::SetGraphicsRootDescriptorTable(UINT rootParameterIndex,

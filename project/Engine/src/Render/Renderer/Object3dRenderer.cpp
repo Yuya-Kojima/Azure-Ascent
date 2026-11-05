@@ -1,5 +1,6 @@
 #include "Renderer/Object3dRenderer.h"
 #include "Debug/Logger.h"
+#include "Render/Light/TiledLightCuller.h"
 #include "Util/StringUtil.h"
 
 void Object3dRenderer::Initialize(Dx12Core *dx12Core) {
@@ -25,7 +26,7 @@ void Object3dRenderer::CreateRootSignature() {
       D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT;
 
   // Object3d用のRootParameterを作成
-  D3D12_ROOT_PARAMETER rootParameterObject3d[11] = {};
+  D3D12_ROOT_PARAMETER rootParameterObject3d[12] = {};
   rootParameterObject3d[0].ParameterType =
       D3D12_ROOT_PARAMETER_TYPE_CBV; // CBVを使う
   rootParameterObject3d[0].ShaderVisibility =
@@ -120,6 +121,11 @@ void Object3dRenderer::CreateRootSignature() {
   rootParameterObject3d[10].ParameterType = D3D12_ROOT_PARAMETER_TYPE_SRV;
   rootParameterObject3d[10].ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
   rootParameterObject3d[10].Descriptor.ShaderRegister = 4;
+
+  // マスごとのライトの名簿 (t5)。バッファの GPU アドレスを直接渡すルート SRV
+  rootParameterObject3d[11].ParameterType = D3D12_ROOT_PARAMETER_TYPE_SRV;
+  rootParameterObject3d[11].ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
+  rootParameterObject3d[11].Descriptor.ShaderRegister = 5;
 
   D3D12_STATIC_SAMPLER_DESC staticSamplers[1] = {};
   staticSamplers[0].Filter =
@@ -296,6 +302,29 @@ void Object3dRenderer::CreatePSO() {
   hr = device->CreateGraphicsPipelineState(
       &graphicsPipeLineStateDesc, IID_PPV_ARGS(&graphicsPipeLineStateDepthDisabled_));
   assert(SUCCEEDED(hr));
+
+  // 深度だけの描画の PSO。ルートシグネチャ・VS・GS・ラスタライザは上と同じ物を使い、同じ位置に深度を書く
+  IDxcBlob *depthPrepassPixelShaderBlob = dx12Core_->CompileShader(
+      L"resources/shaders/Object3d.DepthPrepass.PS.hlsl", L"ps_6_0");
+  assert(depthPrepassPixelShaderBlob != nullptr);
+
+  D3D12_GRAPHICS_PIPELINE_STATE_DESC depthPrepassDesc = graphicsPipeLineStateDesc;
+  depthPrepassDesc.PS = {depthPrepassPixelShaderBlob->GetBufferPointer(),
+                         depthPrepassPixelShaderBlob->GetBufferSize()};
+  // 色は書かない
+  depthPrepassDesc.BlendState = D3D12_BLEND_DESC{};
+  depthPrepassDesc.NumRenderTargets = 0;
+  depthPrepassDesc.RTVFormats[0] = DXGI_FORMAT_UNKNOWN;
+  // 深度だけの絵（D32）に、近ければ書き込む
+  depthPrepassDesc.DepthStencilState.DepthEnable = true;
+  depthPrepassDesc.DepthStencilState.DepthWriteMask = D3D12_DEPTH_WRITE_MASK_ALL;
+  depthPrepassDesc.DepthStencilState.DepthFunc = D3D12_COMPARISON_FUNC_LESS_EQUAL;
+  depthPrepassDesc.DSVFormat = DXGI_FORMAT_D32_FLOAT;
+
+  depthPrepassPipelineState_ = nullptr;
+  hr = device->CreateGraphicsPipelineState(
+      &depthPrepassDesc, IID_PPV_ARGS(&depthPrepassPipelineState_));
+  assert(SUCCEEDED(hr));
 }
 
 void Object3dRenderer::Begin() {
@@ -310,6 +339,8 @@ void Object3dRenderer::Begin() {
 
   // プリミティブトポロジー(形状）をセット
   commandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+
+  depthEnabled_ = true;
 }
 
 void Object3dRenderer::SetDepthEnable(bool enable) {
@@ -321,6 +352,27 @@ void Object3dRenderer::SetDepthEnable(bool enable) {
   } else {
       commandList->SetPipelineState(graphicsPipeLineStateDepthDisabled_.Get());
   }
+  depthEnabled_ = enable;
+}
+
+bool Object3dRenderer::IsRecordingPrepass() const {
+  return tiledLightCuller_ && tiledLightCuller_->IsRecordingPrepass() &&
+         depthEnabled_;
+}
+
+ID3D12GraphicsCommandList *Object3dRenderer::PreparePrepassCommandList() {
+  ID3D12GraphicsCommandList *prepassCommandList =
+      dx12Core_->GetPrepassCommandList();
+
+  // P は毎フレーム新しく開いた列なので、そのフレームで最初に積むときだけ描画の設定を積む
+  const uint64_t prepassFrame = tiledLightCuller_->GetPrepassFrame();
+  if (prepassStateFrame_ != prepassFrame) {
+    prepassCommandList->SetGraphicsRootSignature(rootSignature_.Get());
+    prepassCommandList->SetPipelineState(depthPrepassPipelineState_.Get());
+    prepassCommandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+    prepassStateFrame_ = prepassFrame;
+  }
+  return prepassCommandList;
 }
 
 void Object3dRenderer::CreateDirectionalLightData() {

@@ -90,8 +90,8 @@ void ModelManager::LoadModel(const std::string &filePath) {
 
   const std::string resolved = ResolveModelPath(filePath);
 
-  if (models.contains(resolved)) {
-    // 読み込み済みなら早期リターン
+  if (models.contains(resolved) || failedModels_.contains(resolved)) {
+    // 読み込み済み、または前に失敗したパスなら早期リターン
     return;
   }
 
@@ -117,8 +117,9 @@ void ModelManager::LoadModel(const std::string &filePath) {
       model->Initialize(modelRenderer.get(), directoryPath, filename);
       models.insert(std::make_pair(resolved, std::move(model)));
   } catch (const std::exception& e) {
-      // 失敗した場合はエラーログを出力し、マップには登録しない
+      // 失敗した場合はエラーログを出力し、マップには登録せず、失敗したパスとして覚える
       Logger::Log(std::string("[ModelManager] Failed to load model: ") + resolved + " - " + e.what() + "\n");
+      failedModels_.insert(resolved);
   }
 
   //// モデルの生成とファイル読み込み、初期化

@@ -70,6 +70,12 @@ void EngineBase::Initialize() {
   lightManager_->Initialize(dx12Core_.get());
   object3dRenderer_->SetLightManager(lightManager_.get());
 
+  tiledLightCuller_ = std::make_unique<TiledLightCuller>();
+  tiledLightCuller_->Initialize(dx12Core_.get(), srvManager_.get(),
+                                lightManager_.get());
+  object3dRenderer_->SetTiledLightCuller(tiledLightCuller_.get());
+  lightManager_->SetTiledLightCuller(tiledLightCuller_.get());
+
   skyboxRenderer_ = std::make_unique<SkyboxRenderer>();
   skyboxRenderer_->Initialize(dx12Core_.get());
 
@@ -139,6 +145,7 @@ void EngineBase::Finalize() {
 
   input_.reset();
   object3dRenderer_.reset();
+  tiledLightCuller_.reset();
   lightManager_.reset();
   spriteRenderer_.reset();
   skyboxRenderer_.reset();

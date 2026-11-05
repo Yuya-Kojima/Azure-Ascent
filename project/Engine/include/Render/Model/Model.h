@@ -111,9 +111,9 @@ public:
                               const ModelData &modelData);
 
   /// <summary>
-  /// 描画
+  /// 描画（指定した命令の列に、頂点・テクスチャ・描画の命令を積む）
   /// </summary>
-  void Draw(const SkinCluster* skinCluster = nullptr);
+  void Draw(ID3D12GraphicsCommandList *commandList, const SkinCluster *skinCluster = nullptr);
 
 private:
   ModelRenderer *modelRenderer_;

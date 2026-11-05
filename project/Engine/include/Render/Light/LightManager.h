@@ -6,6 +6,8 @@
 #include <vector>
 #include <wrl.h>
 
+class TiledLightCuller;
+
 /// <summary>
 /// 点の光とスポットライトの名簿。
 /// 毎フレーム Clear で白紙にし、光らせたい物が Update の中で Add を呼んで書き込む。
@@ -60,9 +62,15 @@ public:
 	void AddSpotLight(const SpotLight &light);
 
 	/// <summary>
-	/// 名簿とライトの数を GPU のバッファへ書き写す（3D を描く前に呼ぶ）
+	/// 名簿とライトの数を GPU のバッファへ書き写す（3D を描く前、Begin3DPass の後に呼ぶ）。
+	/// このフレームでマス分けをしているかと横のマスの数も、ライトの数と一緒に書く
 	/// </summary>
 	void Upload();
+
+	/// <summary>
+	/// マス分けを渡す（ImGui のオン・オフと、Upload で書くマスの情報に使う）
+	/// </summary>
+	void SetTiledLightCuller(TiledLightCuller *tiledLightCuller) { tiledLightCuller_ = tiledLightCuller; }
 
 	/// <summary>
 	/// 範囲の表示が有効なとき、届く範囲を線で LineRenderer に登録する
@@ -90,13 +98,15 @@ private:
 	struct LightCounts {
 		uint32_t pointLightCount;
 		uint32_t spotLightCount;
-		uint32_t padding[2];
+		uint32_t tileCountX; // 横のマスの数
+		uint32_t useTiles;   // 1 = マスごとの名簿を使う
 	};
 
 	// 範囲の線の円 1 周の分割数
 	static constexpr int kRangeCircleSegments_ = 32;
 
 	Dx12Core *dx12Core_ = nullptr;
+	TiledLightCuller *tiledLightCuller_ = nullptr;
 
 	// CPU 側の名簿
 	std::vector<PointLight> pointLights_;

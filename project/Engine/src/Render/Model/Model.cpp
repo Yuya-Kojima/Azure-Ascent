@@ -80,10 +80,7 @@ void Model::InitializeFromModelData(ModelRenderer* modelRenderer, const ModelDat
 	defaultMaterial_.environmentCoefficient = 0.0f;
 }
 
-void Model::Draw(const SkinCluster* skinCluster) {
-
-	Microsoft::WRL::ComPtr<ID3D12GraphicsCommandList> commandList =
-		dx12Core_->GetCommandList();
+void Model::Draw(ID3D12GraphicsCommandList* commandList, const SkinCluster* skinCluster) {
 
 	if (skinCluster) {
 		// Skinning描画の場合、CSで計算されたSkinnedVertexのVBVをセット

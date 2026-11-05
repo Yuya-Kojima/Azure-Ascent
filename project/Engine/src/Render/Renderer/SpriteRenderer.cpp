@@ -7,8 +7,6 @@ void SpriteRenderer::Initialize(Dx12Core *dx12Core) {
 
   device_ = dx12Core_->GetDevice();
 
-  commandList_ = dx12Core_->GetCommandList();
-
   CreateSpritePSO();
 }
 
@@ -221,13 +219,15 @@ void SpriteRenderer::CreateSpritePSO() {
 }
 
 void SpriteRenderer::Begin() {
-  commandList_->SetGraphicsRootSignature(rootSignature_.Get());
-  commandList_->SetPipelineState(graphicsPipeLineState_.Get());
-  commandList_->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+  ID3D12GraphicsCommandList *commandList = dx12Core_->GetCommandList();
+  commandList->SetGraphicsRootSignature(rootSignature_.Get());
+  commandList->SetPipelineState(graphicsPipeLineState_.Get());
+  commandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 }
 
 void SpriteRenderer::BeginUIEffect() {
-  commandList_->SetGraphicsRootSignature(rootSignature_.Get());
-  commandList_->SetPipelineState(uiEffectPipeLineState_.Get());
-  commandList_->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+  ID3D12GraphicsCommandList *commandList = dx12Core_->GetCommandList();
+  commandList->SetGraphicsRootSignature(rootSignature_.Get());
+  commandList->SetPipelineState(uiEffectPipeLineState_.Get());
+  commandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 }

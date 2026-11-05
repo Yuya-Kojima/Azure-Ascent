@@ -22,14 +22,28 @@ private:
   // DXGIファクトリー
   Microsoft::WRL::ComPtr<IDXGIFactory7> dxgiFactory;
 
-  // コマンドアロケータ
-  Microsoft::WRL::ComPtr<ID3D12CommandAllocator> commandAllocator;
+  // 命令の列の役目。GPU では A → P → B の順に動く
+  enum CommandListSlot : uint32_t {
+    kCommandListA_ = 0,       // フレームの始め〜Update で積む物
+    kCommandListPrepass_ = 1, // 深度だけの描画とマス分けの CS
+    kCommandListB_ = 2,       // 3D の描画から後
+    kCommandListCount_ = 3,
+  };
+
+  // コマンドアロケータ（命令の列ごとに 1 つ）
+  std::array<Microsoft::WRL::ComPtr<ID3D12CommandAllocator>, kCommandListCount_> commandAllocators_;
 
   // コマンドキュー
   Microsoft::WRL::ComPtr<ID3D12CommandQueue> commandQueue;
 
-  // コマンドリスト
-  Microsoft::WRL::ComPtr<ID3D12GraphicsCommandList> commandList;
+  // コマンドリスト（A・P・B の 3 本）
+  std::array<Microsoft::WRL::ComPtr<ID3D12GraphicsCommandList>, kCommandListCount_> commandLists_;
+
+  // GetCommandList が返す、今積んでいる列（A か B）
+  ID3D12GraphicsCommandList *commandList = nullptr;
+
+  // このフレームで A を閉じて P・B を使い始めたか
+  bool isSceneSplit_ = false;
 
   // WindowAPI
   WindowSystem *windowSystem = nullptr;
@@ -263,9 +277,25 @@ public:
   /// <returns></returns>
   ID3D12Device *GetDevice() const { return device.Get(); }
 
+  /// <summary>
+  /// 今積んでいる命令の列（BeginScene3DCommandLists より前は A、後は B）
+  /// </summary>
   ID3D12GraphicsCommandList *GetCommandList() const {
-    return commandList.Get();
+    return commandList;
   }
+
+  /// <summary>
+  /// 深度だけの描画とマス分けの CS を積む命令の列（P）。GPU では A の後、B の前に動く
+  /// </summary>
+  ID3D12GraphicsCommandList *GetPrepassCommandList() const {
+    return commandLists_[kCommandListPrepass_].Get();
+  }
+
+  /// <summary>
+  /// A を閉じ、GetCommandList の返す列を B に替える。
+  /// 列をまたぐと設定は引き継がれないので、B にビューポートとシザーを積み直す（SRV ヒープは呼んだ側が積む）
+  /// </summary>
+  void BeginScene3DCommandLists();
 
   ID3D12CommandQueue *GetCommandQueue() const {
     return commandQueue.Get();

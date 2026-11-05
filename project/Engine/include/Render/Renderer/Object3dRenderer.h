@@ -5,6 +5,7 @@
 
 class ICamera;
 class LightManager;
+class TiledLightCuller;
 
 class Object3dRenderer {
 
@@ -25,6 +26,17 @@ public:
   /// </summary>
   void SetDepthEnable(bool enable);
 
+  /// <summary>
+  /// Object3d を深度だけの列（P）にも積むか。
+  /// 3 つすべて: Begin3DPass 〜 End3DPass の間 / 深度テストが有効 / Tiled Culling がこのフレームで動いている
+  /// </summary>
+  bool IsRecordingPrepass() const;
+
+  /// <summary>
+  /// P の命令の列を返す。このフレームで P に初めて積むときは、ルートシグネチャ・深度だけの PSO・トポロジを先に積む
+  /// </summary>
+  ID3D12GraphicsCommandList *PreparePrepassCommandList();
+
 private:
   Dx12Core *dx12Core_ = nullptr;
 
@@ -39,6 +51,8 @@ private:
   // PSO
   Microsoft::WRL::ComPtr<ID3D12PipelineState> graphicsPipeLineState_ = nullptr;
   Microsoft::WRL::ComPtr<ID3D12PipelineState> graphicsPipeLineStateDepthDisabled_ = nullptr;
+  // 深度だけの描画（色は出さず、深度だけの絵に書く）
+  Microsoft::WRL::ComPtr<ID3D12PipelineState> depthPrepassPipelineState_ = nullptr;
   Microsoft::WRL::ComPtr<ID3D12PipelineState> skinningComputePipelineState_ = nullptr;
 
 public:
@@ -75,7 +89,7 @@ public:
     Vector4 backRimColor;
     float backRimPower;       // 大きいほど縁の細い範囲だけ光る
     Vector3 backRimDirection; // 逆光の縁を作る光が進む向き
-    // 調べるための表示（0: 通常, 1: テクスチャの色だけ, 2: 法線, 3: 法線の向き, 4: 光だけ, 5: 壊れた法線）
+    // 調べるための表示（0: 通常, 1: テクスチャの色だけ, 2: 法線, 3: 法線の向き, 4: 光だけ, 5: 壊れた法線, 6: マスごとのライトの数）
     int32_t debugView;
     float padding[3];
   };
@@ -109,6 +123,22 @@ public:
 
 private:
   LightManager *lightManager_ = nullptr;
+
+public:
+  /// <summary>
+  /// マス分け（深度だけの絵とマスごとの名簿）を渡す
+  /// </summary>
+  void SetTiledLightCuller(TiledLightCuller *tiledLightCuller) { tiledLightCuller_ = tiledLightCuller; }
+  TiledLightCuller *GetTiledLightCuller() const { return tiledLightCuller_; }
+
+private:
+  TiledLightCuller *tiledLightCuller_ = nullptr;
+
+  // 今 B に積んでいる Object3d の PSO が深度テストありか（SetDepthEnable で切り替わる）
+  bool depthEnabled_ = true;
+
+  // P にルートシグネチャ・PSO・トポロジを積んだ回の番号（TiledLightCuller の GetPrepassFrame と同じなら積み済み）
+  uint64_t prepassStateFrame_ = 0;
 
 public:
   // --- フォグ関連 ---

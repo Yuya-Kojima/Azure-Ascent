@@ -199,6 +199,8 @@
     <FxCompile Include="resources\shaders\CloudTopNoise.CS.hlsl" />
     <FxCompile Include="resources\shaders\CloudSea.March.PS.hlsl" />
     <FxCompile Include="resources\shaders\CloudSea.Composite.PS.hlsl" />
+    <FxCompile Include="resources\shaders\Object3d.DepthPrepass.PS.hlsl" />
+    <FxCompile Include="resources\shaders\LightCulling.CS.hlsl" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Core\Game.h">
@@ -387,5 +389,6 @@
     <None Include="resources\shaders\Sprite.hlsli" />
     <None Include="resources\shaders\Skybox.hlsli" />
     <None Include="resources\shaders\CloudSea.hlsli" />
+    <None Include="resources\shaders\LightCulling.hlsli" />
   </ItemGroup>
 </Project>

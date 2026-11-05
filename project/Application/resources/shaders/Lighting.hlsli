@@ -13,7 +13,7 @@ struct DirectionalLight {
 	float4 backRimColor;   // 逆光の縁: rgb=色, w=強度
 	float backRimPower;
 	float3 backRimDirection; // 逆光の縁を作る光が進む向き
-	int debugView;           // 調べるための表示（0: 通常, 1: テクスチャの色だけ, 2: 法線, 3: 法線の向き, 4: 光だけ, 5: 壊れた法線）
+	int debugView;           // 調べるための表示（0: 通常, 1: テクスチャの色だけ, 2: 法線, 3: 法線の向き, 4: 光だけ, 5: 壊れた法線, 6: マスごとのライトの数）
 	float3 padding;
 };
 
@@ -39,11 +39,12 @@ struct SpotLight {
 	float2 padding;
 };
 
-// 名簿に入っているライトの数
+// 名簿に入っているライトの数と、マスごとの名簿を使うか
 struct LightCounts {
 	uint pointLightCount;
 	uint spotLightCount;
-	uint2 padding;
+	uint tileCountX; // 横のマスの数
+	uint useTiles;   // 1 = マスごとの名簿を使う
 };
 
 struct LightResult {

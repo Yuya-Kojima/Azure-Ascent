@@ -1,6 +1,7 @@
 #pragma once
 #include <map>
 #include <memory>
+#include <set>
 #include <string>
 
 class Model;
@@ -29,6 +30,9 @@ private:
 private:
   // モデルデータ
   std::map<std::string, std::unique_ptr<Model>> models;
+
+  // 読み込みに失敗したモデルのパス（同じパスを読み直さず、ログも 1 回だけにする）
+  std::set<std::string> failedModels_;
 
   std::unique_ptr<ModelRenderer> modelRenderer = nullptr;
 

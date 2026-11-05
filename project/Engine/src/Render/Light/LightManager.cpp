@@ -1,6 +1,7 @@
 #include "Render/Light/LightManager.h"
 #include "Debug/Logger.h"
 #include "Math/MathUtil.h"
+#include "Render/Light/TiledLightCuller.h"
 #include "Renderer/LineRenderer.h"
 #include <algorithm>
 #include <cassert>
@@ -76,6 +77,8 @@ void LightManager::Upload() {
 	}
 	countsData_->pointLightCount = GetPointLightCount();
 	countsData_->spotLightCount = GetSpotLightCount();
+	countsData_->tileCountX = tiledLightCuller_ ? tiledLightCuller_->GetTileCountX() : 0;
+	countsData_->useTiles = (tiledLightCuller_ && tiledLightCuller_->IsActive()) ? 1u : 0u;
 }
 
 void LightManager::DrawRanges() const {
@@ -139,6 +142,14 @@ void LightManager::DrawImGui() {
 	ImGui::Checkbox("Show Light Ranges", &showRanges_);
 	ImGui::SameLine();
 	ImGui::TextDisabled("(scenes that draw lines)");
+
+	// オフにすると、マスに分けずに画素ごとに名簿の全部を足す
+	if (tiledLightCuller_) {
+		bool tiledCulling = tiledLightCuller_->IsEnabled();
+		if (ImGui::Checkbox("Tiled Culling", &tiledCulling)) {
+			tiledLightCuller_->SetEnabled(tiledCulling);
+		}
+	}
 
 	// 名簿は毎フレーム作り直されるので、一覧は読むだけにする
 	if (ImGui::TreeNode("Point Light List")) {

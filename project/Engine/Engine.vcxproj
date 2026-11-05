@@ -177,6 +177,7 @@
     <ClCompile Include="src\Render\Particle\ParticleManager.cpp" />
     <ClCompile Include="src\Render\Renderer\Object3dRenderer.cpp" />
     <ClCompile Include="src\Render\Light\LightManager.cpp" />
+    <ClCompile Include="src\Render\Light\TiledLightCuller.cpp" />
     <ClCompile Include="src\Render\Sprite\Sprite.cpp" />
     <ClCompile Include="src\Render\Renderer\SpriteRenderer.cpp" />
     <ClCompile Include="src\Render\Renderer\PostProcess.cpp" />
@@ -257,6 +258,7 @@
     <ClInclude Include="include\Render\Particle\ParticleManager.h" />
     <ClInclude Include="include\Render\Renderer\Object3dRenderer.h" />
     <ClInclude Include="include\Render\Light\LightManager.h" />
+    <ClInclude Include="include\Render\Light\TiledLightCuller.h" />
     <ClInclude Include="include\Render\Sprite\Sprite.h" />
     <ClInclude Include="include\Render\Renderer\SpriteRenderer.h" />
     <ClInclude Include="include\Render\Renderer\PostProcess.h" />

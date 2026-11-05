@@ -63,7 +63,8 @@ void Game::Initialize() {
   // RenderPipelineの初期化
   //===========================
   renderPipeline_ = std::make_unique<RenderPipeline>();
-  renderPipeline_->Initialize(dx12Core_.get(), srvManager_.get());
+  renderPipeline_->Initialize(dx12Core_.get(), srvManager_.get(),
+                              tiledLightCuller_.get());
 
   scene3DGpuTimer_.Initialize(dx12Core_.get());
   
@@ -468,10 +469,14 @@ void Game::Draw() {
 
   EngineBase::BeginFrame();
 
-  // HDRキャンバスの準備をして、3D空間を描画
+  // HDRキャンバスの準備をして、3D空間を描画。
+  // 命令の列は A（ここまで）→ P（深度だけの描画とマス分け）→ B（3D の描画から後）の順に GPU で動く
   renderPipeline_->Begin3DPass(dx12Core_.get());
-  scene3DGpuTimer_.Begin();
+  // 測り始めは P の始め。深度だけの描画・マス分け・3D の描画を全部測る
+  scene3DGpuTimer_.Begin(dx12Core_->GetPrepassCommandList());
+  // Object3d は B と P の両方に積む
   SceneManager::GetInstance()->Draw();
+  renderPipeline_->End3DPass(object3dRenderer_->GetDefaultCamera());
   scene3DGpuTimer_.End();
 
   // プロジェクション逆行列のセット（PostProcessが必要とするため）
@@ -521,6 +526,16 @@ void Game::DrawWorldSettingsUI() {
   // 3D の描画に GPU でかかった時間（前のフレームまでの値を慣らしたもの）
   ImGui::Text("GPU 3D %.3f ms", scene3DGpuTimer_.GetMilliseconds());
 
+  // 直近の区切り（GpuTimer::GetWindowSampleCount() フレーム分）の平均・最小・最大
+  const GpuTimer::WindowStats gpu3DStats = scene3DGpuTimer_.GetWindowStats();
+  if (gpu3DStats.isValid) {
+    ImGui::Text("  %u frames: avg %.3f / min %.3f / max %.3f ms",
+                GpuTimer::GetWindowSampleCount(), gpu3DStats.average,
+                gpu3DStats.min, gpu3DStats.max);
+  } else {
+    ImGui::Text("  %u frames: measuring...", GpuTimer::GetWindowSampleCount());
+  }
+
   if (ImGui::CollapsingHeader("Lighting", ImGuiTreeNodeFlags_DefaultOpen)) {
     auto* renderer = GetObject3dRenderer();
     if (renderer) {
@@ -543,7 +558,7 @@ void Game::DrawWorldSettingsUI() {
       if (auto *dl = renderer->GetDirectionalLightData()) {
         const char *const kDebugViewNames[] = {"Normal", "Albedo Only", "Normal Color",
                                                "Normal Facing", "Lighting Only",
-                                               "Problem Pixels"};
+                                               "Problem Pixels", "Tile Light Count"};
         ImGui::Combo("Debug View", &dl->debugView, kDebugViewNames,
                      static_cast<int>(std::size(kDebugViewNames)));
       }
