@@ -3,6 +3,7 @@
 #include "Debug/Logger.h"
 #include "Math/MathUtil.h"
 #include "Model/ModelManager.h"
+#include "Render/Light/LightManager.h"
 #include "Renderer/Object3dRenderer.h"
 #include "Texture/TextureManager.h"
 #include <cassert>
@@ -126,13 +127,15 @@ void Object3d::Draw() {
   commandList->SetGraphicsRootConstantBufferView(
       4, cameraForGPUResource->GetGPUVirtualAddress());
 
-  // PointLight
+  // 点の光・スポットライトの数と名簿
+  const LightManager *lightManager = object3dRenderer_->GetLightManager();
+  assert(lightManager && "Object3d::Draw: lightManager is null");
   commandList->SetGraphicsRootConstantBufferView(
-      5, object3dRenderer_->GetPointLightResource()->GetGPUVirtualAddress());
-
-  // SpotLight
-  commandList->SetGraphicsRootConstantBufferView(
-      6, object3dRenderer_->GetSpotLightResource()->GetGPUVirtualAddress());
+      5, lightManager->GetCountsAddress());
+  commandList->SetGraphicsRootShaderResourceView(
+      6, lightManager->GetPointLightsAddress());
+  commandList->SetGraphicsRootShaderResourceView(
+      10, lightManager->GetSpotLightsAddress());
 
   // Environment Map (Skybox)
   commandList->SetGraphicsRootDescriptorTable(

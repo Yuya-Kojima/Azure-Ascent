@@ -10,10 +10,6 @@ void Object3dRenderer::Initialize(Dx12Core *dx12Core) {
 
   CreateDirectionalLightData();
 
-  CreatePointLightData();
-
-  CreateSpotLightData();
-
   CreateFogData();
 }
 
@@ -29,7 +25,7 @@ void Object3dRenderer::CreateRootSignature() {
       D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT;
 
   // Object3d用のRootParameterを作成
-  D3D12_ROOT_PARAMETER rootParameterObject3d[10] = {};
+  D3D12_ROOT_PARAMETER rootParameterObject3d[11] = {};
   rootParameterObject3d[0].ParameterType =
       D3D12_ROOT_PARAMETER_TYPE_CBV; // CBVを使う
   rootParameterObject3d[0].ShaderVisibility =
@@ -71,17 +67,15 @@ void Object3dRenderer::CreateRootSignature() {
       D3D12_SHADER_VISIBILITY_PIXEL;                      // PSで使う
   rootParameterObject3d[4].Descriptor.ShaderRegister = 2; // レジスタ番号2を使う
 
-  rootParameterObject3d[5].ParameterType =
-      D3D12_ROOT_PARAMETER_TYPE_CBV; // CBVを使う
-  rootParameterObject3d[5].ShaderVisibility =
-      D3D12_SHADER_VISIBILITY_PIXEL;                      // PSで使う
-  rootParameterObject3d[5].Descriptor.ShaderRegister = 3; // レジスタ番号3を使う
+  // ライトの数 (b3)
+  rootParameterObject3d[5].ParameterType = D3D12_ROOT_PARAMETER_TYPE_CBV;
+  rootParameterObject3d[5].ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
+  rootParameterObject3d[5].Descriptor.ShaderRegister = 3;
 
-  rootParameterObject3d[6].ParameterType =
-      D3D12_ROOT_PARAMETER_TYPE_CBV; // CBVを使う
-  rootParameterObject3d[6].ShaderVisibility =
-      D3D12_SHADER_VISIBILITY_PIXEL;                      // PSで使う
-  rootParameterObject3d[6].Descriptor.ShaderRegister = 4; // レジスタ番号4を使う
+  // 点の光の名簿 (t3)。バッファの GPU アドレスを直接渡すルート SRV
+  rootParameterObject3d[6].ParameterType = D3D12_ROOT_PARAMETER_TYPE_SRV;
+  rootParameterObject3d[6].ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
+  rootParameterObject3d[6].Descriptor.ShaderRegister = 3;
 
   D3D12_DESCRIPTOR_RANGE descriptorRangeEnvMap[1] = {};
   descriptorRangeEnvMap[0].BaseShaderRegister = 1; // t1
@@ -121,6 +115,11 @@ void Object3dRenderer::CreateRootSignature() {
   rootParameterObject3d[9].ShaderVisibility =
       D3D12_SHADER_VISIBILITY_PIXEL;
   rootParameterObject3d[9].Descriptor.ShaderRegister = 5;
+
+  // スポットライトの名簿 (t4)。バッファの GPU アドレスを直接渡すルート SRV
+  rootParameterObject3d[10].ParameterType = D3D12_ROOT_PARAMETER_TYPE_SRV;
+  rootParameterObject3d[10].ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
+  rootParameterObject3d[10].Descriptor.ShaderRegister = 4;
 
   D3D12_STATIC_SAMPLER_DESC staticSamplers[1] = {};
   staticSamplers[0].Filter =
@@ -346,47 +345,6 @@ void Object3dRenderer::CreateDirectionalLightData() {
   directionalLightData_->backRimDirection = Vector3(0.0f, 0.0f, -1.0f);
   directionalLightData_->debugView = 0;
 }
-
-void Object3dRenderer::CreatePointLightData() {
-
-  UINT pointLightSize = (sizeof(PointLight) + 255) & ~255;
-  pointLightResource_ = dx12Core_->CreateBufferResource(pointLightSize);
-
-  // データを書き込む
-  pointLightData_ = nullptr;
-
-  // 書き込むためのアドレスを取得
-  pointLightResource_->Map(0, nullptr,
-                           reinterpret_cast<void **>(&pointLightData_));
-
-  pointLightData_->color = {1.0f, 1.0f, 1.0f, 1.0f};
-  pointLightData_->position = {0.0f, 2.0f, 0.0f};
-  pointLightData_->intensity = 0.0f;
-  pointLightData_->radius = 5.0f;
-  pointLightData_->decay = 2.0f;
-}
-
-void Object3dRenderer::CreateSpotLightData() {
-  UINT spotLightSize = (sizeof(SpotLight) + 255) & ~255;
-  spotLightResource_ = dx12Core_->CreateBufferResource(spotLightSize);
-
-  // データを書き込む
-  spotLightData_ = nullptr;
-
-  // 書き込むためのアドレスを取得
-  spotLightResource_->Map(0, nullptr,
-                          reinterpret_cast<void **>(&spotLightData_));
-
-  spotLightData_->color = {1.0f, 1.0f, 1.0f, 1.0f};
-  spotLightData_->position = {2.0f, 1.25f, 0.0f};
-  spotLightData_->intensity = 0.0f;
-  spotLightData_->distance = 7.0f;
-  spotLightData_->direction = Normalize({-1.0f, -1.0f, 0.0f});
-  spotLightData_->decay = 2.0f;
-  spotLightData_->cosAngle = std::cos(std::numbers::pi_v<float> / 3.0f);
-}
-
-
 
 void Object3dRenderer::CreateSkinningComputeRootSignature() {
   HRESULT hr;

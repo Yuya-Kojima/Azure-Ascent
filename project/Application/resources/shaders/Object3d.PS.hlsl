@@ -15,8 +15,9 @@ struct PixelShaderOutput {
 };
 
 ConstantBuffer<Camera> gCamera : register(b2);
-ConstantBuffer<PointLight> gPointLight : register(b3);
-ConstantBuffer<SpotLight> gSpotLight : register(b4);
+ConstantBuffer<LightCounts> gLightCounts : register(b3);
+StructuredBuffer<PointLight> gPointLights : register(t3);
+StructuredBuffer<SpotLight> gSpotLights : register(t4);
 
 struct FogData {
     float4 color;
@@ -273,14 +274,27 @@ GeometryShaderOutput input) {
 	// Lighting Calculations
 	//=========================
 	LightResult dirLight = CalculateDirectionalLight(gDirectionalLight, normal, toEye, gMaterial.shininess, baseColor);
-	LightResult pointLight = CalculatePointLight(gPointLight, input.worldPosition, normal, toEye, gMaterial.shininess, baseColor);
-	LightResult spotLight = CalculateSpotLight(gSpotLight, input.worldPosition, normal, toEye, gMaterial.shininess, baseColor);
+	float3 diffuseSum = dirLight.diffuse;
+	float3 specularSum = dirLight.specular;
+
+	// 名簿にある点の光を全部足す
+	for (uint pointIndex = 0; pointIndex < gLightCounts.pointLightCount; ++pointIndex) {
+		LightResult pointLight = CalculatePointLight(gPointLights[pointIndex], input.worldPosition, normal, toEye, gMaterial.shininess, baseColor);
+		diffuseSum += pointLight.diffuse;
+		specularSum += pointLight.specular;
+	}
+
+	// 名簿にあるスポットライトを全部足す
+	for (uint spotIndex = 0; spotIndex < gLightCounts.spotLightCount; ++spotIndex) {
+		LightResult spotLight = CalculateSpotLight(gSpotLights[spotIndex], input.worldPosition, normal, toEye, gMaterial.shininess, baseColor);
+		diffuseSum += spotLight.diffuse;
+		specularSum += spotLight.specular;
+	}
 
 	//=========================
 	// Output
 	//=========================
-	float3 specular = (dirLight.specular + pointLight.specular + spotLight.specular) * gMaterial.specularScale;
-	output.color.rgb = dirLight.diffuse + pointLight.diffuse + spotLight.diffuse + specular;
+	output.color.rgb = diffuseSum + specularSum * gMaterial.specularScale;
 
 	// 環境光
 	output.color.rgb += CalculateHemisphereAmbient(gDirectionalLight, normal, baseColor);

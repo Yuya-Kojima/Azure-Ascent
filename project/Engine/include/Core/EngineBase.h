@@ -10,6 +10,7 @@
 #include "Scene/AbstractSceneFactory.h"
 #include "Renderer/LineRenderer.h"
 #include "Renderer/TrailRenderer.h"
+#include "Render/Light/LightManager.h"
 #include <memory>
 #include <wrl.h>
 #include <xaudio2.h>
@@ -59,6 +60,7 @@ public:
   }
   LineRenderer *GetLineRenderer() const { return LineRenderer::GetInstance(); }
   TrailRenderer *GetTrailRenderer() const { return TrailRenderer::GetInstance(); }
+  LightManager *GetLightManager() const { return lightManager_.get(); }
   SrvManager *GetSrvManager() const { return srvManager_.get(); }
   Dx12Core *GetDx12Core() const { return dx12Core_.get(); }
 
@@ -79,6 +81,9 @@ protected:
   std::unique_ptr<SpriteRenderer> spriteRenderer_ = nullptr;
 
   std::unique_ptr<Object3dRenderer> object3dRenderer_ = nullptr;
+
+  // 点の光・スポットライトの名簿（毎フレーム Update で白紙にし、Begin3D で GPU へ書き写す）
+  std::unique_ptr<LightManager> lightManager_ = nullptr;
 
   std::unique_ptr<SkyboxRenderer> skyboxRenderer_ = nullptr;
 

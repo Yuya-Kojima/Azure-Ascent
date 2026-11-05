@@ -66,6 +66,10 @@ void EngineBase::Initialize() {
   object3dRenderer_ = std::make_unique<Object3dRenderer>();
   object3dRenderer_->Initialize(dx12Core_.get());
 
+  lightManager_ = std::make_unique<LightManager>();
+  lightManager_->Initialize(dx12Core_.get());
+  object3dRenderer_->SetLightManager(lightManager_.get());
+
   skyboxRenderer_ = std::make_unique<SkyboxRenderer>();
   skyboxRenderer_->Initialize(dx12Core_.get());
 
@@ -135,6 +139,7 @@ void EngineBase::Finalize() {
 
   input_.reset();
   object3dRenderer_.reset();
+  lightManager_.reset();
   spriteRenderer_.reset();
   skyboxRenderer_.reset();
   cloudSeaRenderer_.reset();
@@ -164,6 +169,9 @@ void EngineBase::Update() {
 
   // キー入力
   input_->Update();
+
+  // ライトの名簿を白紙にする（光る物がこのあとシーンの Update の中で書き込む）
+  lightManager_->Clear();
 }
 
 void EngineBase::BeginFrame() {
@@ -177,6 +185,10 @@ void EngineBase::BeginFrame() {
 void EngineBase::EndFrame() { dx12Core_->EndFrame(); }
 
 void EngineBase::Begin3D() {
+  // ライトの名簿を GPU へ書き写し、範囲の表示が有効なら線を登録する
+  lightManager_->Upload();
+  lightManager_->DrawRanges();
+
   // 3DObjectの描画準備。3DObjectの描画に共通のグラフィックスコマンドを積む
   object3dRenderer_->Begin();
 }

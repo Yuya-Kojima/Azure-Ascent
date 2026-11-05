@@ -64,6 +64,8 @@ void Game::Initialize() {
   //===========================
   renderPipeline_ = std::make_unique<RenderPipeline>();
   renderPipeline_->Initialize(dx12Core_.get(), srvManager_.get());
+
+  scene3DGpuTimer_.Initialize(dx12Core_.get());
   
 #ifdef USE_IMGUI
   // ImGuiが有効な場合のみエディタモード（オフスクリーン描画）を有効化
@@ -217,6 +219,8 @@ void Game::Finalize() {
   EffectManager::GetInstance()->Finalize();
 
   renderPipeline_.reset();
+  // GPU の時刻を受け取るバッファを、デバイスより先に解放する
+  scene3DGpuTimer_ = GpuTimer{};
   imGuiManager_.reset();
   sceneFactory_.reset();
 
@@ -466,7 +470,9 @@ void Game::Draw() {
 
   // HDRキャンバスの準備をして、3D空間を描画
   renderPipeline_->Begin3DPass(dx12Core_.get());
+  scene3DGpuTimer_.Begin();
   SceneManager::GetInstance()->Draw();
+  scene3DGpuTimer_.End();
 
   // プロジェクション逆行列のセット（PostProcessが必要とするため）
   auto pp = SceneManager::GetInstance()->GetCurrentScenePostProcess();
@@ -512,15 +518,14 @@ void Game::DrawWorldSettingsUI() {
               srvManager_->GetUsedCount(), srvManager_->GetPeakCount(),
               srvManager_->GetCapacity());
 
+  // 3D の描画に GPU でかかった時間（前のフレームまでの値を慣らしたもの）
+  ImGui::Text("GPU 3D %.3f ms", scene3DGpuTimer_.GetMilliseconds());
+
   if (ImGui::CollapsingHeader("Lighting", ImGuiTreeNodeFlags_DefaultOpen)) {
     auto* renderer = GetObject3dRenderer();
     if (renderer) {
       static bool showDirectionalLight = true;
-      static bool showPointLight = false;
-      static bool showSpotLight = false;
       static float directionalIntensityBackup = 1.0f;
-      static float pointIntensityBackup = 1.0f;
-      static float spotIntensityBackup = 4.0f;
 
       // Checkboxes
       if (ImGui::Checkbox("Enable DirectionalLight", &showDirectionalLight)) {
@@ -530,26 +535,6 @@ void Game::DrawWorldSettingsUI() {
             dl->intensity = 0.0f;
           } else {
             dl->intensity = (directionalIntensityBackup > 0.0f) ? directionalIntensityBackup : 1.0f;
-          }
-        }
-      }
-      if (ImGui::Checkbox("Enable PointLight", &showPointLight)) {
-        if (auto *pl = renderer->GetPointLightData()) {
-          if (!showPointLight) {
-            pointIntensityBackup = pl->intensity;
-            pl->intensity = 0.0f;
-          } else {
-            pl->intensity = (pointIntensityBackup > 0.0f) ? pointIntensityBackup : 1.0f;
-          }
-        }
-      }
-      if (ImGui::Checkbox("Enable SpotLight", &showSpotLight)) {
-        if (auto *sl = renderer->GetSpotLightData()) {
-          if (!showSpotLight) {
-            spotIntensityBackup = sl->intensity;
-            sl->intensity = 0.0f;
-          } else {
-            sl->intensity = (spotIntensityBackup > 0.0f) ? spotIntensityBackup : 1.0f;
           }
         }
       }
@@ -573,45 +558,9 @@ void Game::DrawWorldSettingsUI() {
           ImGui::Separator();
         }
       }
-      if (showPointLight) {
-        if (auto* pl = renderer->GetPointLightData()) {
-          ImGui::Text("Point Light");
-          ImGui::ColorEdit3("Color##PL", &pl->color.x);
-          ImGui::DragFloat3("Position##PL", &pl->position.x, 0.05f);
-          ImGui::DragFloat("Intensity##PL", &pl->intensity, 0.05f, 0.0f, 10.0f);
-          ImGui::DragFloat("Radius##PL", &pl->radius, 0.1f, 0.0f, 100.0f);
-          ImGui::DragFloat("Decay##PL", &pl->decay, 0.05f, 0.01f, 8.0f);
-          ImGui::Separator();
-        }
-      }
-      if (showSpotLight) {
-        if (auto* sl = renderer->GetSpotLightData()) {
-          ImGui::Text("Spot Light");
-          ImGui::ColorEdit3("Color##SL", &sl->color.x);
-          ImGui::DragFloat3("Position##SL", &sl->position.x, 0.05f);
-          ImGui::DragFloat("Intensity##SL", &sl->intensity, 0.05f, 0.0f, 10.0f);
-
-          static float yawDeg = 0.0f;
-          static float pitchDeg = -20.0f;
-          ImGui::SliderFloat("Yaw(deg)##SL", &yawDeg, -180.0f, 180.0f);
-          ImGui::SliderFloat("Pitch(deg)##SL", &pitchDeg, -89.0f, 89.0f);
-
-          float yaw = DegToRad(yawDeg);
-          float pitch = DegToRad(pitchDeg);
-          sl->direction = {
-              std::cos(pitch) * std::sin(yaw),
-              std::sin(pitch),
-              std::cos(pitch) * std::cos(yaw),
-          };
-
-          ImGui::DragFloat("Distance##SL", &sl->distance, 0.1f, 0.01f, 100.0f);
-          ImGui::DragFloat("Decay##SL", &sl->decay, 0.05f, 0.01f, 8.0f);
-
-          static float spotAngleDeg = 30.0f;
-          ImGui::DragFloat("Angle(deg)##SL", &spotAngleDeg, 0.1f, 1.0f, 89.0f);
-          sl->cosAngle = std::cos(DegToRad(spotAngleDeg));
-          ImGui::Separator();
-        }
+      // 点の光・スポットライトの名簿（光る物が毎フレーム書き込む）
+      if (LightManager *lightManager = GetLightManager()) {
+        lightManager->DrawImGui();
       }
     }
   }

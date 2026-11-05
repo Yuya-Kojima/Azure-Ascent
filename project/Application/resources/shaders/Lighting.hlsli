@@ -17,14 +17,17 @@ struct DirectionalLight {
 	float3 padding;
 };
 
+// StructuredBuffer は詰めて並べるので、C++ の LightManager::PointLight（48 バイト）と同じ大きさになるよう padding を置く
 struct PointLight {
 	float4 color;
 	float3 position;
 	float intensity;
 	float radius;
 	float decay;
+	float2 padding;
 };
 
+// C++ の LightManager::SpotLight（64 バイト）と同じ大きさになるよう padding を置く
 struct SpotLight {
 	float4 color;
 	float3 position;
@@ -33,6 +36,14 @@ struct SpotLight {
 	float distance;
 	float decay;
 	float cosAngle;
+	float2 padding;
+};
+
+// 名簿に入っているライトの数
+struct LightCounts {
+	uint pointLightCount;
+	uint spotLightCount;
+	uint2 padding;
 };
 
 struct LightResult {
