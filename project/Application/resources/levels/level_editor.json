@@ -1,770 +1,770 @@
 {
     "sceneObjects": [
         {
-            "modelPath": "Box/box.gltf",
+            "modelPath": "__builtin_box",
             "translation": [23.454, -3.543, 36.466],
             "rotation": [0.0, 1.7588, 0.0],
-            "scale": [6.107, 11.457, 4.575],
+            "scale": [12.214, 22.914, 9.149],
             "color": [0.55, 0.57, 0.6],
             "specularScale": 0.0
         },
         {
-            "modelPath": "Box/box.gltf",
+            "modelPath": "__builtin_box",
             "translation": [-29.589, -5.47, 106.503],
             "rotation": [0.0, 1.1858, 0.0],
-            "scale": [6.389, 9.53, 5.653],
+            "scale": [12.778, 19.059, 11.306],
             "color": [0.55, 0.57, 0.6],
             "specularScale": 0.0
         },
         {
-            "modelPath": "Box/box.gltf",
+            "modelPath": "__builtin_box",
             "translation": [59.989, -5.211, 165.664],
             "rotation": [0.0, 2.0926, 0.0],
-            "scale": [6.826, 9.789, 3.822],
+            "scale": [13.652, 19.578, 7.644],
             "color": [0.55, 0.57, 0.6],
             "specularScale": 0.0
         },
         {
-            "modelPath": "Box/box.gltf",
+            "modelPath": "__builtin_box",
             "translation": [34.149, -2.088, 265.504],
             "rotation": [0.0, 2.7524, 0.0],
-            "scale": [5.519, 12.912, 5.898],
+            "scale": [11.039, 25.825, 11.796],
             "color": [0.55, 0.57, 0.6],
             "specularScale": 0.0
         },
         {
-            "modelPath": "Box/box.gltf",
+            "modelPath": "__builtin_box",
             "translation": [56.94, -2.219, 358.133],
             "rotation": [0.0, 0.0186, 0.0],
-            "scale": [6.085, 12.781, 5.965],
+            "scale": [12.17, 25.563, 11.929],
             "color": [0.55, 0.57, 0.6],
             "specularScale": 0.0
         },
         {
-            "modelPath": "Box/box.gltf",
+            "modelPath": "__builtin_box",
             "translation": [67.033, -2.56, 595.0],
             "rotation": [0.0, 1.1167, 0.0],
-            "scale": [6.648, 12.44, 4.997],
+            "scale": [13.295, 24.88, 9.994],
             "color": [0.55, 0.57, 0.6],
             "specularScale": 0.0
         },
         {
-            "modelPath": "Box/box.gltf",
+            "modelPath": "__builtin_box",
             "translation": [112.347, -3.651, 688.614],
             "rotation": [0.0, 0.2717, 0.0],
-            "scale": [4.396, 11.349, 3.407],
+            "scale": [8.792, 22.698, 6.815],
             "color": [0.55, 0.57, 0.6],
             "specularScale": 0.0
         },
         {
-            "modelPath": "Box/box.gltf",
+            "modelPath": "__builtin_box",
             "translation": [34.793, -0.421, 742.934],
             "rotation": [0.0, 2.8614, 0.0],
-            "scale": [5.074, 14.579, 5.588],
+            "scale": [10.149, 29.157, 11.177],
             "color": [0.55, 0.57, 0.6],
             "specularScale": 0.0
         },
         {
-            "modelPath": "Box/box.gltf",
+            "modelPath": "__builtin_box",
             "translation": [111.251, 40.457, 405.336],
             "rotation": [0.0, 0.3494, 0.0],
-            "scale": [43.384, 55.457, 43.384],
+            "scale": [86.769, 110.915, 86.769],
             "color": [0.78, 0.8, 0.85],
             "specularScale": 0.0
         },
         {
-            "modelPath": "Box/box.gltf",
+            "modelPath": "__builtin_box",
             "translation": [-24.215, 45.513, 578.391],
             "rotation": [0.0, -0.2617, 0.0],
-            "scale": [43.83, 60.513, 43.83],
+            "scale": [87.659, 121.027, 87.659],
             "color": [0.78, 0.8, 0.85],
             "specularScale": 0.0
         },
         {
-            "modelPath": "Box/box.gltf",
+            "modelPath": "__builtin_box",
             "translation": [185.641, 34.707, 800.579],
             "rotation": [0.0, 0.436, 0.0],
-            "scale": [43.494, 49.707, 43.494],
+            "scale": [86.988, 99.414, 86.988],
             "color": [0.78, 0.8, 0.85],
             "specularScale": 0.0
         },
         {
-            "modelPath": "Box/box.gltf",
+            "modelPath": "__builtin_box",
             "translation": [-87.887, 162.5, 555.862],
             "rotation": [0.0, -0.1746, 0.0],
-            "scale": [90.0, 177.5, 90.0],
+            "scale": [180.0, 355.0, 180.0],
             "color": [0.78, 0.8, 0.85],
             "specularScale": 0.0
         },
         {
-            "modelPath": "Box/box.gltf",
+            "modelPath": "__builtin_box",
             "translation": [19.874, 92.5, 981.054],
             "rotation": [0.0, -0.1746, 0.0],
-            "scale": [60.0, 107.5, 60.0],
+            "scale": [120.0, 215.0, 120.0],
             "color": [0.78, 0.8, 0.85],
             "specularScale": 0.0
         },
         {
-            "modelPath": "Box/box.gltf",
+            "modelPath": "__builtin_box",
             "translation": [-90.037, 27.161, 777.994],
             "rotation": [0.0, -1.2541, 0.0],
-            "scale": [7.0, 42.161, 7.0],
+            "scale": [14.0, 84.323, 14.0],
             "color": [0.08, 0.085, 0.1],
             "specularScale": 0.0
         },
         {
-            "modelPath": "Box/box.gltf",
+            "modelPath": "__builtin_box",
             "translation": [-77.578, 27.161, 816.004],
             "rotation": [0.0, -1.2541, 0.0],
-            "scale": [7.0, 42.161, 7.0],
+            "scale": [14.0, 84.323, 14.0],
             "color": [0.08, 0.085, 0.1],
             "specularScale": 0.0
         },
         {
-            "modelPath": "Box/box.gltf",
+            "modelPath": "__builtin_box",
             "translation": [-83.807, 27.323, 796.999],
             "rotation": [0.0, -1.2541, 0.0],
-            "scale": [27.0, 4.0, 7.0],
+            "scale": [54.0, 8.0, 14.0],
             "color": [0.08, 0.085, 0.1],
             "specularScale": 0.0
         },
         {
-            "modelPath": "Box/box.gltf",
+            "modelPath": "__builtin_box",
             "translation": [-372.453, 65.58, 1071.253],
             "rotation": [0.0, -0.7854, 0.0],
-            "scale": [15.742, 80.58, 15.742],
+            "scale": [31.485, 161.16, 31.485],
             "color": [0.12, 0.125, 0.14],
             "specularScale": 0.0
         },
         {
-            "modelPath": "Box/box.gltf",
+            "modelPath": "__builtin_box",
             "translation": [-644.909, 61.677, 890.634],
             "rotation": [0.0, -1.8327, 0.0],
-            "scale": [12.195, 76.677, 12.195],
+            "scale": [24.389, 153.353, 24.389],
             "color": [0.12, 0.125, 0.14],
             "specularScale": 0.0
         },
         {
-            "modelPath": "Box/box.gltf",
+            "modelPath": "__builtin_box",
             "translation": [-790.653, 67.225, 1183.353],
             "rotation": [0.0, -0.7854, 0.0],
-            "scale": [12.201, 82.225, 12.201],
+            "scale": [24.401, 164.45, 24.401],
             "color": [0.12, 0.125, 0.14],
             "specularScale": 0.0
         },
         {
-            "modelPath": "Box/box.gltf",
+            "modelPath": "__builtin_box",
             "translation": [-1063.109, 67.414, 1002.734],
             "rotation": [0.0, -1.8327, 0.0],
-            "scale": [12.87, 82.414, 12.87],
+            "scale": [25.74, 164.828, 25.74],
             "color": [0.12, 0.125, 0.14],
             "specularScale": 0.0
         },
         {
-            "modelPath": "Box/box.gltf",
+            "modelPath": "__builtin_box",
             "translation": [-1208.753, 66.804, 1295.353],
             "rotation": [0.0, -0.7854, 0.0],
-            "scale": [14.475, 81.804, 14.475],
+            "scale": [28.949, 163.609, 28.949],
             "color": [0.12, 0.125, 0.14],
             "specularScale": 0.0
         },
         {
-            "modelPath": "Box/box.gltf",
+            "modelPath": "__builtin_box",
             "translation": [-150.354, 48.77, 798.884],
             "rotation": [0.0, -0.8253, 0.0],
-            "scale": [8.159, 63.77, 7.757],
+            "scale": [16.318, 127.541, 15.514],
             "color": [0.12, 0.125, 0.14],
             "specularScale": 0.0
         },
         {
-            "modelPath": "Box/box.gltf",
+            "modelPath": "__builtin_box",
             "translation": [-105.575, 45.863, 847.391],
             "rotation": [0.0, -0.8253, 0.0],
-            "scale": [7.771, 60.863, 6.23],
+            "scale": [15.542, 121.725, 12.459],
             "color": [0.12, 0.125, 0.14],
             "specularScale": 0.0
         },
         {
-            "modelPath": "Box/box.gltf",
+            "modelPath": "__builtin_box",
             "translation": [-195.648, 20.388, 848.138],
             "rotation": [0.0, -0.6512, 0.0],
-            "scale": [6.759, 35.388, 9.934],
+            "scale": [13.519, 70.777, 19.869],
             "color": [0.12, 0.125, 0.14],
             "specularScale": 0.0
         },
         {
-            "modelPath": "Box/box.gltf",
+            "modelPath": "__builtin_box",
             "translation": [-131.16, 53.363, 897.289],
             "rotation": [0.0, -0.6512, 0.0],
-            "scale": [6.489, 68.363, 8.63],
+            "scale": [12.979, 136.726, 17.261],
             "color": [0.12, 0.125, 0.14],
             "specularScale": 0.0
         },
         {
-            "modelPath": "Box/box.gltf",
+            "modelPath": "__builtin_box",
             "translation": [-228.015, 22.751, 906.771],
             "rotation": [0.0, -0.6769, 0.0],
-            "scale": [6.597, 37.751, 7.771],
+            "scale": [13.195, 75.503, 15.542],
             "color": [0.12, 0.125, 0.14],
             "specularScale": 0.0
         },
         {
-            "modelPath": "Box/box.gltf",
+            "modelPath": "__builtin_box",
             "translation": [-187.501, 22.3, 939.33],
             "rotation": [0.0, -0.6769, 0.0],
-            "scale": [7.353, 37.3, 7.237],
+            "scale": [14.706, 74.6, 14.475],
             "color": [0.12, 0.125, 0.14],
             "specularScale": 0.0
         },
         {
-            "modelPath": "Box/box.gltf",
+            "modelPath": "__builtin_box",
             "translation": [-269.117, 37.895, 945.268],
             "rotation": [0.0, -0.9074, 0.0],
-            "scale": [6.896, 52.895, 9.16],
+            "scale": [13.791, 105.791, 18.32],
             "color": [0.12, 0.125, 0.14],
             "specularScale": 0.0
         },
         {
-            "modelPath": "Box/box.gltf",
+            "modelPath": "__builtin_box",
             "translation": [-235.963, 52.903, 987.692],
             "rotation": [0.0, -0.9074, 0.0],
-            "scale": [8.972, 67.903, 7.085],
+            "scale": [17.944, 135.806, 14.169],
             "color": [0.12, 0.125, 0.14],
             "specularScale": 0.0
         },
         {
-            "modelPath": "Box/box.gltf",
+            "modelPath": "__builtin_box",
             "translation": [-303.102, 60.461, 950.469],
             "rotation": [0.0, -1.5019, 0.0],
-            "scale": [6.908, 75.461, 6.937],
+            "scale": [13.816, 150.922, 13.875],
             "color": [0.12, 0.125, 0.14],
             "specularScale": 0.0
         },
         {
-            "modelPath": "Box/box.gltf",
+            "modelPath": "__builtin_box",
             "translation": [-297.627, 30.754, 1029.84],
             "rotation": [0.0, -1.5019, 0.0],
-            "scale": [6.904, 45.754, 9.642],
+            "scale": [13.807, 91.508, 19.284],
             "color": [0.12, 0.125, 0.14],
             "specularScale": 0.0
         },
         {
-            "modelPath": "Box/box.gltf",
+            "modelPath": "__builtin_box",
             "translation": [-341.33, 45.457, 935.606],
             "rotation": [0.0, -1.938, 0.0],
-            "scale": [7.741, 60.457, 9.377],
+            "scale": [15.483, 120.915, 18.754],
             "color": [0.12, 0.125, 0.14],
             "specularScale": 0.0
         },
         {
-            "modelPath": "Box/box.gltf",
+            "modelPath": "__builtin_box",
             "translation": [-369.871, 47.616, 1009.812],
             "rotation": [0.0, -1.938, 0.0],
-            "scale": [7.627, 62.616, 8.654],
+            "scale": [15.254, 125.233, 17.308],
             "color": [0.12, 0.125, 0.14],
             "specularScale": 0.0
         },
         {
-            "modelPath": "Box/box.gltf",
+            "modelPath": "__builtin_box",
             "translation": [-399.086, 25.498, 908.55],
             "rotation": [0.0, -2.0196, 0.0],
-            "scale": [8.451, 40.498, 7.397],
+            "scale": [16.903, 80.996, 14.794],
             "color": [0.12, 0.125, 0.14],
             "specularScale": 0.0
         },
         {
-            "modelPath": "Box/box.gltf",
+            "modelPath": "__builtin_box",
             "translation": [-437.763, 28.643, 988.868],
             "rotation": [0.0, -2.0196, 0.0],
-            "scale": [8.252, 43.643, 6.838],
+            "scale": [16.504, 87.287, 13.675],
             "color": [0.12, 0.125, 0.14],
             "specularScale": 0.0
         },
         {
-            "modelPath": "Box/box.gltf",
+            "modelPath": "__builtin_box",
             "translation": [-469.07, 26.649, 889.079],
             "rotation": [0.0, -1.8452, 0.0],
-            "scale": [6.163, 41.649, 6.495],
+            "scale": [12.326, 83.297, 12.99],
             "color": [0.12, 0.125, 0.14],
             "specularScale": 0.0
         },
         {
-            "modelPath": "Box/box.gltf",
+            "modelPath": "__builtin_box",
             "translation": [-491.299, 36.351, 968.033],
             "rotation": [0.0, -1.8452, 0.0],
-            "scale": [6.949, 51.351, 9.797],
+            "scale": [13.899, 102.703, 19.594],
             "color": [0.12, 0.125, 0.14],
             "specularScale": 0.0
         },
         {
-            "modelPath": "Box/box.gltf",
+            "modelPath": "__builtin_box",
             "translation": [-543.825, 57.895, 891.736],
             "rotation": [0.0, -1.2412, 0.0],
-            "scale": [7.026, 72.895, 6.611],
+            "scale": [14.052, 145.79, 13.222],
             "color": [0.12, 0.125, 0.14],
             "specularScale": 0.0
         },
         {
-            "modelPath": "Box/box.gltf",
+            "modelPath": "__builtin_box",
             "translation": [-518.538, 40.68, 965.665],
             "rotation": [0.0, -1.2412, 0.0],
-            "scale": [6.162, 55.68, 7.977],
+            "scale": [12.324, 111.359, 15.953],
             "color": [0.12, 0.125, 0.14],
             "specularScale": 0.0
         },
         {
-            "modelPath": "Box/box.gltf",
+            "modelPath": "__builtin_box",
             "translation": [-609.428, 42.302, 928.841],
             "rotation": [0.0, -0.7212, 0.0],
-            "scale": [7.165, 57.302, 9.606],
+            "scale": [14.331, 114.603, 19.213],
             "color": [0.12, 0.125, 0.14],
             "specularScale": 0.0
         },
         {
-            "modelPath": "Box/box.gltf",
+            "modelPath": "__builtin_box",
             "translation": [-550.61, 33.91, 980.555],
             "rotation": [0.0, -0.7212, 0.0],
-            "scale": [8.806, 48.91, 9.234],
+            "scale": [17.612, 97.821, 18.468],
             "color": [0.12, 0.125, 0.14],
             "specularScale": 0.0
         },
         {
-            "modelPath": "Box/box.gltf",
+            "modelPath": "__builtin_box",
             "translation": [-648.033, 48.72, 989.348],
             "rotation": [0.0, -0.5954, 0.0],
-            "scale": [6.571, 63.72, 9.454],
+            "scale": [13.143, 127.44, 18.909],
             "color": [0.12, 0.125, 0.14],
             "specularScale": 0.0
         },
         {
-            "modelPath": "Box/box.gltf",
+            "modelPath": "__builtin_box",
             "translation": [-587.393, 57.54, 1030.428],
             "rotation": [0.0, -0.5954, 0.0],
-            "scale": [9.189, 72.54, 6.989],
+            "scale": [18.378, 145.08, 13.978],
             "color": [0.12, 0.125, 0.14],
             "specularScale": 0.0
         },
         {
-            "modelPath": "Box/box.gltf",
+            "modelPath": "__builtin_box",
             "translation": [-682.003, 53.962, 1041.567],
             "rotation": [0.0, -0.7212, 0.0],
-            "scale": [8.257, 68.962, 9.384],
+            "scale": [16.514, 137.923, 18.768],
             "color": [0.12, 0.125, 0.14],
             "specularScale": 0.0
         },
         {
-            "modelPath": "Box/box.gltf",
+            "modelPath": "__builtin_box",
             "translation": [-623.328, 35.657, 1093.157],
             "rotation": [0.0, -0.7212, 0.0],
-            "scale": [9.877, 50.657, 9.964],
+            "scale": [19.753, 101.314, 19.929],
             "color": [0.12, 0.125, 0.14],
             "specularScale": 0.0
         },
         {
-            "modelPath": "Box/box.gltf",
+            "modelPath": "__builtin_box",
             "translation": [-714.518, 63.043, 1059.634],
             "rotation": [0.0, -1.2412, 0.0],
-            "scale": [8.439, 78.043, 9.994],
+            "scale": [16.878, 156.086, 19.987],
             "color": [0.12, 0.125, 0.14],
             "specularScale": 0.0
         },
         {
-            "modelPath": "Box/box.gltf",
+            "modelPath": "__builtin_box",
             "translation": [-686.435, 42.593, 1141.734],
             "rotation": [0.0, -1.2412, 0.0],
-            "scale": [9.927, 57.593, 6.943],
+            "scale": [19.854, 115.186, 13.886],
             "color": [0.12, 0.125, 0.14],
             "specularScale": 0.0
         },
         {
-            "modelPath": "Box/box.gltf",
+            "modelPath": "__builtin_box",
             "translation": [-743.966, 41.054, 1053.818],
             "rotation": [0.0, -1.8452, 0.0],
-            "scale": [9.358, 56.054, 9.337],
+            "scale": [18.716, 112.107, 18.674],
             "color": [0.12, 0.125, 0.14],
             "specularScale": 0.0
         },
         {
-            "modelPath": "Box/box.gltf",
+            "modelPath": "__builtin_box",
             "translation": [-768.169, 32.073, 1139.785],
             "rotation": [0.0, -1.8452, 0.0],
-            "scale": [6.828, 47.073, 6.048],
+            "scale": [13.655, 94.147, 12.096],
             "color": [0.12, 0.125, 0.14],
             "specularScale": 0.0
         },
         {
-            "modelPath": "Box/box.gltf",
+            "modelPath": "__builtin_box",
             "translation": [-798.099, 38.056, 1033.538],
             "rotation": [0.0, -2.0196, 0.0],
-            "scale": [7.482, 53.056, 8.303],
+            "scale": [14.964, 106.111, 16.606],
             "color": [0.12, 0.125, 0.14],
             "specularScale": 0.0
         },
         {
-            "modelPath": "Box/box.gltf",
+            "modelPath": "__builtin_box",
             "translation": [-835.255, 32.978, 1110.697],
             "rotation": [0.0, -2.0196, 0.0],
-            "scale": [9.735, 47.978, 9.732],
+            "scale": [19.471, 95.956, 19.464],
             "color": [0.12, 0.125, 0.14],
             "specularScale": 0.0
         },
         {
-            "modelPath": "Box/box.gltf",
+            "modelPath": "__builtin_box",
             "translation": [-864.572, 44.734, 1009.46],
             "rotation": [0.0, -1.938, 0.0],
-            "scale": [8.654, 59.734, 6.819],
+            "scale": [17.308, 119.467, 13.637],
             "color": [0.12, 0.125, 0.14],
             "specularScale": 0.0
         },
         {
-            "modelPath": "Box/box.gltf",
+            "modelPath": "__builtin_box",
             "translation": [-889.942, 41.948, 1075.421],
             "rotation": [0.0, -1.938, 0.0],
-            "scale": [8.802, 56.948, 9.672],
+            "scale": [17.603, 113.896, 19.345],
             "color": [0.12, 0.125, 0.14],
             "specularScale": 0.0
         },
         {
-            "modelPath": "Box/box.gltf",
+            "modelPath": "__builtin_box",
             "translation": [-937.002, 35.829, 992.833],
             "rotation": [0.0, -1.5019, 0.0],
-            "scale": [9.872, 50.829, 9.705],
+            "scale": [19.744, 101.657, 19.41],
             "color": [0.12, 0.125, 0.14],
             "specularScale": 0.0
         },
         {
-            "modelPath": "Box/box.gltf",
+            "modelPath": "__builtin_box",
             "translation": [-931.652, 31.983, 1070.39],
             "rotation": [0.0, -1.5019, 0.0],
-            "scale": [7.606, 46.983, 7.486],
+            "scale": [15.212, 93.966, 14.973],
             "color": [0.12, 0.125, 0.14],
             "specularScale": 0.0
         },
         {
-            "modelPath": "Box/box.gltf",
+            "modelPath": "__builtin_box",
             "translation": [-1003.175, 38.906, 1026.373],
             "rotation": [0.0, -0.8909, 0.0],
-            "scale": [9.378, 53.906, 8.971],
+            "scale": [18.755, 107.812, 17.942],
             "color": [0.12, 0.125, 0.14],
             "specularScale": 0.0
         },
         {
-            "modelPath": "Box/box.gltf",
+            "modelPath": "__builtin_box",
             "translation": [-957.707, 44.343, 1082.607],
             "rotation": [0.0, -0.8909, 0.0],
-            "scale": [6.23, 59.343, 6.712],
+            "scale": [12.46, 118.686, 13.423],
             "color": [0.12, 0.125, 0.14],
             "specularScale": 0.0
         },
         {
-            "modelPath": "Box/box.gltf",
+            "modelPath": "__builtin_box",
             "translation": [-993.949, 52.935, 1118.58],
             "rotation": [0.0, -0.6512, 0.0],
-            "scale": [6.107, 67.935, 8.234],
+            "scale": [12.213, 135.869, 16.468],
             "color": [0.12, 0.125, 0.14],
             "specularScale": 0.0
         },
         {
-            "modelPath": "Box/box.gltf",
+            "modelPath": "__builtin_box",
             "translation": [-1037.258, 69.909, 1167.941],
             "rotation": [0.0, -0.6501, 0.0],
-            "scale": [8.478, 84.909, 6.023],
+            "scale": [16.957, 169.818, 12.045],
             "color": [0.12, 0.125, 0.14],
             "specularScale": 0.0
         },
         {
-            "modelPath": "Box/box.gltf",
+            "modelPath": "__builtin_box",
             "translation": [-1107.264, 51.559, 1164.708],
             "rotation": [0.0, -0.7667, 0.0],
-            "scale": [8.578, 66.559, 9.831],
+            "scale": [17.155, 133.119, 19.662],
             "color": [0.12, 0.125, 0.14],
             "specularScale": 0.0
         },
         {
-            "modelPath": "Box/box.gltf",
+            "modelPath": "__builtin_box",
             "translation": [-1134.823, 48.616, 1184.167],
             "rotation": [0.0, -1.007, 0.0],
-            "scale": [7.107, 63.616, 8.138],
+            "scale": [14.214, 127.231, 16.275],
             "color": [0.12, 0.125, 0.14],
             "specularScale": 0.0
         },
         {
-            "modelPath": "Box/box.gltf",
+            "modelPath": "__builtin_box",
             "translation": [-1169.003, 68.88, 1199.096],
             "rotation": [0.0, -1.127, 0.0],
-            "scale": [9.205, 83.88, 8.442],
+            "scale": [18.41, 167.759, 16.883],
             "color": [0.12, 0.125, 0.14],
             "specularScale": 0.0
         },
         {
-            "modelPath": "Box/box.gltf",
+            "modelPath": "__builtin_box",
             "translation": [-1213.116, 59.852, 1201.935],
             "rotation": [0.0, -1.2016, 0.0],
-            "scale": [6.452, 74.852, 9.576],
+            "scale": [12.903, 149.704, 19.153],
             "color": [0.12, 0.125, 0.14],
             "specularScale": 0.0
         },
         {
-            "modelPath": "Box/box.gltf",
+            "modelPath": "__builtin_box",
             "translation": [-1183.788, 54.066, 1277.735],
             "rotation": [0.0, -1.2016, 0.0],
-            "scale": [9.276, 69.066, 8.848],
+            "scale": [18.552, 138.133, 17.695],
             "color": [0.12, 0.125, 0.14],
             "specularScale": 0.0
         },
         {
-            "modelPath": "Box/box.gltf",
+            "modelPath": "__builtin_box",
             "translation": [-1249.792, 62.491, 1226.577],
             "rotation": [0.0, -1.2745, 0.0],
-            "scale": [9.534, 77.491, 7.834],
+            "scale": [19.067, 154.982, 15.669],
             "color": [0.12, 0.125, 0.14],
             "specularScale": 0.0
         },
         {
-            "modelPath": "Box/box.gltf",
+            "modelPath": "__builtin_box",
             "translation": [-1230.872, 34.564, 1288.55],
             "rotation": [0.0, -1.2745, 0.0],
-            "scale": [6.063, 49.564, 6.59],
+            "scale": [12.127, 99.128, 13.18],
             "color": [0.12, 0.125, 0.14],
             "specularScale": 0.0
         },
         {
-            "modelPath": "Box/box.gltf",
+            "modelPath": "__builtin_box",
             "translation": [-1308.916, 65.501, 1234.352],
             "rotation": [0.0, -1.4139, 0.0],
-            "scale": [7.881, 80.501, 7.894],
+            "scale": [15.762, 161.002, 15.787],
             "color": [0.12, 0.125, 0.14],
             "specularScale": 0.0
         },
         {
-            "modelPath": "Box/box.gltf",
+            "modelPath": "__builtin_box",
             "translation": [-1296.577, 42.947, 1312.363],
             "rotation": [0.0, -1.4139, 0.0],
-            "scale": [9.385, 57.947, 7.518],
+            "scale": [18.77, 115.895, 15.037],
             "color": [0.12, 0.125, 0.14],
             "specularScale": 0.0
         },
         {
-            "modelPath": "Box/box.gltf",
+            "modelPath": "__builtin_box",
             "translation": [-1350.399, 39.575, 1237.441],
             "rotation": [0.0, -1.685, 0.0],
-            "scale": [6.94, 54.575, 8.053],
+            "scale": [13.881, 109.149, 16.107],
             "color": [0.12, 0.125, 0.14],
             "specularScale": 0.0
         },
         {
-            "modelPath": "Box/box.gltf",
+            "modelPath": "__builtin_box",
             "translation": [-1359.984, 38.383, 1321.006],
             "rotation": [0.0, -1.685, 0.0],
-            "scale": [6.741, 53.383, 7.726],
+            "scale": [13.483, 106.766, 15.452],
             "color": [0.12, 0.125, 0.14],
             "specularScale": 0.0
         },
         {
-            "modelPath": "Box/box.gltf",
+            "modelPath": "__builtin_box",
             "translation": [-296.351, 45.45, 953.545],
             "rotation": [0.0, -1.3105, 0.0],
-            "scale": [6.0, 60.45, 6.0],
+            "scale": [12.0, 120.9, 12.0],
             "color": [0.08, 0.085, 0.1],
             "specularScale": 0.0
         },
         {
-            "modelPath": "Box/box.gltf",
+            "modelPath": "__builtin_box",
             "translation": [-278.849, 45.45, 1019.255],
             "rotation": [0.0, -1.3105, 0.0],
-            "scale": [6.0, 60.45, 6.0],
+            "scale": [12.0, 120.9, 12.0],
             "color": [0.08, 0.085, 0.1],
             "specularScale": 0.0
         },
         {
-            "modelPath": "Box/box.gltf",
+            "modelPath": "__builtin_box",
             "translation": [-287.6, 32.9, 986.4],
             "rotation": [0.0, -1.3105, 0.0],
-            "scale": [40.0, 4.0, 6.0],
+            "scale": [80.0, 8.0, 12.0],
             "color": [0.08, 0.085, 0.1],
             "specularScale": 0.0
         },
         {
-            "modelPath": "Box/box.gltf",
+            "modelPath": "__builtin_box",
             "translation": [-837.967, 53.38, 1023.013],
             "rotation": [0.0, -2.0026, 0.0],
-            "scale": [6.0, 68.38, 6.0],
+            "scale": [12.0, 136.76, 12.0],
             "color": [0.08, 0.085, 0.1],
             "specularScale": 0.0
         },
         {
-            "modelPath": "Box/box.gltf",
+            "modelPath": "__builtin_box",
             "translation": [-866.428, 53.38, 1084.77],
             "rotation": [0.0, -2.0026, 0.0],
-            "scale": [6.0, 68.38, 6.0],
+            "scale": [12.0, 136.76, 12.0],
             "color": [0.08, 0.085, 0.1],
             "specularScale": 0.0
         },
         {
-            "modelPath": "Box/box.gltf",
+            "modelPath": "__builtin_box",
             "translation": [-852.198, 48.76, 1053.891],
             "rotation": [0.0, -2.0026, 0.0],
-            "scale": [40.0, 4.0, 6.0],
+            "scale": [80.0, 8.0, 12.0],
             "color": [0.08, 0.085, 0.1],
             "specularScale": 0.0
         },
         {
-            "modelPath": "Box/box.gltf",
+            "modelPath": "__builtin_box",
             "translation": [-421.43, 42.28, 914.533],
             "rotation": [0.0, -2.0026, 0.0],
-            "scale": [8.0, 57.28, 8.0],
+            "scale": [16.0, 114.56, 16.0],
             "color": [0.12, 0.125, 0.14],
             "specularScale": 0.0
         },
         {
-            "modelPath": "Box/box.gltf",
+            "modelPath": "__builtin_box",
             "translation": [-425.616, 23.56, 923.615],
             "rotation": [0.0, -2.0026, 0.0],
-            "scale": [3.0, 1.5, 4.0],
+            "scale": [6.0, 3.0, 8.0],
             "color": [0.12, 0.125, 0.14],
             "specularScale": 0.0
         },
         {
-            "modelPath": "Box/box.gltf",
+            "modelPath": "__builtin_box",
             "translation": [-446.541, 42.28, 969.026],
             "rotation": [0.0, -2.0026, 0.0],
-            "scale": [8.0, 57.28, 8.0],
+            "scale": [16.0, 114.56, 16.0],
             "color": [0.12, 0.125, 0.14],
             "specularScale": 0.0
         },
         {
-            "modelPath": "Box/box.gltf",
+            "modelPath": "__builtin_box",
             "translation": [-442.356, 23.56, 959.944],
             "rotation": [0.0, -2.0026, 0.0],
-            "scale": [3.0, 1.5, 4.0],
+            "scale": [6.0, 3.0, 8.0],
             "color": [0.12, 0.125, 0.14],
             "specularScale": 0.0
         },
         {
-            "modelPath": "Box/box.gltf",
+            "modelPath": "__builtin_box",
             "translation": [-1306.158, 45.831, 1251.785],
             "rotation": [0.0, -1.4139, 0.0],
-            "scale": [7.0, 60.831, 7.0],
+            "scale": [14.0, 121.662, 14.0],
             "color": [0.08, 0.085, 0.1],
             "specularScale": 0.0
         },
         {
-            "modelPath": "Box/box.gltf",
+            "modelPath": "__builtin_box",
             "translation": [-1298.972, 45.831, 1297.221],
             "rotation": [0.0, -1.4139, 0.0],
-            "scale": [7.0, 60.831, 7.0],
+            "scale": [14.0, 121.662, 14.0],
             "color": [0.08, 0.085, 0.1],
             "specularScale": 0.0
         },
         {
-            "modelPath": "Box/box.gltf",
+            "modelPath": "__builtin_box",
             "translation": [-1302.565, 55.662, 1274.503],
             "rotation": [0.0, -1.4139, 0.0],
-            "scale": [30.0, 4.0, 7.0],
+            "scale": [60.0, 8.0, 14.0],
             "color": [0.08, 0.085, 0.1],
             "specularScale": 0.0
         },
         {
-            "modelPath": "Box/box.gltf",
+            "modelPath": "__builtin_box",
             "translation": [-1313.806, 464.228, 1150.894],
             "rotation": [0.0, 0.0, 0.0],
-            "scale": [75.0, 479.228, 75.0],
+            "scale": [150.0, 958.456, 150.0],
             "color": [0.06, 0.06, 0.075],
             "specularScale": 0.0
         },
         {
-            "modelPath": "Box/box.gltf",
+            "modelPath": "__builtin_box",
             "translation": [-1313.806, 464.228, 1150.894],
             "rotation": [0.0, 0.7854, 0.0],
-            "scale": [75.0, 479.228, 75.0],
+            "scale": [150.0, 958.456, 150.0],
             "color": [0.06, 0.06, 0.075],
             "specularScale": 0.0
         },
         {
-            "modelPath": "Box/box.gltf",
+            "modelPath": "__builtin_box",
             "translation": [-1420.386, 141.872, 1175.439],
             "rotation": [0.0, -1.3444, 0.0],
-            "scale": [3.0, 3.0, 34.37],
+            "scale": [6.0, 6.0, 68.74],
             "color": [0.1, 0.1, 0.12],
             "specularScale": 0.0
         },
         {
-            "modelPath": "Box/box.gltf",
+            "modelPath": "__builtin_box",
             "translation": [-1400.153, 225.58, 1087.513],
             "rotation": [0.0, -2.204, 0.0],
-            "scale": [3.0, 3.0, 32.113],
+            "scale": [6.0, 6.0, 64.226],
             "color": [0.1, 0.1, 0.12],
             "specularScale": 0.0
         },
         {
-            "modelPath": "Box/box.gltf",
+            "modelPath": "__builtin_box",
             "translation": [-1316.804, 305.87, 1040.633],
             "rotation": [0.0, -3.1144, 0.0],
-            "scale": [3.0, 3.0, 35.302],
+            "scale": [6.0, 6.0, 70.604],
             "color": [0.1, 0.1, 0.12],
             "specularScale": 0.0
         },
         {
-            "modelPath": "Box/box.gltf",
+            "modelPath": "__builtin_box",
             "translation": [-1224.644, 386.16, 1087.809],
             "rotation": [0.0, 2.1866, 0.0],
-            "scale": [3.0, 3.0, 34.223],
+            "scale": [6.0, 6.0, 68.446],
             "color": [0.1, 0.1, 0.12],
             "specularScale": 0.0
         },
         {
-            "modelPath": "Box/box.gltf",
+            "modelPath": "__builtin_box",
             "translation": [-1210.68, 466.45, 1178.508],
             "rotation": [0.0, 1.3092, 0.0],
-            "scale": [3.0, 3.0, 31.759],
+            "scale": [6.0, 6.0, 63.517],
             "color": [0.1, 0.1, 0.12],
             "specularScale": 0.0
         },
         {
-            "modelPath": "Box/box.gltf",
+            "modelPath": "__builtin_box",
             "translation": [-1267.202, 544.764, 1249.333],
             "rotation": [0.0, 0.4422, 0.0],
-            "scale": [3.0, 3.0, 33.914],
+            "scale": [6.0, 6.0, 67.827],
             "color": [0.1, 0.1, 0.12],
             "specularScale": 0.0
         },
         {
-            "modelPath": "Box/box.gltf",
+            "modelPath": "__builtin_box",
             "translation": [-1926.919, 943.456, 1068.619],
             "rotation": [0.0, 0.0, 0.0],
-            "scale": [350.0, 8.0, 730.0],
+            "scale": [700.0, 16.0, 1460.0],
             "color": [0.03, 0.03, 0.04],
             "specularScale": 0.0
         },
         {
-            "modelPath": "Box/box.gltf",
+            "modelPath": "__builtin_box",
             "translation": [-1166.919, 943.456, 1068.619],
             "rotation": [0.0, 0.0, 0.0],
-            "scale": [350.0, 8.0, 730.0],
+            "scale": [700.0, 16.0, 1460.0],
             "color": [0.03, 0.03, 0.04],
             "specularScale": 0.0
         },
         {
-            "modelPath": "Box/box.gltf",
+            "modelPath": "__builtin_box",
             "translation": [-1546.919, 943.456, 1448.619],
             "rotation": [0.0, 0.0, 0.0],
-            "scale": [30.0, 8.0, 350.0],
+            "scale": [60.0, 16.0, 700.0],
             "color": [0.03, 0.03, 0.04],
             "specularScale": 0.0
         },
         {
-            "modelPath": "Box/box.gltf",
+            "modelPath": "__builtin_box",
             "translation": [-1546.919, 943.456, 688.619],
             "rotation": [0.0, 0.0, 0.0],
-            "scale": [30.0, 8.0, 350.0],
+            "scale": [60.0, 16.0, 700.0],
             "color": [0.03, 0.03, 0.04],
             "specularScale": 0.0
         },
         {
-            "modelPath": "Box/box.gltf",
+            "modelPath": "__builtin_box",
             "translation": [-1560.615, 1203.456, 1031.037],
             "rotation": [0.0, 0.0, 0.0],
-            "scale": [45.0, 2.0, 45.0],
+            "scale": [90.0, 4.0, 90.0],
             "color": [2.0, 1.8, 1.3],
             "specularScale": 0.0
         }
@@ -813,9 +813,9 @@
             "moveDirection": [0.0, 0.0, 1.0],
             "moveType": 0,
             "prefabName": "ZakoEnemy",
-            "spawnOffset": [103.24, 1.21, 366.34],
-            "spawnTime": 1.8,
-            "splineDuration": 5.46,
+            "spawnOffset": [111.25, -2.47, 405.34],
+            "spawnTime": 1.061,
+            "splineDuration": 7.976,
             "splineName": "S1_01.90b_m0"
         },
         {
@@ -825,9 +825,9 @@
             "moveDirection": [0.0, 0.0, 1.0],
             "moveType": 0,
             "prefabName": "ZakoEnemy",
-            "spawnOffset": [103.24, 13.21, 366.34],
-            "spawnTime": 1.84,
-            "splineDuration": 5.46,
+            "spawnOffset": [111.25, 9.53, 405.34],
+            "spawnTime": 1.101,
+            "splineDuration": 7.976,
             "splineName": "S1_01.90b_m1"
         },
         {
@@ -837,9 +837,9 @@
             "moveDirection": [0.0, 0.0, 1.0],
             "moveType": 0,
             "prefabName": "ZakoEnemy",
-            "spawnOffset": [103.24, 1.21, 366.34],
-            "spawnTime": 1.88,
-            "splineDuration": 5.46,
+            "spawnOffset": [111.25, -2.47, 405.34],
+            "spawnTime": 1.141,
+            "splineDuration": 7.976,
             "splineName": "S1_01.90b_m2"
         },
         {
@@ -849,9 +849,9 @@
             "moveDirection": [0.0, 0.0, 1.0],
             "moveType": 0,
             "prefabName": "ZakoEnemy",
-            "spawnOffset": [103.24, 13.21, 366.34],
-            "spawnTime": 1.92,
-            "splineDuration": 5.46,
+            "spawnOffset": [111.25, 9.53, 405.34],
+            "spawnTime": 1.181,
+            "splineDuration": 7.976,
             "splineName": "S1_01.90b_m3"
         },
         {
@@ -861,9 +861,9 @@
             "moveDirection": [0.0, 0.0, 1.0],
             "moveType": 0,
             "prefabName": "ZakoEnemy",
-            "spawnOffset": [21.26, -4.34, 551.41],
-            "spawnTime": 2.25,
-            "splineDuration": 5.2,
+            "spawnOffset": [-24.11, -4.95, 578.4],
+            "spawnTime": 1.647,
+            "splineDuration": 6.627,
             "splineName": "S1_02.30c_m0"
         },
         {
@@ -873,9 +873,9 @@
             "moveDirection": [0.0, 0.0, 1.0],
             "moveType": 0,
             "prefabName": "ZakoEnemy",
-            "spawnOffset": [22.96, 11.63, 551.91],
-            "spawnTime": 2.32,
-            "splineDuration": 5.2,
+            "spawnOffset": [-24.32, 11.12, 578.38],
+            "spawnTime": 1.717,
+            "splineDuration": 6.706,
             "splineName": "S1_02.30c_m1"
         },
         {
@@ -885,9 +885,9 @@
             "moveDirection": [0.0, 0.0, 1.0],
             "moveType": 0,
             "prefabName": "ZakoEnemy",
-            "spawnOffset": [21.28, -4.22, 551.34],
-            "spawnTime": 2.39,
-            "splineDuration": 5.2,
+            "spawnOffset": [-24.11, -4.81, 578.41],
+            "spawnTime": 1.787,
+            "splineDuration": 6.792,
             "splineName": "S1_02.30c_m2"
         },
         {
@@ -897,9 +897,9 @@
             "moveDirection": [0.0, 0.0, 1.0],
             "moveType": 0,
             "prefabName": "ZakoEnemy",
-            "spawnOffset": [22.94, 11.74, 551.95],
-            "spawnTime": 2.46,
-            "splineDuration": 5.2,
+            "spawnOffset": [-24.32, 11.26, 578.37],
+            "spawnTime": 1.857,
+            "splineDuration": 6.888,
             "splineName": "S1_02.30c_m3"
         },
         {
@@ -909,9 +909,9 @@
             "moveDirection": [0.0, 0.0, 1.0],
             "moveType": 0,
             "prefabName": "ZakoEnemy",
-            "spawnOffset": [21.29, -4.1, 551.33],
-            "spawnTime": 2.53,
-            "splineDuration": 5.2,
+            "spawnOffset": [-24.11, -4.67, 578.42],
+            "spawnTime": 1.927,
+            "splineDuration": 6.995,
             "splineName": "S1_02.30c_m4"
         },
         {
@@ -1017,9 +1017,9 @@
             "moveDirection": [0.0, 0.0, 1.0],
             "moveType": 0,
             "prefabName": "ZakoEnemy",
-            "spawnOffset": [-89.67, -31.0, 818.92],
+            "spawnOffset": [-64.05, -31.0, 833.88],
             "spawnTime": 4.35,
-            "splineDuration": 6.4,
+            "splineDuration": 5.2,
             "splineName": "S1_04.10d_m0"
         },
         {
@@ -1029,21 +1029,9 @@
             "moveDirection": [0.0, 0.0, 1.0],
             "moveType": 0,
             "prefabName": "ZakoEnemy",
-            "spawnOffset": [-57.59, -31.0, 901.86],
-            "spawnTime": 4.35,
-            "splineDuration": 8.0,
-            "splineName": "S1_04.10e_m0"
-        },
-        {
-            "fireInterval": -1,
-            "isWorldSpace": true,
-            "isWorldSpaceSpline": true,
-            "moveDirection": [0.0, 0.0, 1.0],
-            "moveType": 0,
-            "prefabName": "ZakoEnemy",
-            "spawnOffset": [-89.67, -19.0, 818.92],
-            "spawnTime": 4.406,
-            "splineDuration": 6.4,
+            "spawnOffset": [-64.05, -19.0, 833.88],
+            "spawnTime": 4.4,
+            "splineDuration": 5.2,
             "splineName": "S1_04.10d_m1"
         },
         {
@@ -1053,10 +1041,10 @@
             "moveDirection": [0.0, 0.0, 1.0],
             "moveType": 0,
             "prefabName": "ZakoEnemy",
-            "spawnOffset": [-57.59, -19.0, 901.86],
-            "spawnTime": 4.409,
-            "splineDuration": 8.0,
-            "splineName": "S1_04.10e_m1"
+            "spawnOffset": [87.45, -31.0, 896.16],
+            "spawnTime": 4.4,
+            "splineDuration": 4.0,
+            "splineName": "S1_04.10e_m0"
         },
         {
             "fireInterval": -1,
@@ -1065,9 +1053,9 @@
             "moveDirection": [0.0, 0.0, 1.0],
             "moveType": 0,
             "prefabName": "ZakoEnemy",
-            "spawnOffset": [-89.67, -31.0, 818.92],
-            "spawnTime": 4.463,
-            "splineDuration": 6.4,
+            "spawnOffset": [-64.05, -31.0, 833.88],
+            "spawnTime": 4.45,
+            "splineDuration": 5.2,
             "splineName": "S1_04.10d_m2"
         },
         {
@@ -1077,9 +1065,21 @@
             "moveDirection": [0.0, 0.0, 1.0],
             "moveType": 0,
             "prefabName": "ZakoEnemy",
-            "spawnOffset": [-57.59, -31.0, 901.86],
-            "spawnTime": 4.467,
-            "splineDuration": 8.0,
+            "spawnOffset": [87.45, -19.0, 896.16],
+            "spawnTime": 4.45,
+            "splineDuration": 4.0,
+            "splineName": "S1_04.10e_m1"
+        },
+        {
+            "fireInterval": -1,
+            "isWorldSpace": true,
+            "isWorldSpaceSpline": true,
+            "moveDirection": [0.0, 0.0, 1.0],
+            "moveType": 0,
+            "prefabName": "ZakoEnemy",
+            "spawnOffset": [87.45, -31.0, 896.16],
+            "spawnTime": 4.5,
+            "splineDuration": 4.0,
             "splineName": "S1_04.10e_m2"
         },
         {
@@ -1089,9 +1089,9 @@
             "moveDirection": [0.0, 0.0, 1.0],
             "moveType": 0,
             "prefabName": "ZakoEnemy",
-            "spawnOffset": [-292.2, 3.72, 1026.56],
-            "spawnTime": 6.1,
-            "splineDuration": 4.434,
+            "spawnOffset": [-235.96, 7.4, 987.69],
+            "spawnTime": 6.027,
+            "splineDuration": 6.66,
             "splineName": "S1_06.30f_m0"
         },
         {
@@ -1101,9 +1101,9 @@
             "moveDirection": [0.0, 0.0, 1.0],
             "moveType": 0,
             "prefabName": "ZakoEnemy",
-            "spawnOffset": [-292.2, 15.72, 1026.56],
-            "spawnTime": 6.167,
-            "splineDuration": 4.434,
+            "spawnOffset": [-235.96, 19.4, 987.69],
+            "spawnTime": 6.067,
+            "splineDuration": 6.66,
             "splineName": "S1_06.30f_m1"
         },
         {
@@ -1113,9 +1113,9 @@
             "moveDirection": [0.0, 0.0, 1.0],
             "moveType": 0,
             "prefabName": "ZakoEnemy",
-            "spawnOffset": [-292.2, 3.72, 1026.56],
-            "spawnTime": 6.233,
-            "splineDuration": 4.434,
+            "spawnOffset": [-235.96, 7.4, 987.69],
+            "spawnTime": 6.107,
+            "splineDuration": 6.66,
             "splineName": "S1_06.30f_m2"
         },
         {
@@ -1125,10 +1125,46 @@
             "moveDirection": [0.0, 0.0, 1.0],
             "moveType": 0,
             "prefabName": "ZakoEnemy",
-            "spawnOffset": [-292.2, 15.72, 1026.56],
-            "spawnTime": 6.3,
-            "splineDuration": 4.434,
+            "spawnOffset": [-235.96, 19.4, 987.69],
+            "spawnTime": 6.147,
+            "splineDuration": 6.66,
             "splineName": "S1_06.30f_m3"
+        },
+        {
+            "fireInterval": -1,
+            "isWorldSpace": true,
+            "isWorldSpaceSpline": true,
+            "moveDirection": [0.0, 0.0, 1.0],
+            "moveType": 0,
+            "prefabName": "ZakoEnemy",
+            "spawnOffset": [-644.91, 9.8, 890.63],
+            "spawnTime": 6.46,
+            "splineDuration": 12.598,
+            "splineName": "S1_06.80g_m0"
+        },
+        {
+            "fireInterval": -1,
+            "isWorldSpace": true,
+            "isWorldSpaceSpline": true,
+            "moveDirection": [0.0, 0.0, 1.0],
+            "moveType": 0,
+            "prefabName": "ZakoEnemy",
+            "spawnOffset": [-644.91, 21.8, 890.63],
+            "spawnTime": 6.527,
+            "splineDuration": 12.598,
+            "splineName": "S1_06.80g_m1"
+        },
+        {
+            "fireInterval": -1,
+            "isWorldSpace": true,
+            "isWorldSpaceSpline": true,
+            "moveDirection": [0.0, 0.0, 1.0],
+            "moveType": 0,
+            "prefabName": "ZakoEnemy",
+            "spawnOffset": [-644.91, 9.8, 890.63],
+            "spawnTime": 6.594,
+            "splineDuration": 12.598,
+            "splineName": "S1_06.80g_m2"
         },
         {
             "fireInterval": -1,
@@ -1161,45 +1197,9 @@
             "moveDirection": [0.0, 0.0, 1.0],
             "moveType": 0,
             "prefabName": "ZakoEnemy",
-            "spawnOffset": [-634.87, 9.4, 884.84],
-            "spawnTime": 7.0,
-            "splineDuration": 6.078,
-            "splineName": "S1_06.80g_m0"
-        },
-        {
-            "fireInterval": -1,
-            "isWorldSpace": true,
-            "isWorldSpaceSpline": true,
-            "moveDirection": [0.0, 0.0, 1.0],
-            "moveType": 0,
-            "prefabName": "ZakoEnemy",
-            "spawnOffset": [-634.87, 21.4, 884.84],
-            "spawnTime": 7.05,
-            "splineDuration": 6.078,
-            "splineName": "S1_06.80g_m1"
-        },
-        {
-            "fireInterval": -1,
-            "isWorldSpace": true,
-            "isWorldSpaceSpline": true,
-            "moveDirection": [0.0, 0.0, 1.0],
-            "moveType": 0,
-            "prefabName": "ZakoEnemy",
-            "spawnOffset": [-634.87, 9.4, 884.84],
-            "spawnTime": 7.1,
-            "splineDuration": 6.078,
-            "splineName": "S1_06.80g_m2"
-        },
-        {
-            "fireInterval": -1,
-            "isWorldSpace": true,
-            "isWorldSpaceSpline": true,
-            "moveDirection": [0.0, 0.0, 1.0],
-            "moveType": 0,
-            "prefabName": "ZakoEnemy",
-            "spawnOffset": [-623.8, 16.11, 1084.8],
-            "spawnTime": 8.1,
-            "splineDuration": 3.33,
+            "spawnOffset": [-686.44, 16.89, 1141.73],
+            "spawnTime": 7.573,
+            "splineDuration": 9.872,
             "splineName": "S1_08.10h_m0"
         },
         {
@@ -1209,9 +1209,9 @@
             "moveDirection": [0.0, 0.0, 1.0],
             "moveType": 0,
             "prefabName": "ZakoEnemy",
-            "spawnOffset": [-623.8, 28.11, 1084.8],
-            "spawnTime": 8.15,
-            "splineDuration": 3.33,
+            "spawnOffset": [-686.44, 28.89, 1141.73],
+            "spawnTime": 7.639,
+            "splineDuration": 9.872,
             "splineName": "S1_08.10h_m1"
         },
         {
@@ -1221,9 +1221,9 @@
             "moveDirection": [0.0, 0.0, 1.0],
             "moveType": 0,
             "prefabName": "ZakoEnemy",
-            "spawnOffset": [-623.8, 16.11, 1084.8],
-            "spawnTime": 8.2,
-            "splineDuration": 3.33,
+            "spawnOffset": [-686.44, 16.89, 1141.73],
+            "spawnTime": 7.706,
+            "splineDuration": 9.872,
             "splineName": "S1_08.10h_m2"
         },
         {
@@ -1233,9 +1233,9 @@
             "moveDirection": [0.0, 0.0, 1.0],
             "moveType": 0,
             "prefabName": "ZakoEnemy",
-            "spawnOffset": [-623.8, 28.11, 1084.8],
-            "spawnTime": 8.25,
-            "splineDuration": 3.33,
+            "spawnOffset": [-686.44, 28.89, 1141.73],
+            "spawnTime": 7.773,
+            "splineDuration": 9.872,
             "splineName": "S1_08.10h_m3"
         },
         {
@@ -1245,9 +1245,9 @@
             "moveDirection": [0.0, 0.0, 1.0],
             "moveType": 0,
             "prefabName": "ZakoEnemy",
-            "spawnOffset": [-765.43, 18.24, 1137.62],
-            "spawnTime": 8.45,
-            "splineDuration": 3.839,
+            "spawnOffset": [-686.44, 19.0, 1141.73],
+            "spawnTime": 7.918,
+            "splineDuration": 7.539,
             "splineName": "S1_08.45i_m0"
         },
         {
@@ -1257,9 +1257,9 @@
             "moveDirection": [0.0, 0.0, 1.0],
             "moveType": 0,
             "prefabName": "ZakoEnemy",
-            "spawnOffset": [-765.43, 30.24, 1137.62],
-            "spawnTime": 8.517,
-            "splineDuration": 3.839,
+            "spawnOffset": [-686.44, 31.0, 1141.73],
+            "spawnTime": 7.985,
+            "splineDuration": 7.539,
             "splineName": "S1_08.45i_m1"
         },
         {
@@ -1269,9 +1269,9 @@
             "moveDirection": [0.0, 0.0, 1.0],
             "moveType": 0,
             "prefabName": "ZakoEnemy",
-            "spawnOffset": [-765.43, 18.24, 1137.62],
-            "spawnTime": 8.584,
-            "splineDuration": 3.839,
+            "spawnOffset": [-686.44, 19.0, 1141.73],
+            "spawnTime": 8.052,
+            "splineDuration": 7.539,
             "splineName": "S1_08.45i_m2"
         },
         {
@@ -1281,9 +1281,9 @@
             "moveDirection": [0.0, 0.0, 1.0],
             "moveType": 0,
             "prefabName": "ZakoEnemy",
-            "spawnOffset": [-765.43, 30.24, 1137.62],
-            "spawnTime": 8.65,
-            "splineDuration": 3.839,
+            "spawnOffset": [-686.44, 31.0, 1141.73],
+            "spawnTime": 8.118,
+            "splineDuration": 7.539,
             "splineName": "S1_08.45i_m3"
         },
         {
@@ -1389,9 +1389,9 @@
             "moveDirection": [0.0, 0.0, 1.0],
             "moveType": 0,
             "prefabName": "ZakoEnemy",
-            "spawnOffset": [-1414.29, 139.87, 1176.09],
+            "spawnOffset": [-1425.87, 141.87, 1176.7],
             "spawnTime": 12.2,
-            "splineDuration": 3.8,
+            "splineDuration": 6.1,
             "splineName": "S1_12.30l_m0"
         },
         {
@@ -1401,9 +1401,9 @@
             "moveDirection": [0.0, 0.0, 1.0],
             "moveType": 0,
             "prefabName": "ZakoEnemy",
-            "spawnOffset": [-1423.65, 139.87, 1178.24],
-            "spawnTime": 12.3,
-            "splineDuration": 3.8,
+            "spawnOffset": [-1425.87, 141.87, 1176.7],
+            "spawnTime": 12.26,
+            "splineDuration": 6.1,
             "splineName": "S1_12.30l_m1"
         },
         {
@@ -1413,9 +1413,9 @@
             "moveDirection": [0.0, 0.0, 1.0],
             "moveType": 0,
             "prefabName": "ZakoEnemy",
-            "spawnOffset": [-1431.04, 139.87, 1179.94],
-            "spawnTime": 12.4,
-            "splineDuration": 3.8,
+            "spawnOffset": [-1425.87, 141.87, 1176.7],
+            "spawnTime": 12.32,
+            "splineDuration": 6.1,
             "splineName": "S1_12.30l_m2"
         },
         {
@@ -1425,9 +1425,9 @@
             "moveDirection": [0.0, 0.0, 1.0],
             "moveType": 0,
             "prefabName": "ZakoEnemy",
-            "spawnOffset": [-1436.48, 139.87, 1181.2],
-            "spawnTime": 12.5,
-            "splineDuration": 3.8,
+            "spawnOffset": [-1425.87, 141.87, 1176.7],
+            "spawnTime": 12.38,
+            "splineDuration": 6.1,
             "splineName": "S1_12.30l_m3"
         },
         {
@@ -1437,9 +1437,9 @@
             "moveDirection": [0.0, 0.0, 1.0],
             "moveType": 0,
             "prefabName": "ZakoEnemy",
-            "spawnOffset": [-1370.8, 155.23, 1148.93],
-            "spawnTime": 12.55,
-            "splineDuration": 5.6,
+            "spawnOffset": [-1336.19, 215.72, 1100.66],
+            "spawnTime": 12.65,
+            "splineDuration": 6.4,
             "splineName": "S1_12.60p_m0"
         },
         {
@@ -1449,9 +1449,9 @@
             "moveDirection": [0.0, 0.0, 1.0],
             "moveType": 0,
             "prefabName": "ZakoEnemy",
-            "spawnOffset": [-1365.05, 151.1, 1135.28],
-            "spawnTime": 12.61,
-            "splineDuration": 5.6,
+            "spawnOffset": [-1332.23, 232.61, 1099.07],
+            "spawnTime": 12.71,
+            "splineDuration": 6.4,
             "splineName": "S1_12.60p_m1"
         },
         {
@@ -1461,9 +1461,9 @@
             "moveDirection": [0.0, 0.0, 1.0],
             "moveType": 0,
             "prefabName": "ZakoEnemy",
-            "spawnOffset": [-1370.01, 168.9, 1141.91],
-            "spawnTime": 12.67,
-            "splineDuration": 5.6,
+            "spawnOffset": [-1328.43, 249.49, 1097.88],
+            "spawnTime": 12.77,
+            "splineDuration": 6.4,
             "splineName": "S1_12.60p_m2"
         },
         {
@@ -1485,9 +1485,9 @@
             "moveDirection": [0.0, 0.0, 1.0],
             "moveType": 0,
             "prefabName": "ZakoEnemy",
-            "spawnOffset": [-1367.19, 199.21, 1129.0],
+            "spawnOffset": [-1301.5, 287.81, 1097.29],
             "spawnTime": 13.0,
-            "splineDuration": 4.4,
+            "splineDuration": 7.0,
             "splineName": "S1_13.00m_m0"
         },
         {
@@ -1497,9 +1497,9 @@
             "moveDirection": [0.0, 0.0, 1.0],
             "moveType": 0,
             "prefabName": "ZakoEnemy",
-            "spawnOffset": [-1354.76, 195.72, 1118.07],
+            "spawnOffset": [-1296.93, 304.69, 1098.55],
             "spawnTime": 13.06,
-            "splineDuration": 4.4,
+            "splineDuration": 7.0,
             "splineName": "S1_13.00m_m1"
         },
         {
@@ -1509,9 +1509,9 @@
             "moveDirection": [0.0, 0.0, 1.0],
             "moveType": 0,
             "prefabName": "ZakoEnemy",
-            "spawnOffset": [-1362.59, 213.31, 1119.2],
+            "spawnOffset": [-1292.32, 321.57, 1100.26],
             "spawnTime": 13.12,
-            "splineDuration": 4.4,
+            "splineDuration": 7.0,
             "splineName": "S1_13.00m_m2"
         },
         {
@@ -1521,9 +1521,9 @@
             "moveDirection": [0.0, 0.0, 1.0],
             "moveType": 0,
             "prefabName": "ZakoEnemy",
-            "spawnOffset": [-1348.33, 209.19, 1111.7],
+            "spawnOffset": [-1287.79, 338.46, 1102.44],
             "spawnTime": 13.18,
-            "splineDuration": 4.4,
+            "splineDuration": 7.0,
             "splineName": "S1_13.00m_m3"
         },
         {
@@ -1533,9 +1533,9 @@
             "moveDirection": [0.0, 0.0, 1.0],
             "moveType": 0,
             "prefabName": "ZakoEnemy",
-            "spawnOffset": [-1332.19, 261.23, 1104.81],
-            "spawnTime": 13.5,
-            "splineDuration": 4.6,
+            "spawnOffset": [-1301.5, 316.81, 1097.29],
+            "spawnTime": 13.4,
+            "splineDuration": 7.0,
             "splineName": "S1_13.45q_m0"
         },
         {
@@ -1545,9 +1545,9 @@
             "moveDirection": [0.0, 0.0, 1.0],
             "moveType": 0,
             "prefabName": "ZakoEnemy",
-            "spawnOffset": [-1329.45, 256.58, 1092.51],
-            "spawnTime": 13.56,
-            "splineDuration": 4.6,
+            "spawnOffset": [-1296.93, 333.69, 1098.55],
+            "spawnTime": 13.46,
+            "splineDuration": 7.0,
             "splineName": "S1_13.45q_m1"
         },
         {
@@ -1557,9 +1557,9 @@
             "moveDirection": [0.0, 0.0, 1.0],
             "moveType": 0,
             "prefabName": "ZakoEnemy",
-            "spawnOffset": [-1325.35, 274.96, 1102.72],
-            "spawnTime": 13.62,
-            "splineDuration": 4.6,
+            "spawnOffset": [-1292.32, 350.57, 1100.26],
+            "spawnTime": 13.52,
+            "splineDuration": 7.0,
             "splineName": "S1_13.45q_m2"
         },
         {
@@ -1569,9 +1569,9 @@
             "moveDirection": [0.0, 0.0, 1.0],
             "moveType": 0,
             "prefabName": "ZakoEnemy",
-            "spawnOffset": [-1296.77, 314.11, 1101.71],
-            "spawnTime": 14.0,
-            "splineDuration": 4.2,
+            "spawnOffset": [-1273.54, 342.69, 1113.43],
+            "spawnTime": 13.8,
+            "splineDuration": 5.6,
             "splineName": "S1_13.90n_m0"
         },
         {
@@ -1581,9 +1581,9 @@
             "moveDirection": [0.0, 0.0, 1.0],
             "moveType": 0,
             "prefabName": "ZakoEnemy",
-            "spawnOffset": [-1301.71, 329.38, 1093.35],
-            "spawnTime": 14.05,
-            "splineDuration": 4.2,
+            "spawnOffset": [-1271.07, 358.43, 1116.27],
+            "spawnTime": 13.85,
+            "splineDuration": 5.6,
             "splineName": "S1_13.90n_m1"
         },
         {
@@ -1593,21 +1593,9 @@
             "moveDirection": [0.0, 0.0, 1.0],
             "moveType": 0,
             "prefabName": "ZakoEnemy",
-            "spawnOffset": [-1293.48, 309.45, 1102.8],
-            "spawnTime": 14.05,
-            "splineDuration": 4.2,
-            "splineName": "S1_13.90o_m0"
-        },
-        {
-            "fireInterval": -1,
-            "isWorldSpace": true,
-            "isWorldSpaceSpline": true,
-            "moveDirection": [0.0, 0.0, 1.0],
-            "moveType": 0,
-            "prefabName": "ZakoEnemy",
-            "spawnOffset": [-1290.51, 325.32, 1104.95],
-            "spawnTime": 14.1,
-            "splineDuration": 4.2,
+            "spawnOffset": [-1268.91, 374.16, 1119.13],
+            "spawnTime": 13.9,
+            "splineDuration": 5.6,
             "splineName": "S1_13.90n_m2"
         },
         {
@@ -1617,9 +1605,21 @@
             "moveDirection": [0.0, 0.0, 1.0],
             "moveType": 0,
             "prefabName": "ZakoEnemy",
-            "spawnOffset": [-1297.45, 325.51, 1094.77],
-            "spawnTime": 14.1,
-            "splineDuration": 4.2,
+            "spawnOffset": [-1267.04, 351.9, 1121.94],
+            "spawnTime": 13.95,
+            "splineDuration": 5.6,
+            "splineName": "S1_13.90o_m0"
+        },
+        {
+            "fireInterval": -1,
+            "isWorldSpace": true,
+            "isWorldSpaceSpline": true,
+            "moveDirection": [0.0, 0.0, 1.0],
+            "moveType": 0,
+            "prefabName": "ZakoEnemy",
+            "spawnOffset": [-1265.45, 367.63, 1124.69],
+            "spawnTime": 14.0,
+            "splineDuration": 5.6,
             "splineName": "S1_13.90o_m1"
         },
         {
@@ -1629,9 +1629,9 @@
             "moveDirection": [0.0, 0.0, 1.0],
             "moveType": 0,
             "prefabName": "ZakoEnemy",
-            "spawnOffset": [-1287.01, 320.67, 1106.42],
-            "spawnTime": 14.15,
-            "splineDuration": 4.2,
+            "spawnOffset": [-1264.11, 383.37, 1127.33],
+            "spawnTime": 14.05,
+            "splineDuration": 5.6,
             "splineName": "S1_13.90o_m2"
         },
         {

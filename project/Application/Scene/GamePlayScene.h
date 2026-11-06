@@ -141,7 +141,7 @@ private: // メンバ変数(ゲーム用)
   std::vector<std::unique_ptr<Object3d>> sceneObjects_;
   // 配置オブジェクトのうち、敵を隠す箱（ワールド → 箱の中の座標の行列。毎フレーム作り直す）
   std::vector<Matrix4x4> lockOnOccluders_;
-  static inline const std::string kOccluderModelPath_ = "Box/box.gltf"; // 敵を隠す箱のモデル
+  static inline const std::string kOccluderModelPath_ = "__builtin_box"; // 敵を隠す箱のモデル（エンジン組み込みの一辺 1 の箱）
 
   // ドラッグ中のプレビュー用オブジェクト
   std::unique_ptr<Object3d> previewObject_ = nullptr;

@@ -771,11 +771,14 @@ void GamePlayScene::Update() {
   lockOnTargets.insert(lockOnTargets.end(), bulletTargets.begin(),
                        bulletTargets.end());
 
-  // 敵を隠す箱。箱のモデルは -1〜1 の立方体なので、ワールド行列の逆で箱の中の座標へ移せる
+  // 敵を隠す箱。箱のモデルは -0.5〜0.5 の立方体なので、ワールド行列の逆で箱の中の座標へ移し、
+  // 2 倍して LockOn が使う -1〜1 の立方体にそろえる
   lockOnOccluders_.clear();
+  const Matrix4x4 toUnitCube = MakeScaleMatrix({2.0f, 2.0f, 2.0f});
   for (const auto &obj : sceneObjects_) {
     if (obj->GetModelPath() == kOccluderModelPath_) {
-      lockOnOccluders_.push_back(Inverse(obj->GetWorldMatrix()));
+      lockOnOccluders_.push_back(
+          Multiply(Inverse(obj->GetWorldMatrix()), toUnitCube));
     }
   }
 

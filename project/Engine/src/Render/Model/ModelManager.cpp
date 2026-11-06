@@ -13,9 +13,13 @@ namespace fs = std::filesystem;
 std::string ModelManager::ResolveModelPath(const std::string &input) {
   const fs::path base = "resources";
 
-  // すでにパスならそのまま
+  // すでにパスなら、そのまま見つかればそれを返し、
+  // 見つからなければ resources 以下として見つかるか試す
   if (input.find('/') != std::string::npos ||
       input.find('\\') != std::string::npos) {
+    if (!fs::exists(input) && fs::exists(base / input)) {
+      return (base / input).generic_string();
+    }
     return input;
   }
 
