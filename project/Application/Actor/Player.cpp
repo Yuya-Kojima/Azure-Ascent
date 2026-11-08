@@ -345,6 +345,13 @@ void Player::SetLockOnOccluders(const std::vector<Matrix4x4> *worldToBoxes) {
   }
 }
 
+bool Player::IsHiddenFromCamera(const Vector3 &pos) const {
+  if (!lockOn_ || !camera_) {
+    return false;
+  }
+  return lockOn_->IsHidden(camera_->GetTranslate(), pos);
+}
+
 bool Player::IsLockOnMode() const {
   return attackState_ == AttackState::LockOn;
 }
@@ -549,7 +556,8 @@ void Player::FireNormalShot() {
               cameraUp.z * (ndcY * maxMoveY)};
 
   // 弾が向かう地点を決める
-  // レティクルに重なっている敵がいればその敵、いなければカメラからレティクル方向へ一定距離の点
+  // レティクルに重なっている相手（ロックオン対象と、撃ち落とせる敵の弾）がいればその相手、
+  // いなければカメラからレティクル方向へ一定距離の点
   Vector3 aimRayDir = Normalize(targetPos - cameraPos);
   targetPos = cameraPos + aimRayDir * kAimConvergenceDistance_;
 
@@ -557,7 +565,9 @@ void Player::FireNormalShot() {
                                       : Vector2{640.0f, 360.0f};
   Matrix4x4 viewProj = camera_->GetViewProjectionMatrix();
   float nearestDepth = (std::numeric_limits<float>::max)();
-  for (BaseActor *target : lockOnTargets_) {
+  std::vector<BaseActor *> aimTargets = lockOnTargets_;
+  aimTargets.insert(aimTargets.end(), shotTargets_.begin(), shotTargets_.end());
+  for (BaseActor *target : aimTargets) {
     if (!target || target->IsDead()) {
       continue;
     }
@@ -567,7 +577,7 @@ void Player::FireNormalShot() {
     if (depth <= 0.0f) {
       continue;
     }
-    // 画面上でレティクルに重なっている敵のうち、いちばん手前の敵を狙う
+    // 画面上でレティクルに重なっている相手のうち、いちばん手前の相手を狙う
     Vector2 screenPos = WorldToScreen(enemyPos, viewProj, 1280.0f, 720.0f);
     float dx = screenPos.x - reticlePos.x;
     float dy = screenPos.y - reticlePos.y;

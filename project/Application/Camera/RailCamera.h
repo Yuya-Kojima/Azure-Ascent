@@ -10,6 +10,9 @@
 /// </summary>
 class RailCamera : public ICamera {
 public:
+  // レールの線からカメラまでの高さ（m）
+  static constexpr float kRailHeight_ = 2.5f;
+
   RailCamera();
   ~RailCamera() override = default;
 
@@ -39,6 +42,8 @@ public:
   void SetSpeed(float speed) { speed_ = speed; }
   // 進行スピードに掛ける割合（開始演出で 0 から加速させる）
   void SetSpeedScale(float scale) { speedScale_ = scale; }
+  // 今の進行スピード（1 秒に進む区間の数。割合を掛けた後の値で、止まっている間は 0）
+  float GetCurrentSpeed() const { return (isFinished_ || !isAutoMove_) ? 0.0f : speed_ * speedScale_; }
   const Vector3& GetRotate() const { return transform_.rotate; }
   bool IsFinished() const { return isFinished_; }
   float GetT() const { return t_; }

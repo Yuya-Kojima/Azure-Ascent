@@ -49,8 +49,7 @@ void RailCamera::Update() {
   Vector3 currentPos = CalcPosition(t_);
 
   transform_.translate = currentPos;
-  transform_.translate.y +=
-      2.5f; // レールシューター的な俯瞰オフセット（高さを上げる）
+  transform_.translate.y += kRailHeight_;
 
   // カメラシェイクの適用
   if (shakeTimer_ > 0.0f) {
@@ -77,7 +76,7 @@ void RailCamera::Update() {
 
   // レールの基準ベクトルと座標を保存しておく（敵などがカメラの首振りやシェイクに影響されずに移動するため）
   railPos_ = currentPos;
-  railPos_.y += 2.5f;
+  railPos_.y += kRailHeight_;
   railForward_ = tangentNow;
   railRight_ = right;
   railUp_ = upApprox;

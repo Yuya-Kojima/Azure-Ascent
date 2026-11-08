@@ -78,12 +78,12 @@ public:
 
   const std::vector<BaseActor*>& GetTargets() const { return targets_; }
 
-private:
   /// <summary>
   /// from から to への線分が、どれかの箱を通るか
   /// </summary>
   bool IsHidden(const Vector3 &from, const Vector3 &to) const;
 
+private:
   struct TargetInfo {
     BaseActor* actor = nullptr;
     float lockTime = 0.0f; // 経過時間（秒）

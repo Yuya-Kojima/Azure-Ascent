@@ -3,6 +3,8 @@
 #include "../Effect/EffectManager.h"
 #include "Actor/Behavior/BehaviorFighter.h"
 #include "Actor/DragonModel.h"
+#include "Actor/EnemyPart.h"
+#include "Actor/FloatingFortress.h"
 #include "Actor/Behavior/BehaviorMeteor.h"
 #include "Actor/Behavior/BehaviorSineWave.h"
 #include "Actor/Behavior/BehaviorSpline.h"
@@ -407,7 +409,7 @@ void GamePlayScene::Update() {
     UIManager::GetInstance()->Load("resources/UI/GamePlayUI.json");
 
     // 残っている敵や弾をクリア
-    runtimeEnemies_.clear();
+    ClearRuntimeEnemies();
     ActorManager::GetInstance()->Clear();
     CollisionManager::GetInstance()->Clear(); // コライダー残留バグ対策
 
@@ -612,6 +614,13 @@ void GamePlayScene::Update() {
     for (auto &ev : spawnEvents_) {
       if (t < ev.spawnTime) {
         ev.hasSpawned = false; // シークバック時にフラグをリセット
+      } else if (shouldUpdateWorld && !ev.hasSpawned && t >= ev.spawnTime &&
+                 ev.prefabName == kFortressPrefabName_) {
+        // 浮かぶ砦は部品と一緒に出す（Playモード時のみ）
+        if (isPlayMode_) {
+          SpawnFortress(ev);
+        }
+        ev.hasSpawned = true;
       } else if (shouldUpdateWorld && !ev.hasSpawned && t >= ev.spawnTime) {
         // スポーン位置の計算
         Vector3 spawnWorldPos;
@@ -744,6 +753,15 @@ void GamePlayScene::Update() {
   // 基底クラスにも現在のアクティブカメラを教える（Gizmo描画などで使うため）
   SetActiveCamera(const_cast<ICamera *>(activeCamera));
 
+  // 砦を動かしてから、砦に付いた部品を含む敵を動かす
+  for (auto &fortress : fortresses_) {
+    if (shouldUpdateWorld) {
+      fortress->Update();
+    } else {
+      fortress->UpdateTransform();
+    }
+  }
+
   // 敵の更新 (Playモードで生成された敵のみ)
   for (auto &enemy : runtimeEnemies_) {
     if (shouldUpdateWorld) {
@@ -781,9 +799,14 @@ void GamePlayScene::Update() {
           Multiply(Inverse(obj->GetWorldMatrix()), toUnitCube));
     }
   }
+  for (const auto &fortress : fortresses_) {
+    fortress->AppendOccluders(lockOnOccluders_);
+  }
 
   if (player_) {
     player_->SetLockOnTargets(lockOnTargets);
+    player_->SetShotTargets(
+        ActorManager::GetInstance()->FindActorsWithTag(ActorTag::ShotTarget));
     player_->SetLockOnOccluders(&lockOnOccluders_);
   }
 
@@ -795,6 +818,11 @@ void GamePlayScene::Update() {
                                            return e->IsDead();
                                          }),
                           runtimeEnemies_.end());
+    fortresses_.erase(std::remove_if(fortresses_.begin(), fortresses_.end(),
+                                     [](const std::unique_ptr<FloatingFortress> &f) {
+                                       return f->IsFinished();
+                                     }),
+                      fortresses_.end());
   }
 
   // アクティブカメラを描画で使用する
@@ -1147,7 +1175,7 @@ void GamePlayScene::Update() {
     ImGui::TextDisabled("%s", selected->GetModelPath().c_str());
     ImGui::Separator();
 
-    const char *tagItems[] = {"Untagged", "Player", "Enemy", "LockOnTarget"};
+    const char *tagItems[] = {"Untagged", "Player", "Enemy", "LockOnTarget", "ShotTarget"};
     int currentItem = static_cast<int>(selected->tag_);
     if (ImGui::Combo("Tag", &currentItem, tagItems, IM_ARRAYSIZE(tagItems))) {
       selected->tag_ = static_cast<ActorTag>(currentItem);
@@ -1596,6 +1624,14 @@ void GamePlayScene::DrawEditorUI() {
     ImGui::SameLine();
     ImGui::Text(" | ");
   }
+  // 当たり判定の線の表示を切り替える
+  ImGui::SameLine();
+  bool showColliders = CollisionManager::GetInstance()->IsDebugDrawEnabled();
+  if (ImGui::Checkbox("Colliders", &showColliders)) {
+    CollisionManager::GetInstance()->SetDebugDrawEnabled(showColliders);
+  }
+  ImGui::SameLine();
+  ImGui::Text(" | ");
   ImGui::SameLine();
   ImGui::Text("Gizmo:");
   ImGui::SameLine();
@@ -1857,6 +1893,9 @@ void GamePlayScene::Draw3D() {
     if (!enemy->IsDead()) {
       enemy->Draw3D();
     }
+  }
+  for (auto &fortress : fortresses_) {
+    fortress->Draw();
   }
   for (auto &obj : sceneObjects_) {
     obj->Draw();
@@ -2345,7 +2384,7 @@ void GamePlayScene::LoadLevel(const std::string &filename) {
   }
 
   // 古い敵をクリア
-  runtimeEnemies_.clear();
+  ClearRuntimeEnemies();
   sceneObjects_.clear();
   selectedSceneObjectIndex_ = -1;
   spawnEvents_.clear();
@@ -2440,6 +2479,59 @@ void GamePlayScene::LoadLevel(const std::string &filename) {
           e.what());
     }
   }
+}
+
+void GamePlayScene::SpawnFortress(const SpawnEvent &ev) {
+  auto spline = loadedSplines_.find(ev.splineName);
+  if (spline == loadedSplines_.end() || spline->second.size() < 2) {
+    Logger::Log("[GamePlayScene] 浮かぶ砦の道筋が見つからない: " + ev.splineName + "\n");
+    return;
+  }
+
+  // 出し方の moveDirection が 0 でなければ、その向き（ワールド）に固定する
+  std::optional<float> heading;
+  if (std::abs(ev.moveDirection.x) + std::abs(ev.moveDirection.z) > 1e-6f) {
+    heading = std::atan2(ev.moveDirection.x, ev.moveDirection.z);
+  }
+
+  auto fortress = std::make_unique<FloatingFortress>();
+  fortress->Initialize(engine_->GetObject3dRenderer(), railCamera_.get(),
+                       spline->second, ev.spawnTime, ev.splineDuration, heading);
+
+  const auto &specs = FloatingFortress::GetPartSpecs();
+  for (int i = 0; i < FloatingFortress::kPartCount; ++i) {
+    auto part = std::make_unique<EnemyPart>();
+    part->Initialize();
+    part->SetTag(ActorTag::Enemy);
+    auto model = std::make_unique<Object3d>();
+    model->Initialize(engine_->GetObject3dRenderer());
+    model->SetModel(kOccluderModelPath_);
+    model->SetSpecularScale(0.0f);
+    part->SetModel(std::move(model));
+    part->SetBaseColor(kFortressPartColor_);
+    part->SetCamera(railCamera_.get());
+    part->SetPlayer(player_.get());
+    part->Setup(fortress.get(), i, specs[i].role, specs[i].localPosition,
+                specs[i].halfSize);
+    fortress->SetPart(i, part.get());
+
+    // ふだんの敵と同じに、出た敵として数え、自機の弾で倒したときだけ撃破に数える
+    EnemyPart *partPtr = part.get();
+    const int scoreId = scoreKeeper_->OnEnemySpawned(ev.spawnTime);
+    part->SetOnDestroyedCallback([this, scoreId, partPtr](bool isSelfDestruct) {
+      if (!isSelfDestruct) {
+        scoreKeeper_->OnEnemyKilled(scoreId, partPtr->GetLastHitVolley(),
+                                    partPtr->GetTransform().translate);
+      }
+    });
+    runtimeEnemies_.push_back(std::move(part));
+  }
+  fortresses_.push_back(std::move(fortress));
+}
+
+void GamePlayScene::ClearRuntimeEnemies() {
+  runtimeEnemies_.clear();
+  fortresses_.clear();
 }
 
 void GamePlayScene::SpawnSceneObject(const std::string &modelPath,

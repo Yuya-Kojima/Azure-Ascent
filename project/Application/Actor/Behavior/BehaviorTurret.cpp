@@ -1,7 +1,8 @@
 #include "BehaviorTurret.h"
 #include "Actor/Enemy.h"
 #include "Actor/Player.h"
-#include "Camera/ICamera.h"
+#include "Camera/RailCamera.h"
+#include "Math/MathUtil.h"
 #include "Actor/EnemyBullet.h"
 #include "Framework/ActorManager.h"
 #include "Framework/PrefabManager.h"
@@ -36,8 +37,8 @@ void BehaviorTurret::Update(Enemy* enemy) {
 
   // 1. 感知判定（Dormant -> Active への遷移）
   if (state_ == State::Dormant) {
-    // 感知範囲（senseDistance）に入り、かつ自機の前方にいる場合に起動
-    if (currentDist <= config_.senseDistance && forwardDistToPlayer > 0.0f) {
+    // 自機の前方にいて、画面に映り、カメラから見て箱の陰にいない場合に起動
+    if (forwardDistToPlayer > 0.0f && enemy->IsInScreen() && !player->IsHiddenFromCamera(myPos)) {
       state_ = State::Active;
       activeTimer_ = 0.0f;
       shotTimer_ = 0.0f;
@@ -52,57 +53,8 @@ void BehaviorTurret::Update(Enemy* enemy) {
   activeTimer_ += 1.0f / 60.0f;
   shotTimer_ += 1.0f / 60.0f;
 
-  // 2. 自機の移動速度ベクトル（前フレームからの差分）を計測
-  Vector3 playerVel = {0.0f, 0.0f, 0.0f};
-  if (hasPrevPlayerPos_) {
-    playerVel = {
-        playerPos.x - prevPlayerPos_.x,
-        playerPos.y - prevPlayerPos_.y,
-        playerPos.z - prevPlayerPos_.z
-    };
-  }
-  prevPlayerPos_ = playerPos;
-  hasPrevPlayerPos_ = true;
-
-  // 初回フレーム等で速度が取れていない場合のフォールバック（カメラ前進速度：秒速40m = 毎フレーム約0.67m）
-  float velSq = playerVel.x * playerVel.x + playerVel.y * playerVel.y + playerVel.z * playerVel.z;
-  if (velSq < 0.01f) {
-    const Vector3& camFwd = enemy->GetBaseForward();
-    playerVel = {camFwd.x * 0.67f, camFwd.y * 0.67f, camFwd.z * 0.67f};
-  }
-
-  // 未来予測位置（インターセプト）の物理計算
-  // 2次方程式: (|V|^2 - s^2) * t^2 + 2*(d0 . V) * t + |d0|^2 = 0
-  float a = (playerVel.x * playerVel.x + playerVel.y * playerVel.y + playerVel.z * playerVel.z) - (config_.bulletSpeed * config_.bulletSpeed);
-  float b = 2.0f * (d0.x * playerVel.x + d0.y * playerVel.y + d0.z * playerVel.z);
-  float c = d0.x * d0.x + d0.y * d0.y + d0.z * d0.z;
-
-  float interceptTime = 0.0f;
-  float disc = b * b - 4.0f * a * c;
-  if (disc >= 0.0f && std::abs(a) > 0.0001f) {
-    float sqrtDisc = std::sqrt(disc);
-    float t1 = (-b - sqrtDisc) / (2.0f * a);
-    float t2 = (-b + sqrtDisc) / (2.0f * a);
-    if (t1 > 0.0f && t2 > 0.0f) {
-      interceptTime = (std::min)(t1, t2);
-    } else if (t1 > 0.0f) {
-      interceptTime = t1;
-    } else if (t2 > 0.0f) {
-      interceptTime = t2;
-    }
-  }
-
-  // 解が得られなかった場合のフォールバック（相対接近速度による近似）
-  if (interceptTime <= 0.0f) {
-    interceptTime = currentDist / (config_.bulletSpeed + 0.67f);
-  }
-
-  // 未来の自機到達位置
-  Vector3 futurePlayerPos = {
-      playerPos.x + playerVel.x * interceptTime,
-      playerPos.y + playerVel.y * interceptTime,
-      playerPos.z + playerVel.z * interceptTime
-  };
+  // 2. 弾が届くころの自機の位置（レールに沿って先回りした位置）を求める
+  Vector3 futurePlayerPos = PredictPlayerPos(dynamic_cast<const RailCamera*>(camera), myPos, playerPos, config_.bulletSpeed);
 
   // 3. 照準（エイム）：自機が近すぎない限り未来位置を注視
   Vector3 aimDir = {futurePlayerPos.x - myPos.x, futurePlayerPos.y - myPos.y, futurePlayerPos.z - myPos.z};
@@ -114,12 +66,12 @@ void BehaviorTurret::Update(Enemy* enemy) {
   }
 
   // 4. 射撃処理
-  // すれ違い直前・通過後の理不尽な横殴り・背後射撃を防止するフェア設計
-  bool isFairDistance = (forwardDistToPlayer >= config_.minFairDistance);
+  // 自機より十分前にいて、弾が消えない距離にいるときだけ撃つ
+  bool isFairDistance = (forwardDistToPlayer >= config_.minFairDistance) && (currentDist <= config_.maxShotDistance);
   bool isVisibleOnScreen = enemy->IsInScreen(0.1f);
 
   if (state_ == State::Active) {
-    // 起動後、fireDelay（約1.0秒）の照準時間を経て初弾を発射
+    // 起動後、fireDelay の照準時間を経て初弾を発射
     if (activeTimer_ >= config_.fireDelay && isFairDistance && isVisibleOnScreen && aimDist > 0.001f) {
       state_ = State::Combat;
       shotTimer_ = 0.0f; // タイマーリセット
@@ -162,4 +114,38 @@ void BehaviorTurret::Update(Enemy* enemy) {
       ActorManager::GetInstance()->AddActor(std::move(bullet));
     }
   }
+}
+
+Vector3 BehaviorTurret::PredictPlayerPos(const RailCamera* rail, const Vector3& myPos, const Vector3& playerPos, float bulletSpeed) {
+  if (!rail || bulletSpeed <= 0.0f) {
+    return playerPos;
+  }
+
+  // 自機の、レールの基準から見た今のずれ（右・上・前の成分）
+  const Vector3 offset = playerPos - rail->GetRailPosition();
+  const float offRight = Dot(offset, rail->GetRailRight());
+  const float offUp = Dot(offset, rail->GetRailUp());
+  const float offForward = Dot(offset, rail->GetRailForward());
+
+  const float nowT = rail->GetT();
+  const float maxT = static_cast<float>(rail->GetWaypoints().size() - 1);
+  const float tPerFrame = rail->GetCurrentSpeed() / 60.0f; // 1 フレームに進む区間の数
+  const Vector3 worldUp = {0.0f, 1.0f, 0.0f};
+
+  // 届く時間（フレーム）を仮に決めて、その時の自機の位置までの距離から届く時間を求め直す。
+  // 弾が自機より速いので、くり返すと届く時間は 1 つの値に近づく
+  Vector3 future = playerPos;
+  float frames = Length(playerPos - myPos) / bulletSpeed;
+  for (int i = 0; i < kPredictIterations_; ++i) {
+    const float t = (std::min)(nowT + tPerFrame * frames, maxT);
+    // RailCamera::Update と同じ作り方で、その t のレールの位置と向きを出す
+    Vector3 railPos = rail->CalcPosition(t);
+    railPos.y += RailCamera::kRailHeight_;
+    const Vector3 forward = rail->CalcTangent(t);
+    const Vector3 right = SafeNormalize(Cross(worldUp, forward));
+    const Vector3 up = SafeNormalize(Cross(forward, right));
+    future = railPos + right * offRight + up * offUp + forward * offForward;
+    frames = Length(future - myPos) / bulletSpeed;
+  }
+  return future;
 }

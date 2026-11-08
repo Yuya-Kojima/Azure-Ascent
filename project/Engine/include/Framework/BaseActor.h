@@ -6,7 +6,8 @@ enum class ActorTag {
     Untagged,
     Player,
     Enemy,
-    LockOnTarget
+    LockOnTarget,
+    ShotTarget  // ロックオンはできず、通常ショットの狙いの助けだけが効く相手
 };
 
 inline std::string ActorTagToString(ActorTag tag) {
@@ -14,6 +15,7 @@ inline std::string ActorTagToString(ActorTag tag) {
         case ActorTag::Player: return "Player";
         case ActorTag::Enemy: return "Enemy";
         case ActorTag::LockOnTarget: return "LockOnTarget";
+        case ActorTag::ShotTarget: return "ShotTarget";
         case ActorTag::Untagged:
         default: return "Untagged";
     }
@@ -23,6 +25,7 @@ inline ActorTag StringToActorTag(const std::string& str) {
     if (str == "Player") return ActorTag::Player;
     if (str == "Enemy") return ActorTag::Enemy;
     if (str == "LockOnTarget") return ActorTag::LockOnTarget;
+    if (str == "ShotTarget") return ActorTag::ShotTarget;
     return ActorTag::Untagged;
 }
 

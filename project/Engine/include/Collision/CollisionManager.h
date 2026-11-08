@@ -20,6 +20,10 @@ public:
     // mask: 対象とする属性のビットマスク。一致するものだけを判定対象とする
     bool Raycast(const struct Ray& ray, uint32_t mask, Collider** outCollider, float* outDistance = nullptr);
 
+    // 当たり判定の線を描くか（DrawDebug と、弾が自分で描く線の両方が従う）
+    void SetDebugDrawEnabled(bool enabled) { isDebugDrawEnabled_ = enabled; }
+    bool IsDebugDrawEnabled() const { return isDebugDrawEnabled_; }
+
 private:
     CollisionManager() = default;
     ~CollisionManager() = default;
@@ -30,4 +34,5 @@ private:
 
 private:
     std::list<Collider*> colliders_;
+    bool isDebugDrawEnabled_ = true;
 };

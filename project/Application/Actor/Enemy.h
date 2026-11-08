@@ -47,6 +47,9 @@ public:
   // ボスかどうかの判定（デスポーン除外等で使用）
   virtual bool IsBoss() const { return false; }
 
+  // 画面の外でカメラの後ろに取り残されたときに消えるか
+  virtual bool CanDespawnBehindCamera() const { return !IsBoss(); }
+
   // 画面内に映っているかどうかの判定（マージン付き）
   bool IsInScreen(float margin = 0.0f) const;
   // 画面の外（余白 kLeaveScreenMargin_ の外）に kLeaveScreenTime_ 秒以上続けているか

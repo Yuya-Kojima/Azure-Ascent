@@ -66,7 +66,7 @@ void Enemy::Update() {
   }
 
   // 完全に画面外に出て、かつカメラ後方に取り残された場合のみ自動消滅（ボスは除く）
-  if (!IsBoss() && camera_) {
+  if (CanDespawnBehindCamera() && camera_) {
     // 画面内に映っている間は絶対に消さない（視界内での急な消滅を防止）
     if (!IsInScreen(80.0f)) {
       Vector3 diff = {transform_.translate.x - basePos_.x,

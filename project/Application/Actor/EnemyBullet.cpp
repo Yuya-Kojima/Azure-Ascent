@@ -47,6 +47,7 @@ void EnemyBullet::Initialize(Object3dRenderer *renderer,
     object3d_->SetColor({4.0f, 1.8f, 0.2f, 1.0f});
     colliderRadius = 1.4f;
     hp_ = 1;
+    SetTag(ActorTag::ShotTarget); // 通常ショットの狙いの助けの対象としてタグ付け
   } else if (type_ == EnemyBulletType::LockOnDestructible) {
     // 親オブジェクト（姿勢・移動）：メッシュ描画は行わない
     object3d_->SetScale({1.0f, 1.0f, 1.0f});

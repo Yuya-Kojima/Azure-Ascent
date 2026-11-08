@@ -114,8 +114,14 @@ public:
   void SetLockOnTargets(const std::vector<BaseActor *> &targets) {
     lockOnTargets_ = targets;
   }
+  // ロックオンはできず、通常ショットの狙いの助けだけが効く対象リストを外部から受け取る
+  void SetShotTargets(const std::vector<BaseActor *> &targets) {
+    shotTargets_ = targets;
+  }
   // 敵を隠す箱を LockOn に渡す（LockOn::SetOccluders）
   void SetLockOnOccluders(const std::vector<Matrix4x4> *worldToBoxes);
+  // カメラから pos への線が、敵を隠す箱のどれかを通るか
+  bool IsHiddenFromCamera(const Vector3 &pos) const;
 
   int GetHp() const { return hp_; }
   int GetMaxHp() const { return kMaxHp; }
@@ -206,6 +212,7 @@ private:
   const ICamera *camera_ = nullptr;
   class Input *input_ = nullptr;
   std::vector<BaseActor *> lockOnTargets_;
+  std::vector<BaseActor *> shotTargets_;
   ScoreKeeper *scoreKeeper_ = nullptr;
 
   void FireHomingShot();

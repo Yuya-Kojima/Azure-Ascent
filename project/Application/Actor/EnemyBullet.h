@@ -17,6 +17,9 @@ enum class EnemyBulletType {
 
 class EnemyBullet : public BaseActor {
 public:
+  // 砲台・砦の砲座が自機を狙って撃つ弾の速さ（m/フレーム）
+  static constexpr float kAimedShotSpeed_ = 1.3f;
+
   EnemyBullet();
   ~EnemyBullet() override;
 

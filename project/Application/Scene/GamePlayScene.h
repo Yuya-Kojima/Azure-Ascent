@@ -27,6 +27,7 @@ class CloudSeaEvents;
 class GameHud;
 class ResultSequence;
 class ScoreKeeper;
+class FloatingFortress;
 
 #include "Actor/Boss.h"
 #include "Actor/Enemy.h"
@@ -128,6 +129,10 @@ private: // メンバ変数(ゲーム用)
 
   // ダミー敵管理
   std::vector<std::unique_ptr<Enemy>> runtimeEnemies_;
+  // 浮かぶ砦（部品は runtimeEnemies_ に入る）
+  std::vector<std::unique_ptr<FloatingFortress>> fortresses_;
+  static inline const std::string kFortressPrefabName_ = "FloatingFortress"; // 砦を出す出し方の名前
+  static constexpr Vector4 kFortressPartColor_ = {1.0f, 0.2f, 0.2f, 1.0f};      // 砦の部品の色（ふだんの敵と同じ赤）
   std::vector<Enemy *> enemyPtrs_;
 
   // ロード済みスプラインデータ (Blender JSON等から)
@@ -298,6 +303,16 @@ private:
   void ApplySkyAndLighting();
 
   void SpawnSceneObject(const std::string &modelPath, const Vector3 &position);
+
+  /// <summary>
+  /// 浮かぶ砦と部品 8 個を出す。部品は撃破に数える敵として登録する
+  /// </summary>
+  void SpawnFortress(const SpawnEvent &ev);
+
+  /// <summary>
+  /// 出ている敵と砦をすべて消す
+  /// </summary>
+  void ClearRuntimeEnemies();
 
   /// <summary>
   /// レベルデータの読み込み
