@@ -4,6 +4,7 @@
 #include "GamePlayScene.h"
 #include "TitleScene.h"
 #include "StageSelectScene.h"
+#include "ZakoViewScene.h"
 
 std::unique_ptr<BaseScene>
 SceneFactory::CreateScene(const std::string &sceneName) {
@@ -21,6 +22,8 @@ SceneFactory::CreateScene(const std::string &sceneName) {
     return std::make_unique<DebugScene>();
   } else if (sceneName == "FRACTURE_TEST") {
     return std::make_unique<FractureTestScene>();
+  } else if (sceneName == "ZAKO_VIEW") {
+    return std::make_unique<ZakoViewScene>();
   }
 
   assert(false && "Unknown sceneName");

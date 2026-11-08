@@ -1,0 +1,54 @@
+{
+    "color": [
+        0.12,
+        0.14,
+        0.18
+    ],
+    "hp": 3,
+    "lights": [
+        {
+            "burstPoints": [
+                [
+                    0.0,
+                    -0.037,
+                    -0.513
+                ],
+                [
+                    0.0,
+                    -0.131,
+                    0.2
+                ]
+            ],
+            "color": [
+                1.0,
+                0.102,
+                0.023
+            ],
+            "intensity": 3.0,
+            "modelPath": "resources/models/zako/zako_arrow_light.gltf"
+        }
+    ],
+    "modelPath": "resources/models/zako/zako_arrow_body.gltf",
+    "moveDirection": [
+        0.0,
+        0.0,
+        -1.0
+    ],
+    "moveType": 5,
+    "rimLight": {
+        "color": [
+            0.485,
+            0.565,
+            0.672
+        ],
+        "intensity": 1.0,
+        "power": 2.5
+    },
+    "scale": [
+        6.0,
+        6.0,
+        6.0
+    ],
+    "speed": 0.5,
+    "tag": "Enemy"
+}

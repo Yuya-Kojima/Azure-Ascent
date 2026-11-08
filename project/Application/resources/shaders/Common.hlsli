@@ -21,7 +21,7 @@ struct Material {
 	float rimPower;
 	float backRimScale;
 	float specularScale;
-	float padding3;
+	float flatUnlit;     // ライティングなしのとき: 0=中心が白く光る描き方, 1=色をそのまま出す
 	float4 patternGlow;  // rgb=色, w=強さ（0で無効）
 	float4 patternRange; // x=光り始める水色らしさ, y=光りきる水色らしさ
 	float4 woundCenter;  // xyz=ワールド座標, w=穴の半径

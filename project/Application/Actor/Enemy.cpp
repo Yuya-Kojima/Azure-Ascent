@@ -1,4 +1,5 @@
 #include "Actor/Enemy.h"
+#include "Actor/EnemyLights.h"
 #include "Actor/Player.h"
 #include "Audio/SoundManager.h"
 #include "Behavior/IEnemyBehavior.h"
@@ -21,6 +22,7 @@
 #include "Render/Particle/ParticleManager.h"
 #include <cmath>
 #include <numbers>
+#include <vector>
 
 Enemy::Enemy() = default;
 
@@ -91,11 +93,11 @@ void Enemy::Update() {
     behavior_->Update(this);
   }
 
-  // 被弾時は赤色にする
+  // 被弾中は被弾の色（hitFlashColor_）で塗り、終わったら基本色に戻す
   if (hitFlashTimer_ > 0) {
     hitFlashTimer_--;
     if (model_) {
-      model_->SetColor({1.0f, 0.0f, 0.0f, 1.0f}); // 赤色
+      model_->SetColor(hitFlashColor_);
     }
   } else {
     if (model_) {
@@ -132,6 +134,11 @@ void Enemy::UpdateTransform() {
     model_->SetScale(finalScale);
     model_->Update();
   }
+
+  // 光る部品は体の行列を使うので、体の後に更新する
+  if (lights_) {
+    lights_->Update();
+  }
 }
 
 void Enemy::Draw3D() {
@@ -139,6 +146,22 @@ void Enemy::Draw3D() {
   if (model_) {
     model_->Draw();
   }
+  if (lights_) {
+    lights_->Draw();
+  }
+}
+
+void Enemy::SetRimLight(const Vector3 &color, float intensity, float power) {
+  rimColor_ = color;
+  rimIntensity_ = intensity;
+  rimPower_ = power;
+  if (model_) {
+    model_->SetRimLight(color, intensity, power);
+  }
+}
+
+void Enemy::SetLights(std::unique_ptr<EnemyLights> lights) {
+  lights_ = std::move(lights);
 }
 
 void Enemy::OnCollision(Collider *other) {
@@ -169,8 +192,22 @@ void Enemy::TakeDamage(int damage, bool isSelfDestruct) {
     if (!isSelfDestruct) {
       SoundManager::GetInstance()->PlaySE("enemy_destroy");
       // 死亡時エフェクト
-      EffectManager::GetInstance()->PlayEnemyDeathSimpleEffect(
-          transform_.translate, baseColor_);
+      // 光る部品があれば、部品の場所から光の色ではじけさせる（部品は敵と一緒に消える）
+      // 場所の指定がない部品なら、敵の中心から光の色ではじけさせる
+      if (lights_) {
+        const Vector4 burstColor = lights_->GetBurstColor();
+        std::vector<Vector3> positions = lights_->GetBurstPositions();
+        if (positions.empty()) {
+          positions.push_back(transform_.translate);
+        }
+        for (const Vector3 &position : positions) {
+          EffectManager::GetInstance()->PlayEnemyDeathSimpleEffect(position,
+                                                                   burstColor);
+        }
+      } else {
+        EffectManager::GetInstance()->PlayEnemyDeathSimpleEffect(
+            transform_.translate, baseColor_);
+      }
 
       // 敵のカラーとサイズを引き継いだ破片（デブリ）を発生させて四方に弾け飛ばす
       auto renderer = PrefabManager::GetInstance()->GetObject3dRenderer();
@@ -181,9 +218,16 @@ void Enemy::TakeDamage(int damage, bool isSelfDestruct) {
 
         if (pieceSet) {
           // 割った形セットがあれば、ボロノイの破片を飛ばす
+          // 破片は敵と同じ色・ふちの光・向きで置く
+          FractureDebris::Look look;
+          look.color = baseColor_;
+          look.rimColor = rimColor_;
+          look.rimIntensity = rimIntensity_;
+          look.rimPower = rimPower_;
           auto debris = std::make_unique<FractureDebris>(
-              renderer, *pieceSet, transform_.translate, transform_.scale,
-              baseColor_, frameMovement_ * (1.0f / kFixedDeltaTime),
+              renderer, *pieceSet, transform_.translate, transform_.rotate,
+              transform_.scale, look,
+              frameMovement_ * (1.0f / kFixedDeltaTime),
               FractureCache::GetInstance()->GetDebrisParams());
           ActorManager::GetInstance()->AddActor(std::move(debris));
         } else {

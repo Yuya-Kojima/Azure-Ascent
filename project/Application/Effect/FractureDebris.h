@@ -28,6 +28,14 @@ public: // 型
     float drag = 2.4f;
   };
 
+  // 破片の見た目（敵の見た目を引き継ぐ）
+  struct Look {
+    Vector4 color = {1.0f, 1.0f, 1.0f, 1.0f}; // 破片の色
+    Vector3 rimColor = {0.0f, 0.0f, 0.0f};    // ふちの光の色
+    float rimIntensity = 0.0f;                // ふちの光の強さ（0 でなし）
+    float rimPower = 3.0f;                    // ふちの光の鋭さ
+  };
+
 public: // メンバ関数
   /// <summary>
   /// 破片を置いて、爆発させる
@@ -35,14 +43,15 @@ public: // メンバ関数
   /// <param name="renderer">破片の Object3d を描くレンダラー</param>
   /// <param name="pieceSet">破片の形（借りるだけ。この爆発より長生きすること）</param>
   /// <param name="position">爆発の中心（敵の位置）</param>
+  /// <param name="rotation">敵の回転（破片の置き場所と、回り始めの向きに使う）</param>
   /// <param name="scale">敵の大きさ（形セットは元のモデルの大きさで作ってある）</param>
-  /// <param name="color">破片の色（敵の色を引き継ぐ）</param>
+  /// <param name="look">破片の見た目（敵の色とふちの光を引き継ぐ）</param>
   /// <param name="inheritedVelocity">引き継ぐ速度（撃破された瞬間の敵の速度。1秒あたり）</param>
   /// <param name="params">調整値</param>
   FractureDebris(Object3dRenderer *renderer, const FracturePieceSet &pieceSet,
-                 const Vector3 &position, const Vector3 &scale,
-                 const Vector4 &color, const Vector3 &inheritedVelocity,
-                 const Params &params);
+                 const Vector3 &position, const Vector3 &rotation,
+                 const Vector3 &scale, const Look &look,
+                 const Vector3 &inheritedVelocity, const Params &params);
   // unique_ptr<Object3d> を前方宣言のまま持つため、デストラクタは .cpp で定義する
   ~FractureDebris() override;
 

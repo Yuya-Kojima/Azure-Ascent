@@ -314,6 +314,9 @@ void Game::Update() {
         if (ImGui::MenuItem("Fracture Test")) {
           SceneManager::GetInstance()->ChangeScene("FRACTURE_TEST");
         }
+        if (ImGui::MenuItem("Zako View")) {
+          SceneManager::GetInstance()->ChangeScene("ZAKO_VIEW");
+        }
         ImGui::EndMenu();
       }
 
