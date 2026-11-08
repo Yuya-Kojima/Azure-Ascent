@@ -251,6 +251,12 @@ GeometryShaderOutput input) {
     // No lighting (Emissive / Laser)
     //=========================
 	if (gMaterial.enableLighting == 0) {
+		// 色をそのまま出す（1 を超える色はブルームでにじむ）
+		if (gMaterial.flatUnlit > 0.0f) {
+			output.color = base;
+			return output;
+		}
+
 		float3 toEye = normalize(gCamera.worldPosition - input.worldPosition);
 		float3 normal = normalize(input.normal);
 		// 視線と法線の角度からフレネル係数を計算（中心部ほど大きい）

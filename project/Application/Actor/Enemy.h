@@ -7,6 +7,7 @@
 
 #include "Render/Object3d/Object3d.h"
 class SphereCollider;
+class EnemyLights;
 class ICamera;
 class IParticleEmitter;
 class ParticleEmitter;
@@ -63,6 +64,18 @@ public:
   void SetBaseColor(const Vector4 &color) { baseColor_ = color; }
   const Vector4 &GetBaseColor() const { return baseColor_; }
 
+  // 被弾したときに体を塗る色
+  void SetHitFlashColor(const Vector4 &color) { hitFlashColor_ = color; }
+  const Vector4 &GetHitFlashColor() const { return hitFlashColor_; }
+
+  // ふちの光（体と、撃破時の破片にかける）。intensity = 0 でなし
+  // モデルを渡した後（SetModel の後）に呼ぶこと
+  void SetRimLight(const Vector3 &color, float intensity, float power);
+
+  // 光る部品（目・推進器など）。体のモデルを親にするので、SetModel の後に渡すこと
+  void SetLights(std::unique_ptr<EnemyLights> lights);
+  EnemyLights *GetLights() const { return lights_.get(); }
+
   SphereCollider *GetCollider() const { return collider_.get(); }
 
   // 移動方向・軌道のセッター/ゲッター
@@ -116,6 +129,8 @@ public:
 protected:
   std::unique_ptr<Object3d> model_;
   std::unique_ptr<SphereCollider> collider_;
+  // 光る部品（ない敵は nullptr）。model_ を親にするので、model_ より後に宣言して先に破棄する
+  std::unique_ptr<EnemyLights> lights_;
 
   // 死亡フラグ
   bool isDead_ = false; // 体力
@@ -147,6 +162,12 @@ protected:
   // --- 演出用パラメータ ---
   int hitFlashTimer_ = 0;                        // 被弾時の点滅タイマー
   Vector4 baseColor_ = {1.0f, 1.0f, 1.0f, 1.0f}; // 基本色
+  Vector4 hitFlashColor_ = {1.0f, 0.0f, 0.0f, 1.0f}; // 被弾時の色
+
+  // ふちの光（撃破時の破片に引き継ぐために持っておく）
+  Vector3 rimColor_ = {0.0f, 0.0f, 0.0f};
+  float rimIntensity_ = 0.0f;
+  float rimPower_ = 3.0f;
 
   std::function<void(bool)> onDestroyedCallback_ = nullptr;
 

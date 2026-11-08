@@ -176,6 +176,15 @@ public:
     }
   }
 
+  /// <summary>
+  /// ライティングなしのときに、色をそのまま出すか（false で中心が白く光る描き方）
+  /// </summary>
+  void SetFlatUnlit(bool flat) {
+    if (materialData) {
+      materialData->flatUnlit = flat ? 1.0f : 0.0f;
+    }
+  }
+
   float GetEnvironmentCoefficient() const {
     return materialData ? materialData->environmentCoefficient : 0.0f;
   }

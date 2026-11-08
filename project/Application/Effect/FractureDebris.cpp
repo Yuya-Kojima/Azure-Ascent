@@ -1,6 +1,7 @@
 #include "FractureDebris.h"
 #include "Core/GameTime.h"
 #include "Effect/FracturePieceSet.h"
+#include "Math/MathUtil.h"
 #include "Render/Object3d/Object3d.h"
 #include "Render/Renderer/Object3dRenderer.h"
 #include <cstdint>
@@ -19,8 +20,9 @@ std::mt19937 &GetRandomEngine() {
 
 FractureDebris::FractureDebris(Object3dRenderer *renderer,
                                const FracturePieceSet &pieceSet,
-                               const Vector3 &position, const Vector3 &scale,
-                               const Vector4 &color,
+                               const Vector3 &position,
+                               const Vector3 &rotation, const Vector3 &scale,
+                               const Look &look,
                                const Vector3 &inheritedVelocity,
                                const Params &params) {
   gravity_ = params.gravity;
@@ -34,6 +36,9 @@ FractureDebris::FractureDebris(Object3dRenderer *renderer,
   std::uniform_real_distribution<float> angularDist(-params.maxAngularSpeed,
                                                     params.maxAngularSpeed);
 
+  // 敵の回転（形セットの座標から、敵の向きの座標へ回す）
+  const Matrix4x4 rotateMatrix = MakeRotateMatrix(rotation);
+
   const std::vector<FracturePieceSet::Piece> &shapes = pieceSet.GetPieces();
   pieces_.reserve(shapes.size());
   for (const FracturePieceSet::Piece &shape : shapes) {
@@ -44,17 +49,24 @@ FractureDebris::FractureDebris(Object3dRenderer *renderer,
     piece.object->Initialize(renderer);
     piece.object->SetModel(shape.model.get());
     piece.object->SetScale(scale);
-    piece.object->SetColor(color);
+    piece.object->SetColor(look.color);
+    piece.object->SetRimLight(look.rimColor, look.rimIntensity, look.rimPower);
 
-    // 重心は元のモデルの大きさでの位置なので、敵の大きさを掛けてから置く
-    piece.position = position + Vector3{shape.centroid.x * scale.x,
-                                        shape.centroid.y * scale.y,
-                                        shape.centroid.z * scale.z};
+    // 重心は元のモデルの大きさ・向きでの位置なので、敵の大きさを掛け、敵の回転で回してから置く
+    // （敵の行列と同じ、拡大 → 回転 → 移動の順）
+    const Vector3 scaledCentroid = {shape.centroid.x * scale.x,
+                                    shape.centroid.y * scale.y,
+                                    shape.centroid.z * scale.z};
+    piece.position = position + TransformNormal(scaledCentroid, rotateMatrix);
+
+    // 回り始めの向きは敵の回転と同じにする
+    piece.rotation = rotation;
 
     // 外向きに飛ばす速度に、引き継ぐ速度を足す
     // （ゲームではカメラが進み続けるので、引き継がないと破片が後ろへ流れて見える）
     piece.velocity =
-        shape.direction * params.explosionSpeed + inheritedVelocity;
+        TransformNormal(shape.direction, rotateMatrix) * params.explosionSpeed +
+        inheritedVelocity;
 
     // 角速度は各軸ランダム（破片ごとに違う回り方にする）
     std::mt19937 &engine = GetRandomEngine();

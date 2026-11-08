@@ -274,6 +274,7 @@ void Object3d::CreateMaterialData() {
   materialData->rimPower = 3.0f;
   materialData->backRimScale = 0.0f;
   materialData->specularScale = 1.0f;
+  materialData->flatUnlit = 0.0f;
 
   materialData->enableDissolve = 0;
   materialData->dissolveThreshold = 0.0f;

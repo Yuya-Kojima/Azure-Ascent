@@ -154,7 +154,10 @@ void GamePlayScene::PreloadResources(EngineBase *engine) {
 
   // ロード時に事前にモデルを割る
   // 撃破時に割ると、その瞬間に計算とGPUバッファの作成が集中してカクつくため
-  for (const char *prefabName : {"ZakoEnemy", "FastEnemy", "TankEnemy"}) {
+  for (const char *prefabName :
+       {"ZakoEnemy", "FastEnemy", "TankEnemy", "ZakoEye", "ZakoArrow"}) {
+    // 光る部品のモデルも読み込んでおく（光る部品は割らない）
+    PrefabManager::GetInstance()->PreloadLightModels(prefabName);
     // プレハブからモデルのパスを読む
     std::string modelPath =
         PrefabManager::GetInstance()->GetModelPath(prefabName);

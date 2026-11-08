@@ -53,6 +53,12 @@ public: // メンバ関数
 
 private: // メンバ関数
   /// <summary>
+  /// 選んだ元メッシュを読み込み、このシーン専用のコピーを作る
+  /// 古いモデルを借りている破片と爆発は先に消す（破片は RebuildFragments で作り直す）
+  /// </summary>
+  void LoadSourceModel();
+
+  /// <summary>
   /// 今のモードと設定で元メッシュを切り直し、破片を作り直す
   /// GPU バッファを確保し直すので、設定が変わったときだけ呼ぶ
   /// </summary>
@@ -118,6 +124,9 @@ private: // メンバ変数
 
   // 切断前の元メッシュの体積（破片の合計と比べる）
   float sourceVolume_ = 0.0f;
+
+  // 元メッシュの候補のうち、今使っているものの番号
+  int sourceModelIndex_ = 0;
 
   // 破片（数はモードと設定で変わる）
   std::vector<Fragment> fragments_;

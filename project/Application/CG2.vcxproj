@@ -171,6 +171,7 @@ copy "$(WindowsSdkDir)bin\$(TargetPlatformVersion)\x64\dxil.dll" "$(TargetDir)dx
     <ClCompile Include="Actor\FloatingFortress.cpp" />
     <ClCompile Include="Actor\BossCore.cpp" />
     <ClCompile Include="Actor\Enemy.cpp" />
+    <ClCompile Include="Actor\EnemyLights.cpp" />
     <ClCompile Include="Actor\EnemyBullet.cpp" />
     <ClCompile Include="Framework\PrefabManager.cpp" />
     <ClCompile Include="Effect\EffectManager.cpp" />
@@ -195,6 +196,7 @@ copy "$(WindowsSdkDir)bin\$(TargetPlatformVersion)\x64\dxil.dll" "$(TargetDir)dx
     <ClCompile Include="Scene\StageSelectScene.cpp" />
     <ClCompile Include="Scene\DebugScene.cpp" />
     <ClCompile Include="Scene\FractureTestScene.cpp" />
+    <ClCompile Include="Scene\ZakoViewScene.cpp" />
     <ClCompile Include="Scene\GamePlayScene.cpp" />
     <ClCompile Include="Scene\StageIntro.cpp" />
     <ClCompile Include="Scene\CaptionCard.cpp" />
@@ -340,6 +342,7 @@ copy "$(WindowsSdkDir)bin\$(TargetPlatformVersion)\x64\dxil.dll" "$(TargetDir)dx
     <ClInclude Include="Actor\FloatingFortress.h" />
     <ClInclude Include="Actor\BossCore.h" />
     <ClInclude Include="Actor\Enemy.h" />
+    <ClInclude Include="Actor\EnemyLights.h" />
     <ClInclude Include="Actor\EnemyBullet.h" />
     <ClInclude Include="Framework\PrefabManager.h" />
     <ClInclude Include="Effect\EffectManager.h" />
@@ -365,6 +368,7 @@ copy "$(WindowsSdkDir)bin\$(TargetPlatformVersion)\x64\dxil.dll" "$(TargetDir)dx
     <ClInclude Include="Scene\StageSelectScene.h" />
     <ClInclude Include="Scene\DebugScene.h" />
     <ClInclude Include="Scene\FractureTestScene.h" />
+    <ClInclude Include="Scene\ZakoViewScene.h" />
     <ClInclude Include="Scene\GamePlayScene.h" />
     <ClInclude Include="Scene\StageIntro.h" />
     <ClInclude Include="Scene\CaptionCard.h" />
