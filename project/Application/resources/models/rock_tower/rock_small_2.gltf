@@ -36,23 +36,23 @@
 		{
 			"bufferView":0,
 			"componentType":5126,
-			"count":3388,
+			"count":3386,
 			"max":[
-				0.5,
-				0.5,
-				0.5
+				8.973072052001953,
+				85,
+				10.168632507324219
 			],
 			"min":[
-				-0.5,
-				-0.5,
-				-0.5
+				-10.63652229309082,
+				-20,
+				-9.330397605895996
 			],
 			"type":"VEC3"
 		},
 		{
 			"bufferView":1,
 			"componentType":5126,
-			"count":3388,
+			"count":3386,
 			"type":"VEC3"
 		},
 		{
@@ -65,26 +65,26 @@
 	"bufferViews":[
 		{
 			"buffer":0,
-			"byteLength":40656,
+			"byteLength":40632,
 			"byteOffset":0,
 			"target":34962
 		},
 		{
 			"buffer":0,
-			"byteLength":40656,
-			"byteOffset":40656,
+			"byteLength":40632,
+			"byteOffset":40632,
 			"target":34962
 		},
 		{
 			"buffer":0,
 			"byteLength":6864,
-			"byteOffset":81312,
+			"byteOffset":81264,
 			"target":34963
 		}
 	],
 	"buffers":[
 		{
-			"byteLength":88176,
+			"byteLength":88128,
 			"uri":"rock_small_2.bin"
 		}
 	]

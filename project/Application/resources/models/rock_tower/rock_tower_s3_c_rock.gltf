@@ -36,23 +36,23 @@
 		{
 			"bufferView":0,
 			"componentType":5126,
-			"count":3388,
+			"count":3386,
 			"max":[
-				0.4333506226539612,
-				0.22762812674045563,
-				0.4922407567501068
+				8.980950355529785,
+				95.50223541259766,
+				9.339975357055664
 			],
 			"min":[
-				-0.3476782441139221,
-				-0.5,
-				-0.45837098360061646
+				-9.075685501098633,
+				-20,
+				-9.252341270446777
 			],
 			"type":"VEC3"
 		},
 		{
 			"bufferView":1,
 			"componentType":5126,
-			"count":3388,
+			"count":3386,
 			"type":"VEC3"
 		},
 		{
@@ -65,26 +65,26 @@
 	"bufferViews":[
 		{
 			"buffer":0,
-			"byteLength":40656,
+			"byteLength":40632,
 			"byteOffset":0,
 			"target":34962
 		},
 		{
 			"buffer":0,
-			"byteLength":40656,
-			"byteOffset":40656,
+			"byteLength":40632,
+			"byteOffset":40632,
 			"target":34962
 		},
 		{
 			"buffer":0,
 			"byteLength":6864,
-			"byteOffset":81312,
+			"byteOffset":81264,
 			"target":34963
 		}
 	],
 	"buffers":[
 		{
-			"byteLength":88176,
+			"byteLength":88128,
 			"uri":"rock_tower_s3_c_rock.bin"
 		}
 	]
