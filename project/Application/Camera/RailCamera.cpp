@@ -4,6 +4,24 @@
 #include <cmath>
 #include <numbers>
 
+namespace {
+
+// v を単位ベクトル axis のまわりに angle（ラジアン）回す（ロドリゲスの回転公式）。
+// 正の角度で、axis の前にある向きは Cross(axis, 前) の向きへ回る
+Vector3 RotateAroundAxis(const Vector3 &v, const Vector3 &axis, float angle) {
+  const float c = std::cos(angle);
+  const float s = std::sin(angle);
+  return v * c + Cross(axis, v) * s + axis * (Dot(axis, v) * (1.0f - c));
+}
+
+// 0〜1 の x を、両端の傾きが 0 になるようにならす
+float SmoothStep01(float x) {
+  x = std::clamp(x, 0.0f, 1.0f);
+  return x * x * (3.0f - 2.0f * x);
+}
+
+} // namespace
+
 RailCamera::RailCamera() {
   transform_.scale = {1.0f, 1.0f, 1.0f};
   transform_.rotate = {0.0f, 0.0f, 0.0f};
@@ -121,6 +139,27 @@ void RailCamera::Update() {
       lookTarget.z = Lerp(lookTarget.z, focusTarget_->z, focusWeight_);
   }
 
+  // --- 顔の向きのキー（railPos_ などレールの基準は変えず、カメラの位置と見る向きだけを動かす） ---
+  const LookKey look = SampleLook(t_);
+  if (look.yaw != 0.0f || look.roll != 0.0f || look.out != 0.0f) {
+    // 位置をレールの右へずらす（注視点も同じだけずらし、見る向きは変えない）
+    const Vector3 shift = right * look.out;
+    transform_.translate += shift;
+    lookTarget += shift;
+
+    // 見る向きと上の向きを、レールの上の軸まわりに yaw だけ回す（正で右へ）
+    const float yawRad = look.yaw * (std::numbers::pi_v<float> / 180.0f);
+    Vector3 viewDir = RotateAroundAxis(lookTarget - transform_.translate, upApprox, yawRad);
+    up = SafeNormalize(RotateAroundAxis(up, upApprox, yawRad));
+    lookTarget = transform_.translate + viewDir;
+
+    // 上の向きを、見る向きの軸まわりに roll だけ傾ける（バンクと同じ向きの正負）
+    const float rollRad = look.roll * (std::numbers::pi_v<float> / 180.0f);
+    const Vector3 viewForward = SafeNormalize(viewDir);
+    const Vector3 viewRight = SafeNormalize(Cross(up, viewForward));
+    up = SafeNormalize(up * std::cos(rollRad) - viewRight * std::sin(rollRad));
+  }
+
   // --- カメラ行列を基底ベクトルから直接構築 ---
   viewMatrix_ = MakeLookAtMatrix(transform_.translate, lookTarget, up);
   projectionMatrix_ =
@@ -164,6 +203,44 @@ void RailCamera::Shake(float intensity, float duration) {
       (std::max)(shakeIntensity_, intensity + (shakeIntensity_ * 0.2f));
   shakeDuration_ = (std::max)(shakeDuration_, duration);
   shakeTimer_ = (std::max)(shakeTimer_, duration);
+}
+
+void RailCamera::SetLookKeys(const std::vector<LookKey> &keys) {
+  lookKeys_ = keys;
+  SortLookKeys();
+}
+
+void RailCamera::SortLookKeys() {
+  std::stable_sort(lookKeys_.begin(), lookKeys_.end(),
+                   [](const LookKey &a, const LookKey &b) { return a.t < b.t; });
+}
+
+RailCamera::LookKey RailCamera::SampleLook(float t) const {
+  LookKey result;
+  result.t = t;
+  if (lookKeys_.empty() || t < lookKeys_.front().t || t > lookKeys_.back().t) {
+    return result;
+  }
+  // t をはさむ 2 つのキーを探し、その間を smoothstep でつなぐ
+  for (size_t i = 0; i + 1 < lookKeys_.size(); ++i) {
+    const LookKey &a = lookKeys_[i];
+    const LookKey &b = lookKeys_[i + 1];
+    if (t > b.t) {
+      continue;
+    }
+    const float span = b.t - a.t;
+    const float k = (span > 1e-6f) ? SmoothStep01((t - a.t) / span) : 1.0f;
+    result.yaw = Lerp(a.yaw, b.yaw, k);
+    result.roll = Lerp(a.roll, b.roll, k);
+    result.out = Lerp(a.out, b.out, k);
+    return result;
+  }
+  // キーが 1 つだけで、t がちょうどその位置のとき
+  const LookKey &only = lookKeys_.back();
+  result.yaw = only.yaw;
+  result.roll = only.roll;
+  result.out = only.out;
+  return result;
 }
 
 Vector3 RailCamera::CalcTangent(float t) const {

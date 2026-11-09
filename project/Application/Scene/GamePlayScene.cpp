@@ -1145,6 +1145,8 @@ void GamePlayScene::Update() {
     EffectManager::GetInstance()->DrawEditorUI(railCamera_.get());
     FractureCache::GetInstance()->DrawEditorUI();
   } else if (currentSelectType_ == EditorSelectType::RailCamera) {
+    DrawLookKeysUI();
+
     ImGui::Text("Rail Camera Waypoints");
     ImGui::Separator();
 
@@ -2338,6 +2340,11 @@ void GamePlayScene::SaveLevel(const std::string &filename) {
     const Vector4 color = obj->GetColor();
     oJson["color"] = {color.x, color.y, color.z};
     oJson["specularScale"] = obj->GetSpecularScale();
+    // テクスチャの繰り返し回数（1 のときは書かない）
+    const Matrix4x4 uv = obj->GetUVTransform();
+    if (uv.m[0][0] != 1.0f || uv.m[1][1] != 1.0f) {
+      oJson["uvScale"] = {uv.m[0][0], uv.m[1][1]};
+    }
     sceneObjectsArray.push_back(oJson);
   }
   root["sceneObjects"] = sceneObjectsArray;
@@ -2352,18 +2359,87 @@ void GamePlayScene::SaveLevel(const std::string &filename) {
     file << std::setw(4) << root << std::endl;
   }
 
-  // カメラレール（waypoints）を camera_rail.json に別途保存
-  nlohmann::json waypointsRoot;
+  // カメラレールは camera_rail.json に別途保存
+  SaveCameraRail();
+}
+
+void GamePlayScene::DrawLookKeysUI() {
+  if (!railCamera_) {
+    return;
+  }
+  ImGui::SeparatorText("カメラの向き");
+  ImGui::TextDisabled("yaw: 左が負（度） roll: 傾き（度） out: 右へずらす（m）");
+  ImGui::TextDisabled("キーの間は smoothstep、最初と最後のキーの外は 0");
+
+  const float currentT = railCamera_->GetT();
+  const RailCamera::LookKey now = railCamera_->SampleLook(currentT);
+  ImGui::Text("今 t=%.2f  yaw %.1f  roll %.1f  out %.1f", currentT, now.yaw,
+              now.roll, now.out);
+
+  auto &keys = railCamera_->GetLookKeysRef();
+  int eraseIndex = -1;
+  ImGui::PushID("LookKeys");
+  for (size_t i = 0; i < keys.size(); ++i) {
+    ImGui::PushID(static_cast<int>(i));
+    ImGui::SetNextItemWidth(70.0f);
+    ImGui::DragFloat("t", &keys[i].t, 0.01f, 0.0f, 0.0f, "%.2f");
+    ImGui::SameLine();
+    ImGui::SetNextItemWidth(60.0f);
+    ImGui::DragFloat("yaw", &keys[i].yaw, 0.5f, -180.0f, 180.0f, "%.1f");
+    ImGui::SameLine();
+    ImGui::SetNextItemWidth(60.0f);
+    ImGui::DragFloat("roll", &keys[i].roll, 0.5f, -180.0f, 180.0f, "%.1f");
+    ImGui::SameLine();
+    ImGui::SetNextItemWidth(60.0f);
+    ImGui::DragFloat("out", &keys[i].out, 0.1f, -100.0f, 100.0f, "%.1f");
+    ImGui::SameLine();
+    if (ImGui::SmallButton("消す")) {
+      eraseIndex = static_cast<int>(i);
+    }
+    ImGui::PopID();
+  }
+  ImGui::PopID();
+
+  if (eraseIndex >= 0) {
+    keys.erase(keys.begin() + eraseIndex);
+  }
+  // ドラッグ中は並びを変えず、手を離したら t の順に並べ直す
+  if (!ImGui::IsAnyItemActive()) {
+    railCamera_->SortLookKeys();
+  }
+
+  if (ImGui::Button("今の t にキーを足す")) {
+    RailCamera::LookKey key = now;
+    key.t = currentT;
+    keys.push_back(key);
+    railCamera_->SortLookKeys();
+  }
+  ImGui::SameLine();
+  if (ImGui::Button("カメラの向きを保存")) {
+    SaveCameraRail();
+  }
+  ImGui::Spacing();
+}
+
+void GamePlayScene::SaveCameraRail() {
+  nlohmann::json railRoot;
   nlohmann::json waypointsArray = nlohmann::json::array();
+  nlohmann::json lookKeysArray = nlohmann::json::array();
   if (railCamera_) {
     for (const auto &wp : railCamera_->GetWaypoints()) {
       waypointsArray.push_back({wp.x, wp.y, wp.z});
     }
+    for (const auto &key : railCamera_->GetLookKeys()) {
+      lookKeysArray.push_back(
+          {{"t", key.t}, {"yaw", key.yaw}, {"roll", key.roll}, {"out", key.out}});
+    }
   }
-  waypointsRoot["waypoints"] = waypointsArray;
+  railRoot["waypoints"] = waypointsArray;
+  railRoot["lookKeys"] = lookKeysArray;
+  std::filesystem::create_directories("resources/levels");
   std::ofstream railFile("resources/levels/camera_rail.json");
   if (railFile.is_open()) {
-    railFile << std::setw(4) << waypointsRoot << std::endl;
+    railFile << std::setw(4) << railRoot << std::endl;
   }
 }
 
@@ -2458,6 +2534,11 @@ void GamePlayScene::LoadLevel(const std::string &filename) {
       }
       if (oJson.contains("specularScale"))
         obj->SetSpecularScale(oJson["specularScale"]);
+      // テクスチャの繰り返し回数（横, 縦）
+      if (oJson.contains("uvScale")) {
+        obj->SetUVTransform(MakeScaleMatrix(
+            {oJson["uvScale"][0].get<float>(), oJson["uvScale"][1].get<float>(), 1.0f}));
+      }
     }
   }
 
@@ -2475,6 +2556,21 @@ void GamePlayScene::LoadLevel(const std::string &filename) {
         if (railCamera_ && !loadedWaypoints.empty()) {
           railCamera_->Initialize(loadedWaypoints);
         }
+      }
+      // 顔の向きのキー（ないときは振らない）
+      std::vector<RailCamera::LookKey> lookKeys;
+      if (railRoot.contains("lookKeys")) {
+        for (auto &kJson : railRoot["lookKeys"]) {
+          RailCamera::LookKey key;
+          key.t = kJson.value("t", 0.0f);
+          key.yaw = kJson.value("yaw", 0.0f);
+          key.roll = kJson.value("roll", 0.0f);
+          key.out = kJson.value("out", 0.0f);
+          lookKeys.push_back(key);
+        }
+      }
+      if (railCamera_) {
+        railCamera_->SetLookKeys(lookKeys);
       }
     } catch (const nlohmann::json::parse_error &e) {
       Logger::Log(

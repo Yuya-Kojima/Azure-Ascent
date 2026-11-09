@@ -165,6 +165,9 @@ public:
       materialData->uvTransform = uvTransform;
     }
   }
+  Matrix4x4 GetUVTransform() const {
+    return materialData ? materialData->uvTransform : MakeIdentity4x4();
+  }
 
   bool GetEnableLighting() const {
     return materialData ? (materialData->enableLighting != 0) : true;

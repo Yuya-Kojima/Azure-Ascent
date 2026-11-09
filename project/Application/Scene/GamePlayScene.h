@@ -324,6 +324,16 @@ private:
   /// </summary>
   void SaveLevel(const std::string &filename = "level_editor.json");
 
+  /// <summary>
+  /// カメラレール（waypoints と顔の向きのキー）を camera_rail.json に保存
+  /// </summary>
+  void SaveCameraRail();
+
+  /// <summary>
+  /// インスペクターの「カメラの向き」欄（顔の向きのキーの一覧・追加・削除・保存）
+  /// </summary>
+  void DrawLookKeysUI();
+
 private: // メンバ変数(システム用)
 private:
   /*ポインタ参照

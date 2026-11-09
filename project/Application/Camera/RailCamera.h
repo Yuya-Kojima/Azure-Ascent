@@ -90,6 +90,27 @@ private:
   float nearClip_;
   float farClip_;
 
+public:
+  // カメラの顔の向きのキー（レールの進み具合 t ごとに、レールの向きからどれだけ振るか）
+  struct LookKey {
+    float t = 0.0f;    // レールの進み具合
+    float yaw = 0.0f;  // 見る向きをレールの上の軸まわりに振る角度（度、左が負）
+    float roll = 0.0f; // 見る向きの軸まわりに傾ける角度（度）
+    float out = 0.0f;  // カメラをレールの右へずらす距離（m）
+  };
+
+  // キーを t の順に並べて設定する
+  void SetLookKeys(const std::vector<LookKey>& keys);
+  const std::vector<LookKey>& GetLookKeys() const { return lookKeys_; }
+  std::vector<LookKey>& GetLookKeysRef() { return lookKeys_; }
+  // キーを t の順に並べ直す（エディタで t を書き換えた後に呼ぶ）
+  void SortLookKeys();
+  // t の位置の顔の向き。キーの間は smoothstep でつなぎ、最初のキーより前と最後のキーより後は 0
+  LookKey SampleLook(float t) const;
+
+private:
+  std::vector<LookKey> lookKeys_;
+
   // レール移動用
   std::vector<Vector3> waypoints_; // 通過ポイント
   float t_ = 0.0f; // 現在の進行度
