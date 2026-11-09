@@ -18,9 +18,9 @@
 
 形の決まり:
     - 座標はエンジン（glTF）の向きで組み立てる: 上 +Y・前 +Z。Blender へは (x, -z, y) で入れる
-    - 1 本の塔の 3 つの部品をまとめて囲む箱を、軸ごとに -0.5〜0.5 にそろえる。配置の scale に
-      今の __builtin_box と同じ大きさを入れると、箱と同じ範囲に収まる（塔の陰の判定とそろう）
-    - 下の端は雲海の下に隠れる高さ（kBottom）。配置の箱の下の端と同じ所になる
+    - 大きさは m のまま書き出す。scale 1 で、幅 約 16〜24m・雲海から上 約 130m の塔になる
+    - 原点は雲海の面の高さ（Y = 0）の、岩の柱の中心。岩は雲海の下 kBottom まで埋まる。
+      1 本の塔の 3 つの部品は同じ原点なので、同じ位置・向き・大きさで置くと重なる
     - 灯りは塔の ±X と -Z の 3 面に縦一列で置く。どちら側に立てても、レールから見える面に灯りがある
 """
 import bpy
@@ -32,7 +32,7 @@ import sys
 
 from mathutils import Vector, noise
 
-# 組み立てるときの塔の大きさ（m）。書き出すときに軸ごとに 1 へそろえる
+# 塔の雲海から上の高さ・幅・雲海の下に埋まる深さ（m）
 kHeight = 130.0
 kWidth = 16.0
 kBottom = -20.0
@@ -47,7 +47,7 @@ kRockBumpFine = 0.12
 kRockLedgeCount = 9
 kRockLedgeOut = 0.10
 kRockLedgeThickness = 0.18
-# 中心のずれ（幅に対する割合）。大きいと囲む箱が広がり、岩が箱より細く見える
+# 高さごとの中心のずれ（幅に対する割合）
 kRockLean = 0.15
 # 天辺の丸め: 始める高さ（割合）と、細くなる速さ
 kRockTipStart = 0.92
@@ -270,7 +270,7 @@ def add_replacement(mach, light, rock, cut, top, rnd):
 
 
 def build_tower(level, seed):
-    """侵され具合 level の塔を、岩・機械・灯りの 3 つの Builder で返す"""
+    """侵され具合 level の塔を、岩の形と、岩・機械・灯りの 3 つの Builder で返す"""
     rnd = random.Random(seed * 31 + int(level * 100))
     replace = max(0.0, (level - kReplaceFrom) / (1.0 - kReplaceFrom))
     cut = kHeight * (1.0 - kReplaceDepth * replace * rnd.uniform(0.8, 1.1)) if replace > 0.0 else kHeight
@@ -287,7 +287,13 @@ def build_tower(level, seed):
         add_wrap(mach, light, rock_shape, cut, cover, rnd)
     if replace > 0.0:
         add_replacement(mach, light, rock_shape, cut, kHeight * rnd.uniform(0.95, 1.0), rnd)
-    return rock, mach, light
+    return rock_shape, rock, mach, light
+
+
+def origin_of(rock_shape):
+    """雲海の面の高さ（Y = 0）の、岩の柱の中心"""
+    ox, oz = rock_shape.offset(rock_shape.u_of(0.0))
+    return (ox, 0.0, oz)
 
 
 def bounds(builders):
@@ -297,12 +303,12 @@ def bounds(builders):
     return lo, hi
 
 
-def to_mesh(name, builder, lo, hi):
-    """囲む箱 lo〜hi を軸ごとに -0.5〜0.5 にそろえて、三角形のメッシュにする"""
+def to_mesh(name, builder, origin):
+    """原点 origin を (0, 0, 0) へ移して、三角形のメッシュにする"""
     bm = bmesh.new()
     verts = []
     for p in builder.points:
-        q = [(p[i] - (lo[i] + hi[i]) * 0.5) / (hi[i] - lo[i]) for i in range(3)]
+        q = [p[i] - origin[i] for i in range(3)]
         verts.append(bm.verts.new(to_blender(q)))
     for f in builder.faces:
         bm.faces.new([verts[i] for i in f])
@@ -328,7 +334,7 @@ def report(name, mesh):
     ys = [v.co.y for v in mesh.vertices]
     zs = [v.co.z for v in mesh.vertices]
     # 表示はエンジンの軸（X・高さ Y・奥 Z）に直す
-    print("[rock] %-26s 三角形 %5d  X %.3f〜%.3f  Y %.3f〜%.3f  Z %.3f〜%.3f  閉じている %s" % (
+    print("[rock] %-26s 三角形 %5d  X %6.1f〜%5.1f  Y %6.1f〜%5.1f  Z %6.1f〜%5.1f m  閉じている %s" % (
         name, len(mesh.polygons), min(xs), max(xs), min(zs), max(zs), -max(ys), -min(ys), is_closed(mesh)))
 
 
@@ -353,15 +359,15 @@ def export_mesh(mesh, output_dir, name):
     bpy.data.objects.remove(obj)
 
 
-def export_set(output_dir, name, parts):
-    """部品（名前の末尾, Builder）をまとめて囲む箱でそろえ、空でない部品を書き出す"""
+def export_set(output_dir, name, parts, origin):
+    """部品（名前の末尾, Builder）を同じ原点で、空でない物だけ書き出す"""
     used = [(suffix, b) for suffix, b in parts if b.faces]
     lo, hi = bounds([b for _, b in used])
-    print("[rock] %-26s 組み立てたときの大きさ 幅 %.1f 高さ %.1f 奥 %.1f m" % (
+    print("[rock] %-26s 全体の大きさ 幅 %.1f 高さ %.1f 奥 %.1f m" % (
         name, hi[0] - lo[0], hi[1] - lo[1], hi[2] - lo[2]))
     for suffix, b in used:
         full = name + suffix
-        mesh = to_mesh(full, b, lo, hi)
+        mesh = to_mesh(full, b, origin)
         report(full, mesh)
         export_mesh(mesh, output_dir, full)
 
@@ -380,14 +386,15 @@ def main():
 
     for stage, level in enumerate(kLevels):
         for k, letter in enumerate(kVariants):
-            rock, mach, light = build_tower(level, 10 * stage + k + 1)
+            rock_shape, rock, mach, light = build_tower(level, 10 * stage + k + 1)
             export_set(output_dir, "rock_tower_s%d_%s" % (stage, letter),
-                       [("_rock", rock), ("_machine", mach), ("_light", light)])
+                       [("_rock", rock), ("_machine", mach), ("_light", light)], origin_of(rock_shape))
 
     for i, (height, width, seed) in enumerate(kSmallRocks):
         b = Builder()
-        RockShape(height, width, seed).build(b)
-        export_set(output_dir, "rock_small_%d" % (i + 1), [("", b)])
+        shape = RockShape(height, width, seed)
+        shape.build(b)
+        export_set(output_dir, "rock_small_%d" % (i + 1), [("", b)], origin_of(shape))
 
 
 main()

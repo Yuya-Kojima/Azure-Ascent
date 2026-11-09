@@ -36,23 +36,23 @@
 		{
 			"bufferView":0,
 			"componentType":5126,
-			"count":1712,
+			"count":1824,
 			"max":[
-				0.5,
-				0.4303385317325592,
-				0.4356711208820343
+				11.88361930847168,
+				119.55078125,
+				8.083039283752441
 			],
 			"min":[
-				-0.427901953458786,
-				-0.09114891290664673,
-				-0.5
+				-7.202060699462891,
+				41.32766342163086,
+				-10.939915657043457
 			],
 			"type":"VEC3"
 		},
 		{
 			"bufferView":1,
 			"componentType":5126,
-			"count":1712,
+			"count":1824,
 			"type":"VEC3"
 		},
 		{
@@ -65,26 +65,26 @@
 	"bufferViews":[
 		{
 			"buffer":0,
-			"byteLength":20544,
+			"byteLength":21888,
 			"byteOffset":0,
 			"target":34962
 		},
 		{
 			"buffer":0,
-			"byteLength":20544,
-			"byteOffset":20544,
+			"byteLength":21888,
+			"byteOffset":21888,
 			"target":34962
 		},
 		{
 			"buffer":0,
 			"byteLength":5112,
-			"byteOffset":41088,
+			"byteOffset":43776,
 			"target":34963
 		}
 	],
 	"buffers":[
 		{
-			"byteLength":46200,
+			"byteLength":48888,
 			"uri":"rock_tower_s2_a_machine.bin"
 		}
 	]

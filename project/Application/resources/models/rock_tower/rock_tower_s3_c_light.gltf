@@ -36,23 +36,23 @@
 		{
 			"bufferView":0,
 			"componentType":5126,
-			"count":552,
+			"count":554,
 			"max":[
-				0.37141430377960205,
-				0.39124009013175964,
-				0.3425600230693817
+				7.549042701721191,
+				121.47367858886719,
+				6.412479877471924
 			],
 			"min":[
-				-0.3585512936115265,
-				-0.22358141839504242,
-				-0.38280174136161804
+				-9.32706069946289,
+				23.87813377380371,
+				-7.774338245391846
 			],
 			"type":"VEC3"
 		},
 		{
 			"bufferView":1,
 			"componentType":5126,
-			"count":552,
+			"count":554,
 			"type":"VEC3"
 		},
 		{
@@ -65,26 +65,26 @@
 	"bufferViews":[
 		{
 			"buffer":0,
-			"byteLength":6624,
+			"byteLength":6648,
 			"byteOffset":0,
 			"target":34962
 		},
 		{
 			"buffer":0,
-			"byteLength":6624,
-			"byteOffset":6624,
+			"byteLength":6648,
+			"byteOffset":6648,
 			"target":34962
 		},
 		{
 			"buffer":0,
 			"byteLength":1656,
-			"byteOffset":13248,
+			"byteOffset":13296,
 			"target":34963
 		}
 	],
 	"buffers":[
 		{
-			"byteLength":14904,
+			"byteLength":14952,
 			"uri":"rock_tower_s3_c_light.bin"
 		}
 	]

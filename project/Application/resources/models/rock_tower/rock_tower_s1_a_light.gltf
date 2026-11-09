@@ -36,23 +36,23 @@
 		{
 			"bufferView":0,
 			"componentType":5126,
-			"count":312,
+			"count":314,
 			"max":[
-				0.3609094023704529,
-				0.4043595492839813,
-				0.35530170798301697
+				6.213305473327637,
+				115.6539306640625,
+				6.96121883392334
 			],
 			"min":[
-				-0.42517462372779846,
-				-0.15934954583644867,
-				-0.4585612118244171
+				-8.696648597717285,
+				31.09756851196289,
+				-9.381893157958984
 			],
 			"type":"VEC3"
 		},
 		{
 			"bufferView":1,
 			"componentType":5126,
-			"count":312,
+			"count":314,
 			"type":"VEC3"
 		},
 		{
@@ -65,26 +65,26 @@
 	"bufferViews":[
 		{
 			"buffer":0,
-			"byteLength":3744,
+			"byteLength":3768,
 			"byteOffset":0,
 			"target":34962
 		},
 		{
 			"buffer":0,
-			"byteLength":3744,
-			"byteOffset":3744,
+			"byteLength":3768,
+			"byteOffset":3768,
 			"target":34962
 		},
 		{
 			"buffer":0,
 			"byteLength":936,
-			"byteOffset":7488,
+			"byteOffset":7536,
 			"target":34963
 		}
 	],
 	"buffers":[
 		{
-			"byteLength":8424,
+			"byteLength":8472,
 			"uri":"rock_tower_s1_a_light.bin"
 		}
 	]
