@@ -1,4 +1,4 @@
-"""文字カード（ステージ開始演出の目標・ゲームオーバー・拠点に戻ったあとの UI・長押しスキップ）と評価の UI の文字画像を書き出す
+"""文字カード（ステージ開始演出の目標・ゲームオーバー・拠点に戻ったあとの UI・長押しスキップ）と評価の UI・ポーズ画面の文字画像を書き出す
 
 エンジンのフォントは ASCII しか焼いていないので、日本語の文字は画像にして Sprite で出す。
 M PLUS 1p Black で文字を描き、上から下への色のグラデーションと、縁のうっすらした光（明るい背景に置く文字は暗い影）をつける。
@@ -21,6 +21,7 @@ INTRO_DIR = ROOT / "Application/resources/UI/StageIntro"
 GAME_OVER_DIR = ROOT / "Application/resources/UI/GameOver"
 COMMON_DIR = ROOT / "Application/resources/UI/Common"
 SCORE_DIR = ROOT / "Application/resources/UI/Score"
+PAUSE_DIR = ROOT / "Application/resources/UI/Pause"
 
 # 文字の色: (上の色, 下の色, 縁の光の色)。上 → 下のグラデーション
 GOLD = ((255, 247, 220), (232, 196, 110), (255, 214, 130))  # 淡い金色（出撃）
@@ -56,7 +57,7 @@ TEXTS = [
     # プレイ中の HUD
     (SCORE_DIR, "hud_score", "スコア", 18, 0.1, 4, FADED_GOLD_SHADOWED),
     (SCORE_DIR, "hud_boss", "ボス", 18, 0.1, 4, RED_SHADOWED),
-    (SCORE_DIR, "max_lock_word", "一網打尽", 28, 0.3, 6, GOLD),
+    (SCORE_DIR, "max_lock_word", "FULL LOCK", 28, 0.2, 6, GOLD),
     # リザルト
     (SCORE_DIR, "result_reclaim", "奪還", 20, 0.2, 4, FADED_GOLD_SHADOWED),
     (SCORE_DIR, "label_kills", "撃破", 22, 0.1, 4, FADED_GOLD_SHADOWED),
@@ -76,7 +77,7 @@ TEXTS = [
     (SCORE_DIR, "hint_section1", "空路の中盤で敵を逃している", 19, 0.06, 4, PALE_SHADOWED),
     (SCORE_DIR, "hint_section2", "空路の終盤で敵を逃している", 19, 0.06, 4, PALE_SHADOWED),
     (SCORE_DIR, "hint_perfect", "全機撃墜", 19, 0.1, 4, PALE_SHADOWED),
-    (SCORE_DIR, "choice_again", "もう一度飛ぶ", 30, 0.12, 5, GOLD_SHADOWED),
+    (SCORE_DIR, "choice_again", "リトライ", 30, 0.12, 5, GOLD_SHADOWED),
     (SCORE_DIR, "choice_base", "拠点へ戻る", 30, 0.12, 5, GOLD_SHADOWED),
     # 出撃前の確認画面（説明文は仮。1 行ずつ画像にする）
     (SCORE_DIR, "brief_desc0", "機械に呑まれた天空の、いちばん低い空域。", 17, 0.04, 4, PALE_SHADOWED),
@@ -94,6 +95,14 @@ TEXTS = [
     (SCORE_DIR, "rank_a", "A", 120, 0.0, 10, GOLD),
     (SCORE_DIR, "rank_b", "B", 120, 0.0, 10, GOLD),
     (SCORE_DIR, "rank_c", "C", 120, 0.0, 10, GOLD),
+    # ポーズ画面（選択肢「リトライ」「拠点へ戻る」はリザルトの画像を使う）
+    (PAUSE_DIR, "pause_title", "一時停止", 30, 0.25, 5, GOLD_SHADOWED),
+    (PAUSE_DIR, "pause_resume", "再開", 30, 0.12, 5, GOLD_SHADOWED),
+    (PAUSE_DIR, "pause_warn", "今回の記録は残りません", 19, 0.06, 4, PALE_SHADOWED),
+    (PAUSE_DIR, "pause_ask_again", "リトライしますか？", 24, 0.08, 4, GOLD_SHADOWED),
+    (PAUSE_DIR, "pause_ask_base", "拠点へ戻りますか？", 24, 0.08, 4, GOLD_SHADOWED),
+    (PAUSE_DIR, "pause_yes", "はい", 30, 0.12, 5, GOLD_SHADOWED),
+    (PAUSE_DIR, "pause_no", "いいえ", 30, 0.12, 5, GOLD_SHADOWED),
 ]
 
 # 数字の画像: (書き出し先, ファイル名, 文字の大きさ px, 縁のぼかし半径 px, 色)。64px で描いて縮めて使う

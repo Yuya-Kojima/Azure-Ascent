@@ -18,6 +18,21 @@ bool IsSkipHeld(Input *input) {
          input->IsPadPress(PadButton::Start);
 }
 
+bool IsPauseTriggered(Input *input) {
+  if (SceneManager::GetInstance()->IsTransitioning()) {
+    return false;
+  }
+  return input->IsTriggerKey(DIK_ESCAPE) || input->IsPadTrigger(PadButton::Start);
+}
+
+bool IsBackTriggered(Input *input) {
+  if (SceneManager::GetInstance()->IsTransitioning()) {
+    return false;
+  }
+  return input->IsTriggerKey(DIK_ESCAPE) || input->IsPadTrigger(PadButton::Start) ||
+         input->IsPadTrigger(PadButton::B);
+}
+
 bool IsUpTriggered(Input *input) {
   return input->IsTriggerKey(DIK_W) || input->IsTriggerKey(DIK_UP) ||
          input->IsPadTrigger(PadButton::DPadUp);

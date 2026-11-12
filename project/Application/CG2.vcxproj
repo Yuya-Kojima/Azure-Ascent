@@ -211,6 +211,7 @@ copy "$(WindowsSdkDir)bin\$(TargetPlatformVersion)\x64\dxil.dll" "$(TargetDir)dx
     <ClCompile Include="Scene\UiPlate.cpp" />
     <ClCompile Include="Scene\GameHud.cpp" />
     <ClCompile Include="Scene\ResultSequence.cpp" />
+    <ClCompile Include="Scene\PauseMenu.cpp" />
     <ClCompile Include="Scene\StageSelectLightning.cpp" />
     <ClCompile Include="Scene\StageSelectReturnSky.cpp" />
     <ClCompile Include="Scene\StageLighting.cpp" />
@@ -383,6 +384,7 @@ copy "$(WindowsSdkDir)bin\$(TargetPlatformVersion)\x64\dxil.dll" "$(TargetDir)dx
     <ClInclude Include="Scene\UiPlate.h" />
     <ClInclude Include="Scene\GameHud.h" />
     <ClInclude Include="Scene\ResultSequence.h" />
+    <ClInclude Include="Scene\PauseMenu.h" />
     <ClInclude Include="Score\VolleyId.h" />
     <ClInclude Include="Scene\DarkCloudTransition.h" />
     <ClInclude Include="Scene\StageSelectLightning.h" />
