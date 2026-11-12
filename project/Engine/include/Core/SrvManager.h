@@ -58,6 +58,11 @@ public:
 
   void PreDraw();
 
+  /// <summary>
+  /// 指定した命令の列に SRV ヒープを積む（GetCommandList 以外の列に積むときに使う）
+  /// </summary>
+  void PreDraw(ID3D12GraphicsCommandList *commandList);
+
   void SetGraphicsRootDescriptorTable(UINT rootParameterIndex,
                                       uint32_t srvIndex);
 

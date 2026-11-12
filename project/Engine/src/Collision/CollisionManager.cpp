@@ -33,6 +33,7 @@ void CollisionManager::Update() {
 }
 
 void CollisionManager::DrawDebug() {
+  if (!isDebugDrawEnabled_) return;
   for (Collider *collider : colliders_) {
     if (!collider->IsEnable()) continue;
     collider->DrawDebug();

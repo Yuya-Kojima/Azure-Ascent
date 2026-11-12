@@ -10,8 +10,6 @@ void BossWeakPoint::Initialize() {
     Enemy::Initialize();
     
     hp_ = 1; // 1発で壊れるように
-    
-    SetTag(ActorTag::LockOnTarget);
     baseColor_ = {1.0f, 0.2f, 0.2f, 1.0f}; // 赤く発光する的
     transform_.scale = {3.0f, 3.0f, 3.0f};
     

@@ -76,3 +76,13 @@ std::vector<BaseActor*> ActorManager::FindActorsWithTag(ActorTag tag) {
     }
     return result;
 }
+
+std::vector<BaseActor*> ActorManager::FindActorsIf(const std::function<bool(BaseActor*)>& condition) {
+    std::vector<BaseActor*> result;
+    for (const auto& actor : actors_) {
+        if (!actor->IsDead() && condition(actor.get())) {
+            result.push_back(actor.get());
+        }
+    }
+    return result;
+}

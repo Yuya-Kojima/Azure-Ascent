@@ -74,7 +74,8 @@ public:
     float rimPower = 3.0f; // 大きいほど縁の細い範囲だけ光る
     float backRimScale = 0.0f; // 平行光源の逆光の縁を掛ける倍率（0で無効）
     float specularScale = 1.0f; // 鏡面反射の倍率（0で鏡面反射なし）
-    float padding3 = 0.0f;
+    // ライティングなしのときの描き方: 0=中心が白く光る描き方, 1=色をそのまま出す
+    float flatUnlit = 0.0f;
     // 模様の光（テクスチャの水色の所に足す光）: rgb=色, w=強さ(0で無効)
     Vector4 patternGlow = {0.0f, 0.0f, 0.0f, 0.0f};
     // 模様とみなす水色らしさ（min(緑, 青) − 赤。リニアの色）: x=光り始める値, y=光りきる値, zw=未使用
@@ -111,9 +112,9 @@ public:
                               const ModelData &modelData);
 
   /// <summary>
-  /// 描画
+  /// 描画（指定した命令の列に、頂点・テクスチャ・描画の命令を積む）
   /// </summary>
-  void Draw(const SkinCluster* skinCluster = nullptr);
+  void Draw(ID3D12GraphicsCommandList *commandList, const SkinCluster *skinCluster = nullptr);
 
 private:
   ModelRenderer *modelRenderer_;

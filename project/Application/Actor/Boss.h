@@ -51,7 +51,7 @@ public:
 
   bool HasActiveBits() const { return !activeBits_.empty(); }
 
-  bool IsLockOnTarget() const override { return false; }
+  bool CanBeLockedOn() const override { return false; }
 
   // 表示用の3Dモデルを外から渡してセットする（overrideで確実にこちらが呼ばれる）
   void SetModel(std::unique_ptr<Object3d> model) override {

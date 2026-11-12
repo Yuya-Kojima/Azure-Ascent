@@ -9,7 +9,7 @@ void BossCore::Initialize() {
   hp_ = 99999; 
   
   // 初期状態では装甲に守られているためロックオン不可にする
-  SetTag(ActorTag::Untagged);
+  lockable_ = false;
 }
 
 void BossCore::Update() {
@@ -46,7 +46,7 @@ void BossCore::Update() {
     
     // 突進中、形態変化中、もしくはボスの死亡演出以降は強制的にロックオン不可＆暗くする
     if (boss_->IsDashing() || boss_->IsTransitioning() || boss_->IsDyingOrDefeated()) {
-        SetTag(ActorTag::Enemy);
+        lockable_ = false;
         if (boss_->IsDyingOrDefeated()) {
             baseColor_ = {0.1f, 0.1f, 0.1f, 1.0f}; // より暗くして完全な機能停止を表現
         } else {
@@ -54,13 +54,7 @@ void BossCore::Update() {
         }
     } else {
         // 全ての装甲が破壊されたら全コアを一斉にロックオン可能にする
-        if (!boss_->HasActiveBits()) {
-            if (GetTag() != ActorTag::LockOnTarget) {
-                SetTag(ActorTag::LockOnTarget);
-            }
-        } else {
-            SetTag(ActorTag::Enemy);
-        }
+        lockable_ = !boss_->HasActiveBits();
         baseColor_ = {1.0f, 1.0f, 1.0f, 1.0f};
     }
   }

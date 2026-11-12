@@ -1,0 +1,3 @@
+newmtl tower_panel
+Kd 1.0 1.0 1.0
+map_Kd tower_panel_grid.png

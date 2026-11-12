@@ -167,8 +167,13 @@ copy "$(WindowsSdkDir)bin\$(TargetPlatformVersion)\x64\dxil.dll" "$(TargetDir)dx
     <ClCompile Include="Actor\Boss.cpp" />
     <ClCompile Include="Actor\BossBit.cpp" />
     <ClCompile Include="Actor\BossWeakPoint.cpp" />
+    <ClCompile Include="Actor\EnemyPart.cpp" />
+    <ClCompile Include="Actor\FloatingFortress.cpp" />
+    <ClCompile Include="Actor\InterceptCue.cpp" />
+    <ClCompile Include="Actor\MechSerpent.cpp" />
     <ClCompile Include="Actor\BossCore.cpp" />
     <ClCompile Include="Actor\Enemy.cpp" />
+    <ClCompile Include="Actor\EnemyLights.cpp" />
     <ClCompile Include="Actor\EnemyBullet.cpp" />
     <ClCompile Include="Framework\PrefabManager.cpp" />
     <ClCompile Include="Effect\EffectManager.cpp" />
@@ -181,6 +186,7 @@ copy "$(WindowsSdkDir)bin\$(TargetPlatformVersion)\x64\dxil.dll" "$(TargetDir)dx
     <ClCompile Include="Actor\HomingBullet.cpp" />
     <ClCompile Include="Actor\LockOn.cpp" />
     <ClCompile Include="Actor\NormalBullet.cpp" />
+    <ClCompile Include="Camera\SerpentCameraDirector.cpp" />
     <ClCompile Include="Camera\RailCamera.cpp" />
     <ClCompile Include="Core\Game.cpp" />
     <ClCompile Include="Actor\Player.cpp" />
@@ -193,6 +199,7 @@ copy "$(WindowsSdkDir)bin\$(TargetPlatformVersion)\x64\dxil.dll" "$(TargetDir)dx
     <ClCompile Include="Scene\StageSelectScene.cpp" />
     <ClCompile Include="Scene\DebugScene.cpp" />
     <ClCompile Include="Scene\FractureTestScene.cpp" />
+    <ClCompile Include="Scene\ZakoViewScene.cpp" />
     <ClCompile Include="Scene\GamePlayScene.cpp" />
     <ClCompile Include="Scene\StageIntro.cpp" />
     <ClCompile Include="Scene\CaptionCard.cpp" />
@@ -207,6 +214,7 @@ copy "$(WindowsSdkDir)bin\$(TargetPlatformVersion)\x64\dxil.dll" "$(TargetDir)dx
     <ClCompile Include="Scene\UiPlate.cpp" />
     <ClCompile Include="Scene\GameHud.cpp" />
     <ClCompile Include="Scene\ResultSequence.cpp" />
+    <ClCompile Include="Scene\PauseMenu.cpp" />
     <ClCompile Include="Scene\StageSelectLightning.cpp" />
     <ClCompile Include="Scene\StageSelectReturnSky.cpp" />
     <ClCompile Include="Scene\StageLighting.cpp" />
@@ -258,6 +266,22 @@ copy "$(WindowsSdkDir)bin\$(TargetPlatformVersion)\x64\dxil.dll" "$(TargetDir)dx
       <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Pixel</ShaderType>
       <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Pixel</ShaderType>
       <ShaderType Condition="'$(Configuration)|$(Platform)'=='Development|x64'">Pixel</ShaderType>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Development|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
+    </FxCompile>
+    <FxCompile Include="resources\shaders\Object3d.DepthPrepass.PS.hlsl">
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Pixel</ShaderType>
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Pixel</ShaderType>
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Development|x64'">Pixel</ShaderType>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Development|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
+    </FxCompile>
+    <FxCompile Include="resources\shaders\LightCulling.CS.hlsl">
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Compute</ShaderType>
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Compute</ShaderType>
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Development|x64'">Compute</ShaderType>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Development|x64'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
@@ -318,8 +342,14 @@ copy "$(WindowsSdkDir)bin\$(TargetPlatformVersion)\x64\dxil.dll" "$(TargetDir)dx
     <ClInclude Include="Actor\Boss.h" />
     <ClInclude Include="Actor\BossBit.h" />
     <ClInclude Include="Actor\BossWeakPoint.h" />
+    <ClInclude Include="Actor\EnemyPart.h" />
+    <ClInclude Include="Actor\FloatingFortress.h" />
+    <ClInclude Include="Actor\ILockOnHittable.h" />
+    <ClInclude Include="Actor\InterceptCue.h" />
+    <ClInclude Include="Actor\MechSerpent.h" />
     <ClInclude Include="Actor\BossCore.h" />
     <ClInclude Include="Actor\Enemy.h" />
+    <ClInclude Include="Actor\EnemyLights.h" />
     <ClInclude Include="Actor\EnemyBullet.h" />
     <ClInclude Include="Framework\PrefabManager.h" />
     <ClInclude Include="Effect\EffectManager.h" />
@@ -332,6 +362,7 @@ copy "$(WindowsSdkDir)bin\$(TargetPlatformVersion)\x64\dxil.dll" "$(TargetDir)dx
     <ClInclude Include="Actor\HomingBullet.h" />
     <ClInclude Include="Actor\LockOn.h" />
     <ClInclude Include="Actor\NormalBullet.h" />
+    <ClInclude Include="Camera\SerpentCameraDirector.h" />
     <ClInclude Include="Camera\RailCamera.h" />
     <ClInclude Include="Core\Game.h" />
     <ClInclude Include="Core\GameTime.h" />
@@ -345,6 +376,7 @@ copy "$(WindowsSdkDir)bin\$(TargetPlatformVersion)\x64\dxil.dll" "$(TargetDir)dx
     <ClInclude Include="Scene\StageSelectScene.h" />
     <ClInclude Include="Scene\DebugScene.h" />
     <ClInclude Include="Scene\FractureTestScene.h" />
+    <ClInclude Include="Scene\ZakoViewScene.h" />
     <ClInclude Include="Scene\GamePlayScene.h" />
     <ClInclude Include="Scene\StageIntro.h" />
     <ClInclude Include="Scene\CaptionCard.h" />
@@ -359,6 +391,7 @@ copy "$(WindowsSdkDir)bin\$(TargetPlatformVersion)\x64\dxil.dll" "$(TargetDir)dx
     <ClInclude Include="Scene\UiPlate.h" />
     <ClInclude Include="Scene\GameHud.h" />
     <ClInclude Include="Scene\ResultSequence.h" />
+    <ClInclude Include="Scene\PauseMenu.h" />
     <ClInclude Include="Score\VolleyId.h" />
     <ClInclude Include="Scene\DarkCloudTransition.h" />
     <ClInclude Include="Scene\StageSelectLightning.h" />
@@ -376,6 +409,11 @@ copy "$(WindowsSdkDir)bin\$(TargetPlatformVersion)\x64\dxil.dll" "$(TargetDir)dx
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
     </None>
     <None Include="resources\shaders\Skybox.hlsli">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Development|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
+    </None>
+    <None Include="resources\shaders\LightCulling.hlsli">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Development|x64'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>

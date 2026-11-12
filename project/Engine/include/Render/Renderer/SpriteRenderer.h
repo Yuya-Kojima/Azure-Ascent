@@ -30,8 +30,6 @@ public:
 private:
   ID3D12Device *device_ = nullptr;
 
-  ID3D12GraphicsCommandList *commandList_ = nullptr;
-
   // ルートシグネチャ
   Microsoft::WRL::ComPtr<ID3D12RootSignature> rootSignature_ = nullptr;
 

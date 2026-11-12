@@ -36,11 +36,16 @@ public:
   void Update();
 
   /// <summary>
-  /// 描画
+  /// 描画。3D の描画の列（B）に積み、深度だけの描画を記録中なら P にも同じ物を積む
   /// </summary>
   void Draw();
 
 private:
+  /// <summary>
+  /// 指定した命令の列に、ルートの設定（0〜11）とモデルの描画を積む
+  /// </summary>
+  void RecordDraw(ID3D12GraphicsCommandList *commandList);
+
   Object3dRenderer *object3dRenderer_ = nullptr;
 
   Dx12Core *dx12Core_ = nullptr;
@@ -109,6 +114,8 @@ private:
       {0.0f, 0.0f, 0.0f},
       {0.0f, 0.0f, 0.0f},
   };
+  Quaternion rotationQuaternion_{0.0f, 0.0f, 0.0f, 1.0f};
+  bool useRotationQuaternion_ = false; // true の間は transform_.rotate の代わりに rotationQuaternion_ で回す
 
   Animation currentAnimation_;
   float animationTime_ = 0.0f;
@@ -130,6 +137,28 @@ public:
   Vector3 GetRotation() const { return transform_.rotate; }
 
   void SetRotation(const Vector3 &rotate) { transform_.rotate = rotate; }
+
+  /// <summary>
+  /// 回転をクォータニオンで渡す（ClearRotationQuaternion を呼ぶまで、角度の回転より優先する）
+  /// </summary>
+  void SetRotationQuaternion(const Quaternion &rotate) {
+    rotationQuaternion_ = rotate;
+    useRotationQuaternion_ = true;
+  }
+
+  /// <summary>
+  /// 角度の回転に戻す
+  /// </summary>
+  void ClearRotationQuaternion() { useRotationQuaternion_ = false; }
+
+  /// <summary>
+  /// 拡大・回転・位置の行列（親を掛ける前。クォータニオンを渡していればそれで回す）
+  /// </summary>
+  Matrix4x4 MakeTransformMatrix() const {
+    return useRotationQuaternion_
+               ? MakeAffineMatrix(transform_.scale, rotationQuaternion_, transform_.translate)
+               : MakeAffineMatrix(transform_.scale, transform_.rotate, transform_.translate);
+  }
 
   // translation
   Vector3 GetTranslation() const { return transform_.translate; }
@@ -160,6 +189,9 @@ public:
       materialData->uvTransform = uvTransform;
     }
   }
+  Matrix4x4 GetUVTransform() const {
+    return materialData ? materialData->uvTransform : MakeIdentity4x4();
+  }
 
   bool GetEnableLighting() const {
     return materialData ? (materialData->enableLighting != 0) : true;
@@ -168,6 +200,15 @@ public:
   void SetEnableLighting(bool enable) {
     if (materialData) {
       materialData->enableLighting = enable ? 1 : 0;
+    }
+  }
+
+  /// <summary>
+  /// ライティングなしのときに、色をそのまま出すか（false で中心が白く光る描き方）
+  /// </summary>
+  void SetFlatUnlit(bool flat) {
+    if (materialData) {
+      materialData->flatUnlit = flat ? 1.0f : 0.0f;
     }
   }
 

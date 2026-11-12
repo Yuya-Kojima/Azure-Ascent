@@ -122,31 +122,33 @@ void NormalBullet::Draw3D() {
 
 #ifdef USE_IMGUI
     // ==== デバッグ描画 ====
-    LineRenderer* lineRenderer = LineRenderer::GetInstance();
-    int segments = 16;
-    float angleStep = 2.0f * 3.14159265f / segments;
-    Vector4 color = {0.0f, 0.0f, 1.0f, 1.0f}; 
-    float radius = 0.5f;
-    Vector3 pos = object3d_->GetTranslation();
+    if (CollisionManager::GetInstance()->IsDebugDrawEnabled()) {
+      LineRenderer* lineRenderer = LineRenderer::GetInstance();
+      int segments = 16;
+      float angleStep = 2.0f * 3.14159265f / segments;
+      Vector4 color = {0.0f, 0.0f, 1.0f, 1.0f}; 
+      float radius = 0.5f;
+      Vector3 pos = object3d_->GetTranslation();
 
-    for (int i = 0; i < segments; ++i) {
-      float angle1 = i * angleStep;
-      float angle2 = (i + 1) * angleStep;
+      for (int i = 0; i < segments; ++i) {
+        float angle1 = i * angleStep;
+        float angle2 = (i + 1) * angleStep;
 
-      // XY plane
-      Vector3 p1_xy = {pos.x + std::cos(angle1) * radius, pos.y + std::sin(angle1) * radius, pos.z};
-      Vector3 p2_xy = {pos.x + std::cos(angle2) * radius, pos.y + std::sin(angle2) * radius, pos.z};
-      lineRenderer->DrawLine(p1_xy, p2_xy, color);
+        // XY plane
+        Vector3 p1_xy = {pos.x + std::cos(angle1) * radius, pos.y + std::sin(angle1) * radius, pos.z};
+        Vector3 p2_xy = {pos.x + std::cos(angle2) * radius, pos.y + std::sin(angle2) * radius, pos.z};
+        lineRenderer->DrawLine(p1_xy, p2_xy, color);
 
-      // XZ plane
-      Vector3 p1_xz = {pos.x + std::cos(angle1) * radius, pos.y, pos.z + std::sin(angle1) * radius};
-      Vector3 p2_xz = {pos.x + std::cos(angle2) * radius, pos.y, pos.z + std::sin(angle2) * radius};
-      lineRenderer->DrawLine(p1_xz, p2_xz, color);
+        // XZ plane
+        Vector3 p1_xz = {pos.x + std::cos(angle1) * radius, pos.y, pos.z + std::sin(angle1) * radius};
+        Vector3 p2_xz = {pos.x + std::cos(angle2) * radius, pos.y, pos.z + std::sin(angle2) * radius};
+        lineRenderer->DrawLine(p1_xz, p2_xz, color);
 
-      // YZ plane
-      Vector3 p1_yz = {pos.x, pos.y + std::cos(angle1) * radius, pos.z + std::sin(angle1) * radius};
-      Vector3 p2_yz = {pos.x, pos.y + std::cos(angle2) * radius, pos.z + std::sin(angle2) * radius};
-      lineRenderer->DrawLine(p1_yz, p2_yz, color);
+        // YZ plane
+        Vector3 p1_yz = {pos.x, pos.y + std::cos(angle1) * radius, pos.z + std::sin(angle1) * radius};
+        Vector3 p2_yz = {pos.x, pos.y + std::cos(angle2) * radius, pos.z + std::sin(angle2) * radius};
+        lineRenderer->DrawLine(p1_yz, p2_yz, color);
+      }
     }
 #endif
   }

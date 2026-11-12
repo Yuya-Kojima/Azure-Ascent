@@ -96,6 +96,12 @@
     <ClCompile Include="src\Render\Renderer\Object3dRenderer.cpp">
       <Filter>ソース ファイル</Filter>
     </ClCompile>
+    <ClCompile Include="src\Render\Light\LightManager.cpp">
+      <Filter>ソース ファイル</Filter>
+    </ClCompile>
+    <ClCompile Include="src\Render\Light\TiledLightCuller.cpp">
+      <Filter>ソース ファイル</Filter>
+    </ClCompile>
     <ClCompile Include="src\Core\ResourceObject.cpp">
       <Filter>ソース ファイル</Filter>
     </ClCompile>
@@ -320,6 +326,12 @@
     <ClInclude Include="include\Render\Renderer\Object3dRenderer.h">
       <Filter>ヘッダー ファイル</Filter>
     </ClInclude>
+    <ClInclude Include="include\Render\Light\LightManager.h">
+      <Filter>ヘッダー ファイル</Filter>
+    </ClInclude>
+    <ClInclude Include="include\Render\Light\TiledLightCuller.h">
+      <Filter>ヘッダー ファイル</Filter>
+    </ClInclude>
     <ClInclude Include="include\Core\ResourceObject.h">
       <Filter>ヘッダー ファイル</Filter>
     </ClInclude>
@@ -405,6 +417,9 @@
       <Filter>ヘッダー ファイル</Filter>
     </ClInclude>
     <ClInclude Include="include\Framework\ActorManager.h">
+      <Filter>ヘッダー ファイル</Filter>
+    </ClInclude>
+    <ClInclude Include="include\Framework\ActorRef.h">
       <Filter>ヘッダー ファイル</Filter>
     </ClInclude>
     <ClInclude Include="include\Framework\BaseActor.h">

@@ -16,13 +16,11 @@ void LockOn::Initialize(SpriteRenderer *spriteRenderer) {
     reticles_[i]->SetColor({0.3f, 1.2f, 1.8f, 1.0f});
   }
 
-  targets_.clear();
   targetInfos_.clear();
   lockOnDelayTimer_ = 0;
 }
 
 void LockOn::Clear() {
-  targets_.clear();
   targetInfos_.clear();
   lockOnDelayTimer_ = 0;
 }
@@ -34,7 +32,6 @@ void LockOn::ClearLocking() {
                        return info.state == TargetState::Locking;
                      }),
       targetInfos_.end());
-  targets_.clear();
   lockOnDelayTimer_ = 0;
 }
 
@@ -45,7 +42,6 @@ void LockOn::OnHomingFired() {
       info.state = TargetState::Tracking;
     }
   }
-  targets_.clear();
   lockOnDelayTimer_ = 0;
 }
 
@@ -55,23 +51,43 @@ void LockOn::RemoveTrackingTarget(BaseActor *target) {
 
   auto it = std::find_if(
       targetInfos_.begin(), targetInfos_.end(), [target](const TargetInfo &info) {
-        return info.actor == target && info.state == TargetState::Tracking;
+        return info.actor.Get() == target && info.state == TargetState::Tracking;
       });
   if (it != targetInfos_.end()) {
     targetInfos_.erase(it);
   }
 }
 
+std::vector<BaseActor *> LockOn::GetTargets() const {
+  std::vector<BaseActor *> targets;
+  targets.reserve(targetInfos_.size());
+  for (const auto &info : targetInfos_) {
+    BaseActor *actor = info.actor.Get();
+    if (info.state == TargetState::Locking && actor && !actor->IsDead()) {
+      targets.push_back(actor);
+    }
+  }
+  return targets;
+}
+
+size_t LockOn::GetLockingCount() const {
+  return std::count_if(
+      targetInfos_.begin(), targetInfos_.end(),
+      [](const TargetInfo &info) { return info.state == TargetState::Locking; });
+}
+
 void LockOn::Update(const std::vector<BaseActor *> &inputTargets,
                     const Matrix4x4 &viewProjectionMatrix,
                     const Vector2 &reticlePos,
-                    bool isLockOnMode, float lockOnRadius) {
-  
+                    bool isLockOnMode, float lockOnRadius,
+                    const Vector3 &eyePosition) {
+
   viewProjectionMatrix_ = viewProjectionMatrix; // 描画用にキャッシュ
 
   // 撃破などで消滅した敵をリストから除外
   for (auto it = targetInfos_.begin(); it != targetInfos_.end();) {
-    if (!it->actor || it->actor->IsDead()) {
+    BaseActor *actor = it->actor.Get();
+    if (!actor || actor->IsDead()) {
       it = targetInfos_.erase(it);
     } else {
       it->lockTime += 1.0f / 60.0f; // ロックオン・追尾経過時間を加算
@@ -88,9 +104,7 @@ void LockOn::Update(const std::vector<BaseActor *> &inputTargets,
   }
 
   // 現在準備中（Locking）の敵数を取得
-  size_t lockingCount = std::count_if(
-      targetInfos_.begin(), targetInfos_.end(),
-      [](const TargetInfo &info) { return info.state == TargetState::Locking; });
+  size_t lockingCount = GetLockingCount();
 
   // ロックオンモード（長押し中）かつ、1回の上限および総表示上限未満、ディレイ明けの場合のみ追加
   if (isLockOnMode && lockingCount < kMaxLockOnPerVolley &&
@@ -102,7 +116,7 @@ void LockOn::Update(const std::vector<BaseActor *> &inputTargets,
       // すでに捕捉中、または現在弾が追尾中の敵は除外（二重ロックオン・無駄撃ち防止）
       bool alreadyLocked = false;
       for (const auto &info : targetInfos_) {
-        if (info.actor == target) {
+        if (info.actor.Get() == target) {
           alreadyLocked = true;
           break;
         }
@@ -119,7 +133,8 @@ void LockOn::Update(const std::vector<BaseActor *> &inputTargets,
       float dy = screenPos.y - reticlePos.y;
       float dist = std::sqrt(dx * dx + dy * dy);
 
-      if (dist <= lockOnRadius) {
+      // 照準の範囲内でも、箱の陰にいる敵はロックしない
+      if (dist <= lockOnRadius && !IsHidden(eyePosition, worldPos)) {
         targetInfos_.push_back({target, 0.0f, TargetState::Locking});
 
         // 現在ロックオン中の敵数（今回のターゲットを含む）をカウント
@@ -142,15 +157,43 @@ void LockOn::Update(const std::vector<BaseActor *> &inputTargets,
       }
     }
   }
+}
 
-  // 外部互換用ターゲット配列の同期（発射対象は Locking 状態の敵のみ）
-  targets_.clear();
-  targets_.reserve(lockingCount);
-  for (const auto &info : targetInfos_) {
-    if (info.state == TargetState::Locking) {
-      targets_.push_back(info.actor);
+bool LockOn::IsHidden(const Vector3 &from, const Vector3 &to) const {
+  if (!occluders_) {
+    return false;
+  }
+  for (const Matrix4x4 &worldToBox : *occluders_) {
+    // 線分を箱の中の座標へ移すと、箱は -1〜1 の立方体になる
+    const Vector3 a = TransformPoint(from, worldToBox);
+    const Vector3 b = TransformPoint(to, worldToBox);
+    const float start[3] = {a.x, a.y, a.z};
+    const float delta[3] = {b.x - a.x, b.y - a.y, b.z - a.z};
+
+    // 軸ごとに、線分が -1〜1 の幅に入っている範囲（線分上の割合 0〜1）を重ねていく
+    float enter = 0.0f;
+    float leave = 1.0f;
+    for (int axis = 0; axis < 3 && enter <= leave; ++axis) {
+      if (std::abs(delta[axis]) < kParallelEpsilon) {
+        // この軸に平行な線分は、幅の外にあれば箱に当たらない
+        if (std::abs(start[axis]) > 1.0f) {
+          leave = -1.0f;
+        }
+        continue;
+      }
+      float t1 = (-1.0f - start[axis]) / delta[axis];
+      float t2 = (1.0f - start[axis]) / delta[axis];
+      if (t1 > t2) {
+        std::swap(t1, t2);
+      }
+      enter = (std::max)(enter, t1);
+      leave = (std::min)(leave, t2);
+    }
+    if (enter <= leave) {
+      return true;
     }
   }
+  return false;
 }
 
 void LockOn::Draw() {
@@ -160,7 +203,7 @@ void LockOn::Draw() {
   size_t drawCount = std::min(targetInfos_.size(), reticles_.size());
 
   for (size_t i = 0; i < drawCount; ++i) {
-    BaseActor *target = targetInfos_[i].actor;
+    BaseActor *target = targetInfos_[i].actor.Get();
     if (!target)
       continue;
 

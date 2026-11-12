@@ -9,17 +9,28 @@
 #include "Renderer/Object3dRenderer.h"
 #include <algorithm>
 #include <cmath>
+#include <iterator>
 
 #ifdef USE_IMGUI
 #include <imgui.h>
 #endif
 
 namespace {
-// 元メッシュ（一辺 1 の凸な Cube）
-const char *const kSourceModelPath = "Cube.obj";
+// 元メッシュの候補（どれも凸で閉じている）
+struct SourceModelEntry {
+  const char *label; // 画面に出す名前
+  const char *path;  // モデルのパス
+  bool useChecker;   // テクスチャを格子模様に差し替えるか
+};
+const SourceModelEntry kSourceModels[] = {
+    // 一辺 1 の Cube。標準のテクスチャはほぼ黒なので、格子模様に差し替える
+    {"Cube", "Cube.obj", true},
+    // 雑魚 A 単眼・B くさびの体（いちばん長い辺が 1。テクスチャは白）
+    {"雑魚 A 単眼", "resources/models/zako/zako_eye_body.gltf", false},
+    {"雑魚 B くさび", "resources/models/zako/zako_arrow_body.gltf", false},
+};
 
-// Cube.obj 標準のテクスチャはほぼ黒で陰影が見えないため、格子模様に差し替える
-// 格子模様なら切り口付近の UV 補間が正しいかも目で確認できる
+// 格子模様のテクスチャ
 const char *const kCheckerTexturePath = "resources/uvChecker.png";
 
 // カメラの初期位置（原点の Cube を斜め上から見下ろす）
@@ -93,29 +104,17 @@ void FractureTestScene::Initialize(EngineBase *engine) {
   fog.enabled = 0.0f;
   engine_->GetObject3dRenderer()->SetFog(fog);
 
-  // 元メッシュ（ModelManager
-  // の共有データはそのまま残し、コピーのテクスチャだけ変える）
-  ModelManager *modelManager = ModelManager::GetInstance();
-  modelManager->LoadModel(kSourceModelPath);
-  Model::ModelData sourceData =
-      modelManager->FindModel(kSourceModelPath)->GetModelData();
-  sourceData.material.textureFilePath = kCheckerTexturePath;
-
-  sourceModel_ = std::make_unique<Model>();
-  sourceModel_->InitializeFromModelData(modelManager->GetModelRenderer(),
-                                        sourceData);
-
+  // 元メッシュ
   sourceObject_ = std::make_unique<Object3d>();
   sourceObject_->Initialize(engine_->GetObject3dRenderer());
-  sourceObject_->SetModel(sourceModel_.get());
-  sourceVolume_ = MeshFracture::ComputeVolume(sourceData);
 
   // 衝撃点の目印（元メッシュを小さくして使う）
   impactMarker_ = std::make_unique<Object3d>();
   impactMarker_->Initialize(engine_->GetObject3dRenderer());
-  impactMarker_->SetModel(sourceModel_.get());
   impactMarker_->SetScale(
       {kImpactMarkerScale, kImpactMarkerScale, kImpactMarkerScale});
+
+  LoadSourceModel();
 
   // 破片
   planeNormal_ = kDefaultPlaneNormal;
@@ -127,6 +126,30 @@ void FractureTestScene::Initialize(EngineBase *engine) {
 }
 
 void FractureTestScene::Finalize() {}
+
+void FractureTestScene::LoadSourceModel() {
+  const SourceModelEntry &entry = kSourceModels[sourceModelIndex_];
+
+  // ModelManager の共有データはそのまま残し、このシーン専用のコピーを作る
+  ModelManager *modelManager = ModelManager::GetInstance();
+  modelManager->LoadModel(entry.path);
+  Model::ModelData sourceData =
+      modelManager->FindModel(entry.path)->GetModelData();
+  if (entry.useChecker) {
+    sourceData.material.textureFilePath = kCheckerTexturePath;
+  }
+
+  // 古いモデルを使っている破片・爆発・表示を先に外してから作り直す
+  debris_.reset();
+  fragments_.clear();
+  auto newModel = std::make_unique<Model>();
+  newModel->InitializeFromModelData(modelManager->GetModelRenderer(),
+                                    sourceData);
+  sourceObject_->SetModel(newModel.get());
+  impactMarker_->SetModel(newModel.get());
+  sourceModel_ = std::move(newModel);
+  sourceVolume_ = MeshFracture::ComputeVolume(sourceData);
+}
 
 void FractureTestScene::Update() {
 
@@ -251,13 +274,14 @@ void FractureTestScene::AddFragment(const Model::ModelData &data,
 void FractureTestScene::Explode() {
 
   // 前の爆発が残っていれば、新しい爆発で置き換える
-  // テストシーンは原点に置いた Cube を、指定した大きさの敵とみなして爆発させる
+  // テストシーンは原点に置いた元メッシュを、指定した大きさの敵とみなして爆発させる
   const Vector3 position = {0.0f, 0.0f, 0.0f};
+  const Vector3 rotation = {0.0f, 0.0f, 0.0f};
   const Vector3 scale = {debrisScale_, debrisScale_, debrisScale_};
-  const Vector4 color = {1.0f, 1.0f, 1.0f, 1.0f}; // テクスチャの色のまま
+  FractureDebris::Look look; // 白（テクスチャの色のまま）、ふちの光なし
   debris_ = std::make_unique<FractureDebris>(
-      engine_->GetObject3dRenderer(), *pieceSet_, position, scale, color,
-      inheritedVelocity_, debrisParams_);
+      engine_->GetObject3dRenderer(), *pieceSet_, position, rotation, scale,
+      look, inheritedVelocity_, debrisParams_);
 }
 
 bool FractureTestScene::DrawDebugUI() {
@@ -265,6 +289,20 @@ bool FractureTestScene::DrawDebugUI() {
 
 #ifdef USE_IMGUI
   ImGui::Begin("Fracture Test");
+
+  ImGui::SeparatorText("元メッシュ");
+  int modelIndex = sourceModelIndex_;
+  for (int i = 0; i < static_cast<int>(std::size(kSourceModels)); ++i) {
+    if (i > 0) {
+      ImGui::SameLine();
+    }
+    ImGui::RadioButton(kSourceModels[i].label, &modelIndex, i);
+  }
+  if (modelIndex != sourceModelIndex_) {
+    sourceModelIndex_ = modelIndex;
+    LoadSourceModel();
+    needsRebuild = true;
+  }
 
   ImGui::SeparatorText("切り方");
   int mode = static_cast<int>(mode_);

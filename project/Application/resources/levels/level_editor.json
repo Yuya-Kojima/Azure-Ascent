@@ -1,527 +1,4362 @@
 {
     "sceneObjects": [
         {
-            "modelPath": "Box/box.gltf",
-            "translation": [-30.0, -10.0, 100.0],
-            "rotation": [0.0, 0.3, 0.0],
-            "scale": [10.0, 20.0, 10.0],
-            "color": [0.05, 0.055, 0.07],
+            "modelPath": "__builtin_box",
+            "translation": [23.454, -3.543, 36.466],
+            "rotation": [0.0, 1.7588, 0.0],
+            "scale": [12.214, 22.914, 9.149],
+            "color": [0.55, 0.57, 0.6],
             "specularScale": 0.0
         },
         {
-            "modelPath": "Box/box.gltf",
-            "translation": [40.0, -10.0, 120.0],
-            "rotation": [0.0, -0.5, 0.0],
-            "scale": [15.0, 25.0, 15.0],
-            "color": [0.05, 0.055, 0.07],
+            "modelPath": "__builtin_box",
+            "translation": [-29.589, -5.47, 106.503],
+            "rotation": [0.0, 1.1858, 0.0],
+            "scale": [12.778, 19.059, 11.306],
+            "color": [0.55, 0.57, 0.6],
             "specularScale": 0.0
         },
         {
-            "modelPath": "Box/box.gltf",
-            "translation": [-50.0, -15.0, 250.0],
-            "rotation": [0.0, 0.785, 0.0],
-            "scale": [20.0, 40.0, 20.0],
-            "color": [0.05, 0.055, 0.07],
+            "modelPath": "__builtin_box",
+            "translation": [59.989, -5.211, 165.664],
+            "rotation": [0.0, 2.0926, 0.0],
+            "scale": [13.652, 19.578, 7.644],
+            "color": [0.55, 0.57, 0.6],
             "specularScale": 0.0
         },
         {
-            "modelPath": "Box/box.gltf",
-            "translation": [-65.0, -15.0, 450.0],
+            "modelPath": "__builtin_box",
+            "translation": [34.149, -2.088, 265.504],
+            "rotation": [0.0, 2.7524, 0.0],
+            "scale": [11.039, 25.825, 11.796],
+            "color": [0.55, 0.57, 0.6],
+            "specularScale": 0.0
+        },
+        {
+            "modelPath": "__builtin_box",
+            "translation": [56.94, -2.219, 358.133],
+            "rotation": [0.0, 0.0186, 0.0],
+            "scale": [12.17, 25.563, 11.929],
+            "color": [0.55, 0.57, 0.6],
+            "specularScale": 0.0
+        },
+        {
+            "modelPath": "__builtin_box",
+            "translation": [67.033, -2.56, 595.0],
+            "rotation": [0.0, 1.1167, 0.0],
+            "scale": [13.295, 24.88, 9.994],
+            "color": [0.55, 0.57, 0.6],
+            "specularScale": 0.0
+        },
+        {
+            "modelPath": "__builtin_box",
+            "translation": [112.347, -3.651, 688.614],
+            "rotation": [0.0, 0.2717, 0.0],
+            "scale": [8.792, 22.698, 6.815],
+            "color": [0.55, 0.57, 0.6],
+            "specularScale": 0.0
+        },
+        {
+            "modelPath": "__builtin_box",
+            "translation": [34.793, -0.421, 742.934],
+            "rotation": [0.0, 2.8614, 0.0],
+            "scale": [10.149, 29.157, 11.177],
+            "color": [0.55, 0.57, 0.6],
+            "specularScale": 0.0
+        },
+        {
+            "modelPath": "__builtin_box",
+            "translation": [111.251, 40.457, 405.336],
+            "rotation": [0.0, 0.3494, 0.0],
+            "scale": [86.769, 110.915, 86.769],
+            "color": [0.78, 0.8, 0.85],
+            "specularScale": 0.0
+        },
+        {
+            "modelPath": "__builtin_box",
+            "translation": [-82.171, 45.513, 562.865],
+            "rotation": [0.0, -0.2617, 0.0],
+            "scale": [87.659, 121.027, 87.659],
+            "color": [0.78, 0.8, 0.85],
+            "specularScale": 0.0
+        },
+        {
+            "modelPath": "__builtin_box",
+            "translation": [185.641, 34.707, 800.579],
+            "rotation": [0.0, 0.436, 0.0],
+            "scale": [86.988, 99.414, 86.988],
+            "color": [0.78, 0.8, 0.85],
+            "specularScale": 0.0
+        },
+        {
+            "modelPath": "__builtin_box",
+            "translation": [-87.887, 162.5, 555.862],
+            "rotation": [0.0, -0.1746, 0.0],
+            "scale": [180.0, 355.0, 180.0],
+            "color": [0.78, 0.8, 0.85],
+            "specularScale": 0.0
+        },
+        {
+            "modelPath": "__builtin_box",
+            "translation": [19.874, 92.5, 981.054],
+            "rotation": [0.0, -0.1746, 0.0],
+            "scale": [120.0, 215.0, 120.0],
+            "color": [0.78, 0.8, 0.85],
+            "specularScale": 0.0
+        },
+        {
+            "modelPath": "__builtin_box",
+            "translation": [-90.037, 27.161, 777.994],
+            "rotation": [0.0, -1.2541, 0.0],
+            "scale": [14.0, 84.323, 14.0],
+            "color": [0.08, 0.085, 0.1],
+            "specularScale": 0.0
+        },
+        {
+            "modelPath": "__builtin_box",
+            "translation": [-77.578, 27.161, 816.004],
+            "rotation": [0.0, -1.2541, 0.0],
+            "scale": [14.0, 84.323, 14.0],
+            "color": [0.08, 0.085, 0.1],
+            "specularScale": 0.0
+        },
+        {
+            "modelPath": "__builtin_box",
+            "translation": [-83.807, 27.323, 796.999],
+            "rotation": [0.0, -1.2541, 0.0],
+            "scale": [54.0, 8.0, 14.0],
+            "color": [0.08, 0.085, 0.1],
+            "specularScale": 0.0
+        },
+        {
+            "modelPath": "resources/models/rock_tower/rock_tower_s2_a_rock.gltf",
+            "translation": [-372.453, -15.0, 1071.253],
+            "rotation": [0.0, 3.927, 0.0],
+            "scale": [1.721, 1.24, 1.665],
+            "color": [0.42, 0.37, 0.32],
+            "specularScale": 0.0
+        },
+        {
+            "modelPath": "resources/models/rock_tower/rock_tower_s2_a_machine.gltf",
+            "translation": [-372.453, -15.0, 1071.253],
+            "rotation": [0.0, 3.927, 0.0],
+            "scale": [1.721, 1.24, 1.665],
+            "color": [0.1, 0.11, 0.13],
+            "specularScale": 0.0
+        },
+        {
+            "modelPath": "resources/models/rock_tower/rock_tower_s2_a_light.gltf",
+            "translation": [-372.453, -15.0, 1071.253],
+            "rotation": [0.0, 3.927, 0.0],
+            "scale": [1.721, 1.24, 1.665],
+            "color": [0.5, 1.6, 2.2],
+            "specularScale": 0.0
+        },
+        {
+            "modelPath": "resources/models/rock_tower/rock_tower_s0_c_rock.gltf",
+            "translation": [-644.909, -15.0, 890.634],
+            "rotation": [0.0, -1.8327, 0.0],
+            "scale": [1.336, 1.18, 1.413],
+            "color": [0.42, 0.37, 0.32],
+            "specularScale": 0.0
+        },
+        {
+            "modelPath": "resources/models/rock_tower/rock_tower_s1_a_rock.gltf",
+            "translation": [-790.653, -15.0, 1183.353],
+            "rotation": [0.0, 2.3562, 0.0],
+            "scale": [3.163, 1.265, 2.988],
+            "color": [0.42, 0.37, 0.32],
+            "specularScale": 0.0
+        },
+        {
+            "modelPath": "resources/models/rock_tower/rock_tower_s1_a_machine.gltf",
+            "translation": [-790.653, -15.0, 1183.353],
+            "rotation": [0.0, 2.3562, 0.0],
+            "scale": [3.163, 1.265, 2.988],
+            "color": [0.1, 0.11, 0.13],
+            "specularScale": 0.0
+        },
+        {
+            "modelPath": "resources/models/rock_tower/rock_tower_s1_a_light.gltf",
+            "translation": [-790.653, -15.0, 1183.353],
+            "rotation": [0.0, 2.3562, 0.0],
+            "scale": [3.163, 1.265, 2.988],
+            "color": [0.5, 1.6, 2.2],
+            "specularScale": 0.0
+        },
+        {
+            "modelPath": "resources/models/rock_tower/rock_tower_s4_a_rock.gltf",
+            "translation": [-1208.753, -15.0, 1295.353],
+            "rotation": [0.0, -0.7854, 0.0],
+            "scale": [1.571, 1.259, 1.537],
+            "color": [0.42, 0.37, 0.32],
+            "specularScale": 0.0
+        },
+        {
+            "modelPath": "resources/models/rock_tower/rock_tower_s4_a_machine.gltf",
+            "translation": [-1208.753, -15.0, 1295.353],
+            "rotation": [0.0, -0.7854, 0.0],
+            "scale": [1.571, 1.259, 1.537],
+            "color": [0.1, 0.11, 0.13],
+            "specularScale": 0.0
+        },
+        {
+            "modelPath": "resources/models/rock_tower/rock_tower_s4_a_light.gltf",
+            "translation": [-1208.753, -15.0, 1295.353],
+            "rotation": [0.0, -0.7854, 0.0],
+            "scale": [1.571, 1.259, 1.537],
+            "color": [0.5, 1.6, 2.2],
+            "specularScale": 0.0
+        },
+        {
+            "modelPath": "resources/models/rock_tower/rock_tower_s1_b_rock.gltf",
+            "translation": [-150.354, -15.0, 798.884],
+            "rotation": [0.0, 0.7455, 0.0],
+            "scale": [0.805, 0.981, 0.922],
+            "color": [0.42, 0.37, 0.32],
+            "specularScale": 0.0
+        },
+        {
+            "modelPath": "resources/models/rock_tower/rock_tower_s1_b_machine.gltf",
+            "translation": [-150.354, -15.0, 798.884],
+            "rotation": [0.0, 0.7455, 0.0],
+            "scale": [0.805, 0.981, 0.922],
+            "color": [0.1, 0.11, 0.13],
+            "specularScale": 0.0
+        },
+        {
+            "modelPath": "resources/models/rock_tower/rock_tower_s1_b_light.gltf",
+            "translation": [-150.354, -15.0, 798.884],
+            "rotation": [0.0, 0.7455, 0.0],
+            "scale": [0.805, 0.981, 0.922],
+            "color": [0.5, 1.6, 2.2],
+            "specularScale": 0.0
+        },
+        {
+            "modelPath": "resources/models/rock_tower/rock_tower_s1_a_rock.gltf",
+            "translation": [-105.575, -15.0, 847.391],
+            "rotation": [0.0, 2.3163, 0.0],
+            "scale": [0.819, 0.936, 0.62],
+            "color": [0.42, 0.37, 0.32],
+            "specularScale": 0.0
+        },
+        {
+            "modelPath": "resources/models/rock_tower/rock_tower_s1_a_machine.gltf",
+            "translation": [-105.575, -15.0, 847.391],
+            "rotation": [0.0, 2.3163, 0.0],
+            "scale": [0.819, 0.936, 0.62],
+            "color": [0.1, 0.11, 0.13],
+            "specularScale": 0.0
+        },
+        {
+            "modelPath": "resources/models/rock_tower/rock_tower_s1_a_light.gltf",
+            "translation": [-105.575, -15.0, 847.391],
+            "rotation": [0.0, 2.3163, 0.0],
+            "scale": [0.819, 0.936, 0.62],
+            "color": [0.5, 1.6, 2.2],
+            "specularScale": 0.0
+        },
+        {
+            "modelPath": "resources/models/rock_tower/rock_tower_s1_c_rock.gltf",
+            "translation": [-195.648, -15.0, 848.138],
+            "rotation": [0.0, -0.6512, 0.0],
+            "scale": [0.729, 0.544, 0.99],
+            "color": [0.42, 0.37, 0.32],
+            "specularScale": 0.0
+        },
+        {
+            "modelPath": "resources/models/rock_tower/rock_tower_s1_c_machine.gltf",
+            "translation": [-195.648, -15.0, 848.138],
+            "rotation": [0.0, -0.6512, 0.0],
+            "scale": [0.729, 0.544, 0.99],
+            "color": [0.1, 0.11, 0.13],
+            "specularScale": 0.0
+        },
+        {
+            "modelPath": "resources/models/rock_tower/rock_tower_s1_c_light.gltf",
+            "translation": [-195.648, -15.0, 848.138],
+            "rotation": [0.0, -0.6512, 0.0],
+            "scale": [0.729, 0.544, 0.99],
+            "color": [0.5, 1.6, 2.2],
+            "specularScale": 0.0
+        },
+        {
+            "modelPath": "resources/models/rock_tower/rock_tower_s0_c_rock.gltf",
+            "translation": [-131.16, -15.0, 897.289],
+            "rotation": [0.0, -0.6512, 0.0],
+            "scale": [0.711, 1.052, 1.0],
+            "color": [0.42, 0.37, 0.32],
+            "specularScale": 0.0
+        },
+        {
+            "modelPath": "resources/models/rock_tower/rock_tower_s0_c_rock.gltf",
+            "translation": [-228.015, -15.0, 906.771],
+            "rotation": [0.0, 0.8939, 0.0],
+            "scale": [0.851, 0.581, 0.764],
+            "color": [0.42, 0.37, 0.32],
+            "specularScale": 0.0
+        },
+        {
+            "modelPath": "resources/models/rock_tower/rock_tower_s1_a_rock.gltf",
+            "translation": [-187.501, -15.0, 939.33],
+            "rotation": [0.0, 2.4646, 0.0],
+            "scale": [0.775, 0.574, 0.721],
+            "color": [0.42, 0.37, 0.32],
+            "specularScale": 0.0
+        },
+        {
+            "modelPath": "resources/models/rock_tower/rock_tower_s1_a_machine.gltf",
+            "translation": [-187.501, -15.0, 939.33],
+            "rotation": [0.0, 2.4646, 0.0],
+            "scale": [0.775, 0.574, 0.721],
+            "color": [0.1, 0.11, 0.13],
+            "specularScale": 0.0
+        },
+        {
+            "modelPath": "resources/models/rock_tower/rock_tower_s1_a_light.gltf",
+            "translation": [-187.501, -15.0, 939.33],
+            "rotation": [0.0, 2.4646, 0.0],
+            "scale": [0.775, 0.574, 0.721],
+            "color": [0.5, 1.6, 2.2],
+            "specularScale": 0.0
+        },
+        {
+            "modelPath": "resources/models/rock_tower/rock_tower_s1_a_rock.gltf",
+            "translation": [-269.117, -15.0, 945.268],
+            "rotation": [0.0, 0.6634, 0.0],
+            "scale": [0.966, 0.814, 0.687],
+            "color": [0.42, 0.37, 0.32],
+            "specularScale": 0.0
+        },
+        {
+            "modelPath": "resources/models/rock_tower/rock_tower_s1_a_machine.gltf",
+            "translation": [-269.117, -15.0, 945.268],
+            "rotation": [0.0, 0.6634, 0.0],
+            "scale": [0.966, 0.814, 0.687],
+            "color": [0.1, 0.11, 0.13],
+            "specularScale": 0.0
+        },
+        {
+            "modelPath": "resources/models/rock_tower/rock_tower_s1_a_light.gltf",
+            "translation": [-269.117, -15.0, 945.268],
+            "rotation": [0.0, 0.6634, 0.0],
+            "scale": [0.966, 0.814, 0.687],
+            "color": [0.5, 1.6, 2.2],
+            "specularScale": 0.0
+        },
+        {
+            "modelPath": "resources/models/rock_tower/rock_tower_s0_a_rock.gltf",
+            "translation": [-235.963, -15.0, 987.692],
+            "rotation": [0.0, -0.9074, 0.0],
+            "scale": [0.928, 1.045, 0.707],
+            "color": [0.42, 0.37, 0.32],
+            "specularScale": 0.0
+        },
+        {
+            "modelPath": "resources/models/rock_tower/rock_tower_s1_b_rock.gltf",
+            "translation": [-303.102, -15.0, 950.469],
+            "rotation": [0.0, 0.0689, 0.0],
+            "scale": [0.72, 1.161, 0.781],
+            "color": [0.42, 0.37, 0.32],
+            "specularScale": 0.0
+        },
+        {
+            "modelPath": "resources/models/rock_tower/rock_tower_s1_b_machine.gltf",
+            "translation": [-303.102, -15.0, 950.469],
+            "rotation": [0.0, 0.0689, 0.0],
+            "scale": [0.72, 1.161, 0.781],
+            "color": [0.1, 0.11, 0.13],
+            "specularScale": 0.0
+        },
+        {
+            "modelPath": "resources/models/rock_tower/rock_tower_s1_b_light.gltf",
+            "translation": [-303.102, -15.0, 950.469],
+            "rotation": [0.0, 0.0689, 0.0],
+            "scale": [0.72, 1.161, 0.781],
+            "color": [0.5, 1.6, 2.2],
+            "specularScale": 0.0
+        },
+        {
+            "modelPath": "resources/models/rock_tower/rock_tower_s0_a_rock.gltf",
+            "translation": [-297.627, -15.0, 1029.84],
+            "rotation": [0.0, -1.5019, 0.0],
+            "scale": [0.714, 0.704, 0.962],
+            "color": [0.42, 0.37, 0.32],
+            "specularScale": 0.0
+        },
+        {
+            "modelPath": "resources/models/rock_tower/rock_tower_s1_c_rock.gltf",
+            "translation": [-341.33, -15.0, 935.606],
+            "rotation": [0.0, 1.2036, 0.0],
+            "scale": [0.835, 0.93, 0.935],
+            "color": [0.42, 0.37, 0.32],
+            "specularScale": 0.0
+        },
+        {
+            "modelPath": "resources/models/rock_tower/rock_tower_s1_c_machine.gltf",
+            "translation": [-341.33, -15.0, 935.606],
+            "rotation": [0.0, 1.2036, 0.0],
+            "scale": [0.835, 0.93, 0.935],
+            "color": [0.1, 0.11, 0.13],
+            "specularScale": 0.0
+        },
+        {
+            "modelPath": "resources/models/rock_tower/rock_tower_s1_c_light.gltf",
+            "translation": [-341.33, -15.0, 935.606],
+            "rotation": [0.0, 1.2036, 0.0],
+            "scale": [0.835, 0.93, 0.935],
+            "color": [0.5, 1.6, 2.2],
+            "specularScale": 0.0
+        },
+        {
+            "modelPath": "resources/models/rock_tower/rock_tower_s1_c_rock.gltf",
+            "translation": [-369.871, -15.0, 1009.812],
+            "rotation": [0.0, -0.3672, 0.0],
+            "scale": [0.933, 0.963, 0.76],
+            "color": [0.42, 0.37, 0.32],
+            "specularScale": 0.0
+        },
+        {
+            "modelPath": "resources/models/rock_tower/rock_tower_s1_c_machine.gltf",
+            "translation": [-369.871, -15.0, 1009.812],
+            "rotation": [0.0, -0.3672, 0.0],
+            "scale": [0.933, 0.963, 0.76],
+            "color": [0.1, 0.11, 0.13],
+            "specularScale": 0.0
+        },
+        {
+            "modelPath": "resources/models/rock_tower/rock_tower_s1_c_light.gltf",
+            "translation": [-369.871, -15.0, 1009.812],
+            "rotation": [0.0, -0.3672, 0.0],
+            "scale": [0.933, 0.963, 0.76],
+            "color": [0.5, 1.6, 2.2],
+            "specularScale": 0.0
+        },
+        {
+            "modelPath": "resources/models/rock_tower/rock_tower_s1_a_rock.gltf",
+            "translation": [-399.086, -15.0, 908.55],
+            "rotation": [0.0, 1.122, 0.0],
+            "scale": [0.891, 0.623, 0.737],
+            "color": [0.42, 0.37, 0.32],
+            "specularScale": 0.0
+        },
+        {
+            "modelPath": "resources/models/rock_tower/rock_tower_s1_a_machine.gltf",
+            "translation": [-399.086, -15.0, 908.55],
+            "rotation": [0.0, 1.122, 0.0],
+            "scale": [0.891, 0.623, 0.737],
+            "color": [0.1, 0.11, 0.13],
+            "specularScale": 0.0
+        },
+        {
+            "modelPath": "resources/models/rock_tower/rock_tower_s1_a_light.gltf",
+            "translation": [-399.086, -15.0, 908.55],
+            "rotation": [0.0, 1.122, 0.0],
+            "scale": [0.891, 0.623, 0.737],
+            "color": [0.5, 1.6, 2.2],
+            "specularScale": 0.0
+        },
+        {
+            "modelPath": "resources/models/rock_tower/rock_tower_s2_a_rock.gltf",
+            "translation": [-437.763, -15.0, 988.868],
+            "rotation": [0.0, -0.4488, 0.0],
+            "scale": [0.748, 0.671, 0.873],
+            "color": [0.42, 0.37, 0.32],
+            "specularScale": 0.0
+        },
+        {
+            "modelPath": "resources/models/rock_tower/rock_tower_s2_a_machine.gltf",
+            "translation": [-437.763, -15.0, 988.868],
+            "rotation": [0.0, -0.4488, 0.0],
+            "scale": [0.748, 0.671, 0.873],
+            "color": [0.1, 0.11, 0.13],
+            "specularScale": 0.0
+        },
+        {
+            "modelPath": "resources/models/rock_tower/rock_tower_s2_a_light.gltf",
+            "translation": [-437.763, -15.0, 988.868],
+            "rotation": [0.0, -0.4488, 0.0],
+            "scale": [0.748, 0.671, 0.873],
+            "color": [0.5, 1.6, 2.2],
+            "specularScale": 0.0
+        },
+        {
+            "modelPath": "resources/models/rock_tower/rock_tower_s2_a_rock.gltf",
+            "translation": [-469.07, -15.0, 889.079],
+            "rotation": [0.0, -1.8452, 0.0],
+            "scale": [0.674, 0.641, 0.687],
+            "color": [0.42, 0.37, 0.32],
+            "specularScale": 0.0
+        },
+        {
+            "modelPath": "resources/models/rock_tower/rock_tower_s2_a_machine.gltf",
+            "translation": [-469.07, -15.0, 889.079],
+            "rotation": [0.0, -1.8452, 0.0],
+            "scale": [0.674, 0.641, 0.687],
+            "color": [0.1, 0.11, 0.13],
+            "specularScale": 0.0
+        },
+        {
+            "modelPath": "resources/models/rock_tower/rock_tower_s2_a_light.gltf",
+            "translation": [-469.07, -15.0, 889.079],
+            "rotation": [0.0, -1.8452, 0.0],
+            "scale": [0.674, 0.641, 0.687],
+            "color": [0.5, 1.6, 2.2],
+            "specularScale": 0.0
+        },
+        {
+            "modelPath": "resources/models/rock_tower/rock_tower_s0_b_rock.gltf",
+            "translation": [-491.299, -15.0, 968.033],
+            "rotation": [0.0, 1.2964, 0.0],
+            "scale": [0.722, 0.79, 1.051],
+            "color": [0.42, 0.37, 0.32],
+            "specularScale": 0.0
+        },
+        {
+            "modelPath": "resources/models/rock_tower/rock_tower_s1_b_rock.gltf",
+            "translation": [-543.825, -15.0, 891.736],
+            "rotation": [0.0, 1.9004, 0.0],
+            "scale": [0.729, 1.121, 0.747],
+            "color": [0.42, 0.37, 0.32],
+            "specularScale": 0.0
+        },
+        {
+            "modelPath": "resources/models/rock_tower/rock_tower_s1_b_machine.gltf",
+            "translation": [-543.825, -15.0, 891.736],
+            "rotation": [0.0, 1.9004, 0.0],
+            "scale": [0.729, 1.121, 0.747],
+            "color": [0.1, 0.11, 0.13],
+            "specularScale": 0.0
+        },
+        {
+            "modelPath": "resources/models/rock_tower/rock_tower_s1_b_light.gltf",
+            "translation": [-543.825, -15.0, 891.736],
+            "rotation": [0.0, 1.9004, 0.0],
+            "scale": [0.729, 1.121, 0.747],
+            "color": [0.5, 1.6, 2.2],
+            "specularScale": 0.0
+        },
+        {
+            "modelPath": "resources/models/rock_tower/rock_tower_s1_b_rock.gltf",
+            "translation": [-518.538, -15.0, 965.665],
+            "rotation": [0.0, 0.3296, 0.0],
+            "scale": [0.827, 0.857, 0.696],
+            "color": [0.42, 0.37, 0.32],
+            "specularScale": 0.0
+        },
+        {
+            "modelPath": "resources/models/rock_tower/rock_tower_s1_b_machine.gltf",
+            "translation": [-518.538, -15.0, 965.665],
+            "rotation": [0.0, 0.3296, 0.0],
+            "scale": [0.827, 0.857, 0.696],
+            "color": [0.1, 0.11, 0.13],
+            "specularScale": 0.0
+        },
+        {
+            "modelPath": "resources/models/rock_tower/rock_tower_s1_b_light.gltf",
+            "translation": [-518.538, -15.0, 965.665],
+            "rotation": [0.0, 0.3296, 0.0],
+            "scale": [0.827, 0.857, 0.696],
+            "color": [0.5, 1.6, 2.2],
+            "specularScale": 0.0
+        },
+        {
+            "modelPath": "resources/models/rock_tower/rock_tower_s2_b_rock.gltf",
+            "translation": [-609.428, -15.0, 928.841],
+            "rotation": [0.0, -0.7212, 0.0],
+            "scale": [0.687, 0.882, 1.053],
+            "color": [0.42, 0.37, 0.32],
+            "specularScale": 0.0
+        },
+        {
+            "modelPath": "resources/models/rock_tower/rock_tower_s2_b_machine.gltf",
+            "translation": [-609.428, -15.0, 928.841],
+            "rotation": [0.0, -0.7212, 0.0],
+            "scale": [0.687, 0.882, 1.053],
+            "color": [0.1, 0.11, 0.13],
+            "specularScale": 0.0
+        },
+        {
+            "modelPath": "resources/models/rock_tower/rock_tower_s2_b_light.gltf",
+            "translation": [-609.428, -15.0, 928.841],
+            "rotation": [0.0, -0.7212, 0.0],
+            "scale": [0.687, 0.882, 1.053],
+            "color": [0.5, 1.6, 2.2],
+            "specularScale": 0.0
+        },
+        {
+            "modelPath": "resources/models/rock_tower/rock_tower_s1_a_rock.gltf",
+            "translation": [-550.61, -15.0, 980.555],
+            "rotation": [0.0, 0.8496, 0.0],
+            "scale": [0.974, 0.752, 0.877],
+            "color": [0.42, 0.37, 0.32],
+            "specularScale": 0.0
+        },
+        {
+            "modelPath": "resources/models/rock_tower/rock_tower_s1_a_machine.gltf",
+            "translation": [-550.61, -15.0, 980.555],
+            "rotation": [0.0, 0.8496, 0.0],
+            "scale": [0.974, 0.752, 0.877],
+            "color": [0.1, 0.11, 0.13],
+            "specularScale": 0.0
+        },
+        {
+            "modelPath": "resources/models/rock_tower/rock_tower_s1_a_light.gltf",
+            "translation": [-550.61, -15.0, 980.555],
+            "rotation": [0.0, 0.8496, 0.0],
+            "scale": [0.974, 0.752, 0.877],
+            "color": [0.5, 1.6, 2.2],
+            "specularScale": 0.0
+        },
+        {
+            "modelPath": "resources/models/rock_tower/rock_tower_s2_a_rock.gltf",
+            "translation": [-648.033, -15.0, 989.348],
+            "rotation": [0.0, 0.9754, 0.0],
+            "scale": [1.034, 0.98, 0.695],
+            "color": [0.42, 0.37, 0.32],
+            "specularScale": 0.0
+        },
+        {
+            "modelPath": "resources/models/rock_tower/rock_tower_s2_a_machine.gltf",
+            "translation": [-648.033, -15.0, 989.348],
+            "rotation": [0.0, 0.9754, 0.0],
+            "scale": [1.034, 0.98, 0.695],
+            "color": [0.1, 0.11, 0.13],
+            "specularScale": 0.0
+        },
+        {
+            "modelPath": "resources/models/rock_tower/rock_tower_s2_a_light.gltf",
+            "translation": [-648.033, -15.0, 989.348],
+            "rotation": [0.0, 0.9754, 0.0],
+            "scale": [1.034, 0.98, 0.695],
+            "color": [0.5, 1.6, 2.2],
+            "specularScale": 0.0
+        },
+        {
+            "modelPath": "resources/models/rock_tower/rock_tower_s1_c_rock.gltf",
+            "translation": [-587.393, -15.0, 1030.428],
+            "rotation": [0.0, -0.5954, 0.0],
+            "scale": [0.991, 1.116, 0.697],
+            "color": [0.42, 0.37, 0.32],
+            "specularScale": 0.0
+        },
+        {
+            "modelPath": "resources/models/rock_tower/rock_tower_s1_c_machine.gltf",
+            "translation": [-587.393, -15.0, 1030.428],
+            "rotation": [0.0, -0.5954, 0.0],
+            "scale": [0.991, 1.116, 0.697],
+            "color": [0.1, 0.11, 0.13],
+            "specularScale": 0.0
+        },
+        {
+            "modelPath": "resources/models/rock_tower/rock_tower_s1_c_light.gltf",
+            "translation": [-587.393, -15.0, 1030.428],
+            "rotation": [0.0, -0.5954, 0.0],
+            "scale": [0.991, 1.116, 0.697],
+            "color": [0.5, 1.6, 2.2],
+            "specularScale": 0.0
+        },
+        {
+            "modelPath": "resources/models/rock_tower/rock_tower_s1_b_rock.gltf",
+            "translation": [-682.003, -15.0, 1041.567],
+            "rotation": [0.0, 3.9912, 0.0],
+            "scale": [0.973, 1.061, 0.933],
+            "color": [0.42, 0.37, 0.32],
+            "specularScale": 0.0
+        },
+        {
+            "modelPath": "resources/models/rock_tower/rock_tower_s1_b_machine.gltf",
+            "translation": [-682.003, -15.0, 1041.567],
+            "rotation": [0.0, 3.9912, 0.0],
+            "scale": [0.973, 1.061, 0.933],
+            "color": [0.1, 0.11, 0.13],
+            "specularScale": 0.0
+        },
+        {
+            "modelPath": "resources/models/rock_tower/rock_tower_s1_b_light.gltf",
+            "translation": [-682.003, -15.0, 1041.567],
+            "rotation": [0.0, 3.9912, 0.0],
+            "scale": [0.973, 1.061, 0.933],
+            "color": [0.5, 1.6, 2.2],
+            "specularScale": 0.0
+        },
+        {
+            "modelPath": "resources/models/rock_tower/rock_tower_s3_b_rock.gltf",
+            "translation": [-623.328, -15.0, 1093.157],
+            "rotation": [0.0, 2.4204, 0.0],
+            "scale": [1.09, 0.779, 1.048],
+            "color": [0.42, 0.37, 0.32],
+            "specularScale": 0.0
+        },
+        {
+            "modelPath": "resources/models/rock_tower/rock_tower_s3_b_machine.gltf",
+            "translation": [-623.328, -15.0, 1093.157],
+            "rotation": [0.0, 2.4204, 0.0],
+            "scale": [1.09, 0.779, 1.048],
+            "color": [0.1, 0.11, 0.13],
+            "specularScale": 0.0
+        },
+        {
+            "modelPath": "resources/models/rock_tower/rock_tower_s3_b_light.gltf",
+            "translation": [-623.328, -15.0, 1093.157],
+            "rotation": [0.0, 2.4204, 0.0],
+            "scale": [1.09, 0.779, 1.048],
+            "color": [0.5, 1.6, 2.2],
+            "specularScale": 0.0
+        },
+        {
+            "modelPath": "resources/models/rock_tower/rock_tower_s3_c_rock.gltf",
+            "translation": [-714.518, -15.0, 1059.634],
+            "rotation": [0.0, -1.2412, 0.0],
+            "scale": [0.935, 1.201, 1.075],
+            "color": [0.42, 0.37, 0.32],
+            "specularScale": 0.0
+        },
+        {
+            "modelPath": "resources/models/rock_tower/rock_tower_s3_c_machine.gltf",
+            "translation": [-714.518, -15.0, 1059.634],
+            "rotation": [0.0, -1.2412, 0.0],
+            "scale": [0.935, 1.201, 1.075],
+            "color": [0.1, 0.11, 0.13],
+            "specularScale": 0.0
+        },
+        {
+            "modelPath": "resources/models/rock_tower/rock_tower_s3_c_light.gltf",
+            "translation": [-714.518, -15.0, 1059.634],
+            "rotation": [0.0, -1.2412, 0.0],
+            "scale": [0.935, 1.201, 1.075],
+            "color": [0.5, 1.6, 2.2],
+            "specularScale": 0.0
+        },
+        {
+            "modelPath": "resources/models/rock_tower/rock_tower_s1_a_rock.gltf",
+            "translation": [-686.435, -15.0, 1141.734],
+            "rotation": [0.0, 0.3296, 0.0],
+            "scale": [0.732, 0.886, 0.989],
+            "color": [0.42, 0.37, 0.32],
+            "specularScale": 0.0
+        },
+        {
+            "modelPath": "resources/models/rock_tower/rock_tower_s1_a_machine.gltf",
+            "translation": [-686.435, -15.0, 1141.734],
+            "rotation": [0.0, 0.3296, 0.0],
+            "scale": [0.732, 0.886, 0.989],
+            "color": [0.1, 0.11, 0.13],
+            "specularScale": 0.0
+        },
+        {
+            "modelPath": "resources/models/rock_tower/rock_tower_s1_a_light.gltf",
+            "translation": [-686.435, -15.0, 1141.734],
+            "rotation": [0.0, 0.3296, 0.0],
+            "scale": [0.732, 0.886, 0.989],
+            "color": [0.5, 1.6, 2.2],
+            "specularScale": 0.0
+        },
+        {
+            "modelPath": "resources/models/rock_tower/rock_tower_s3_c_rock.gltf",
+            "translation": [-743.966, -15.0, 1053.818],
+            "rotation": [0.0, 1.2964, 0.0],
+            "scale": [1.036, 0.862, 1.004],
+            "color": [0.42, 0.37, 0.32],
+            "specularScale": 0.0
+        },
+        {
+            "modelPath": "resources/models/rock_tower/rock_tower_s3_c_machine.gltf",
+            "translation": [-743.966, -15.0, 1053.818],
+            "rotation": [0.0, 1.2964, 0.0],
+            "scale": [1.036, 0.862, 1.004],
+            "color": [0.1, 0.11, 0.13],
+            "specularScale": 0.0
+        },
+        {
+            "modelPath": "resources/models/rock_tower/rock_tower_s3_c_light.gltf",
+            "translation": [-743.966, -15.0, 1053.818],
+            "rotation": [0.0, 1.2964, 0.0],
+            "scale": [1.036, 0.862, 1.004],
+            "color": [0.5, 1.6, 2.2],
+            "specularScale": 0.0
+        },
+        {
+            "modelPath": "resources/models/rock_tower/rock_tower_s1_c_rock.gltf",
+            "translation": [-768.169, -15.0, 1139.785],
+            "rotation": [0.0, -0.2744, 0.0],
+            "scale": [0.652, 0.724, 0.681],
+            "color": [0.42, 0.37, 0.32],
+            "specularScale": 0.0
+        },
+        {
+            "modelPath": "resources/models/rock_tower/rock_tower_s1_c_machine.gltf",
+            "translation": [-768.169, -15.0, 1139.785],
+            "rotation": [0.0, -0.2744, 0.0],
+            "scale": [0.652, 0.724, 0.681],
+            "color": [0.1, 0.11, 0.13],
+            "specularScale": 0.0
+        },
+        {
+            "modelPath": "resources/models/rock_tower/rock_tower_s1_c_light.gltf",
+            "translation": [-768.169, -15.0, 1139.785],
+            "rotation": [0.0, -0.2744, 0.0],
+            "scale": [0.652, 0.724, 0.681],
+            "color": [0.5, 1.6, 2.2],
+            "specularScale": 0.0
+        },
+        {
+            "modelPath": "resources/models/rock_tower/rock_tower_s1_a_rock.gltf",
+            "translation": [-798.099, -15.0, 1033.538],
+            "rotation": [0.0, -2.0196, 0.0],
+            "scale": [0.789, 0.816, 0.827],
+            "color": [0.42, 0.37, 0.32],
+            "specularScale": 0.0
+        },
+        {
+            "modelPath": "resources/models/rock_tower/rock_tower_s1_a_machine.gltf",
+            "translation": [-798.099, -15.0, 1033.538],
+            "rotation": [0.0, -2.0196, 0.0],
+            "scale": [0.789, 0.816, 0.827],
+            "color": [0.1, 0.11, 0.13],
+            "specularScale": 0.0
+        },
+        {
+            "modelPath": "resources/models/rock_tower/rock_tower_s1_a_light.gltf",
+            "translation": [-798.099, -15.0, 1033.538],
+            "rotation": [0.0, -2.0196, 0.0],
+            "scale": [0.789, 0.816, 0.827],
+            "color": [0.5, 1.6, 2.2],
+            "specularScale": 0.0
+        },
+        {
+            "modelPath": "resources/models/rock_tower/rock_tower_s2_c_rock.gltf",
+            "translation": [-835.255, -15.0, 1110.697],
+            "rotation": [0.0, 2.6928, 0.0],
+            "scale": [1.03, 0.738, 1.039],
+            "color": [0.42, 0.37, 0.32],
+            "specularScale": 0.0
+        },
+        {
+            "modelPath": "resources/models/rock_tower/rock_tower_s2_c_machine.gltf",
+            "translation": [-835.255, -15.0, 1110.697],
+            "rotation": [0.0, 2.6928, 0.0],
+            "scale": [1.03, 0.738, 1.039],
+            "color": [0.1, 0.11, 0.13],
+            "specularScale": 0.0
+        },
+        {
+            "modelPath": "resources/models/rock_tower/rock_tower_s2_c_light.gltf",
+            "translation": [-835.255, -15.0, 1110.697],
+            "rotation": [0.0, 2.6928, 0.0],
+            "scale": [1.03, 0.738, 1.039],
+            "color": [0.5, 1.6, 2.2],
+            "specularScale": 0.0
+        },
+        {
+            "modelPath": "resources/models/rock_tower/rock_tower_s2_a_rock.gltf",
+            "translation": [-864.572, -15.0, 1009.46],
+            "rotation": [0.0, 1.2036, 0.0],
+            "scale": [0.946, 0.919, 0.721],
+            "color": [0.42, 0.37, 0.32],
+            "specularScale": 0.0
+        },
+        {
+            "modelPath": "resources/models/rock_tower/rock_tower_s2_a_machine.gltf",
+            "translation": [-864.572, -15.0, 1009.46],
+            "rotation": [0.0, 1.2036, 0.0],
+            "scale": [0.946, 0.919, 0.721],
+            "color": [0.1, 0.11, 0.13],
+            "specularScale": 0.0
+        },
+        {
+            "modelPath": "resources/models/rock_tower/rock_tower_s2_a_light.gltf",
+            "translation": [-864.572, -15.0, 1009.46],
+            "rotation": [0.0, 1.2036, 0.0],
+            "scale": [0.946, 0.919, 0.721],
+            "color": [0.5, 1.6, 2.2],
+            "specularScale": 0.0
+        },
+        {
+            "modelPath": "resources/models/rock_tower/rock_tower_s3_c_rock.gltf",
+            "translation": [-1003.175, -15.0, 1026.373],
+            "rotation": [0.0, 3.8215, 0.0],
+            "scale": [0.994, 0.829, 1.009],
+            "color": [0.42, 0.37, 0.32],
+            "specularScale": 0.0
+        },
+        {
+            "modelPath": "resources/models/rock_tower/rock_tower_s3_c_machine.gltf",
+            "translation": [-1003.175, -15.0, 1026.373],
+            "rotation": [0.0, 3.8215, 0.0],
+            "scale": [0.994, 0.829, 1.009],
+            "color": [0.1, 0.11, 0.13],
+            "specularScale": 0.0
+        },
+        {
+            "modelPath": "resources/models/rock_tower/rock_tower_s3_c_light.gltf",
+            "translation": [-1003.175, -15.0, 1026.373],
+            "rotation": [0.0, 3.8215, 0.0],
+            "scale": [0.994, 0.829, 1.009],
+            "color": [0.5, 1.6, 2.2],
+            "specularScale": 0.0
+        },
+        {
+            "modelPath": "resources/models/rock_tower/rock_tower_s3_c_rock.gltf",
+            "translation": [-1048.757, -15.0, 1076.814],
+            "rotation": [0.0, 2.4904, 0.0],
+            "scale": [0.706, 0.918, 0.919],
+            "color": [0.42, 0.37, 0.32],
+            "specularScale": 0.0
+        },
+        {
+            "modelPath": "resources/models/rock_tower/rock_tower_s3_c_machine.gltf",
+            "translation": [-1048.757, -15.0, 1076.814],
+            "rotation": [0.0, 2.4904, 0.0],
+            "scale": [0.706, 0.918, 0.919],
+            "color": [0.1, 0.11, 0.13],
+            "specularScale": 0.0
+        },
+        {
+            "modelPath": "resources/models/rock_tower/rock_tower_s3_c_light.gltf",
+            "translation": [-1048.757, -15.0, 1076.814],
+            "rotation": [0.0, 2.4904, 0.0],
+            "scale": [0.706, 0.918, 0.919],
+            "color": [0.5, 1.6, 2.2],
+            "specularScale": 0.0
+        },
+        {
+            "modelPath": "resources/models/rock_tower/rock_tower_s2_c_rock.gltf",
+            "translation": [-1082.77, -15.0, 1133.332],
+            "rotation": [0.0, -0.6501, 0.0],
+            "scale": [0.891, 0.821, 0.761],
+            "color": [0.42, 0.37, 0.32],
+            "specularScale": 0.0
+        },
+        {
+            "modelPath": "resources/models/rock_tower/rock_tower_s2_c_machine.gltf",
+            "translation": [-1082.77, -15.0, 1133.332],
+            "rotation": [0.0, -0.6501, 0.0],
+            "scale": [0.891, 0.821, 0.761],
+            "color": [0.1, 0.11, 0.13],
+            "specularScale": 0.0
+        },
+        {
+            "modelPath": "resources/models/rock_tower/rock_tower_s2_c_light.gltf",
+            "translation": [-1082.77, -15.0, 1133.332],
+            "rotation": [0.0, -0.6501, 0.0],
+            "scale": [0.891, 0.821, 0.761],
+            "color": [0.5, 1.6, 2.2],
+            "specularScale": 0.0
+        },
+        {
+            "modelPath": "resources/models/rock_tower/rock_tower_s3_b_rock.gltf",
+            "translation": [-1107.264, -15.0, 1164.708],
+            "rotation": [0.0, 2.3749, 0.0],
+            "scale": [0.947, 1.024, 1.034],
+            "color": [0.42, 0.37, 0.32],
+            "specularScale": 0.0
+        },
+        {
+            "modelPath": "resources/models/rock_tower/rock_tower_s3_b_machine.gltf",
+            "translation": [-1107.264, -15.0, 1164.708],
+            "rotation": [0.0, 2.3749, 0.0],
+            "scale": [0.947, 1.024, 1.034],
+            "color": [0.1, 0.11, 0.13],
+            "specularScale": 0.0
+        },
+        {
+            "modelPath": "resources/models/rock_tower/rock_tower_s3_b_light.gltf",
+            "translation": [-1107.264, -15.0, 1164.708],
+            "rotation": [0.0, 2.3749, 0.0],
+            "scale": [0.947, 1.024, 1.034],
+            "color": [0.5, 1.6, 2.2],
+            "specularScale": 0.0
+        },
+        {
+            "modelPath": "resources/models/rock_tower/rock_tower_s3_c_rock.gltf",
+            "translation": [-1134.823, -15.0, 1184.167],
+            "rotation": [0.0, -1.007, 0.0],
+            "scale": [0.787, 0.979, 0.875],
+            "color": [0.42, 0.37, 0.32],
+            "specularScale": 0.0
+        },
+        {
+            "modelPath": "resources/models/rock_tower/rock_tower_s3_c_machine.gltf",
+            "translation": [-1134.823, -15.0, 1184.167],
+            "rotation": [0.0, -1.007, 0.0],
+            "scale": [0.787, 0.979, 0.875],
+            "color": [0.1, 0.11, 0.13],
+            "specularScale": 0.0
+        },
+        {
+            "modelPath": "resources/models/rock_tower/rock_tower_s3_c_light.gltf",
+            "translation": [-1134.823, -15.0, 1184.167],
+            "rotation": [0.0, -1.007, 0.0],
+            "scale": [0.787, 0.979, 0.875],
+            "color": [0.5, 1.6, 2.2],
+            "specularScale": 0.0
+        },
+        {
+            "modelPath": "resources/models/rock_tower/rock_tower_s4_a_rock.gltf",
+            "translation": [-1166.93, -15.0, 1197.096],
+            "rotation": [0.0, 3.536, 0.0],
+            "scale": [0.916, 1.29, 0.977],
+            "color": [0.42, 0.37, 0.32],
+            "specularScale": 0.0
+        },
+        {
+            "modelPath": "resources/models/rock_tower/rock_tower_s4_a_machine.gltf",
+            "translation": [-1166.93, -15.0, 1197.096],
+            "rotation": [0.0, 3.536, 0.0],
+            "scale": [0.916, 1.29, 0.977],
+            "color": [0.1, 0.11, 0.13],
+            "specularScale": 0.0
+        },
+        {
+            "modelPath": "resources/models/rock_tower/rock_tower_s4_a_light.gltf",
+            "translation": [-1166.93, -15.0, 1197.096],
+            "rotation": [0.0, 3.536, 0.0],
+            "scale": [0.916, 1.29, 0.977],
+            "color": [0.5, 1.6, 2.2],
+            "specularScale": 0.0
+        },
+        {
+            "modelPath": "resources/models/rock_tower/rock_tower_s3_b_rock.gltf",
+            "translation": [-1207.24, -15.0, 1195.638],
+            "rotation": [0.0, -1.279, 0.0],
+            "scale": [0.712, 1.152, 1.007],
+            "color": [0.42, 0.37, 0.32],
+            "specularScale": 0.0
+        },
+        {
+            "modelPath": "resources/models/rock_tower/rock_tower_s3_b_machine.gltf",
+            "translation": [-1207.24, -15.0, 1195.638],
+            "rotation": [0.0, -1.279, 0.0],
+            "scale": [0.712, 1.152, 1.007],
+            "color": [0.1, 0.11, 0.13],
+            "specularScale": 0.0
+        },
+        {
+            "modelPath": "resources/models/rock_tower/rock_tower_s3_b_light.gltf",
+            "translation": [-1207.24, -15.0, 1195.638],
+            "rotation": [0.0, -1.279, 0.0],
+            "scale": [0.712, 1.152, 1.007],
+            "color": [0.5, 1.6, 2.2],
+            "specularScale": 0.0
+        },
+        {
+            "modelPath": "resources/models/rock_tower/rock_tower_s4_a_rock.gltf",
+            "translation": [-1242.841, -15.0, 1216.608],
+            "rotation": [0.0, -1.3457, 0.0],
+            "scale": [1.035, 1.192, 0.832],
+            "color": [0.42, 0.37, 0.32],
+            "specularScale": 0.0
+        },
+        {
+            "modelPath": "resources/models/rock_tower/rock_tower_s4_a_machine.gltf",
+            "translation": [-1242.841, -15.0, 1216.608],
+            "rotation": [0.0, -1.3457, 0.0],
+            "scale": [1.035, 1.192, 0.832],
+            "color": [0.1, 0.11, 0.13],
+            "specularScale": 0.0
+        },
+        {
+            "modelPath": "resources/models/rock_tower/rock_tower_s4_a_light.gltf",
+            "translation": [-1242.841, -15.0, 1216.608],
+            "rotation": [0.0, -1.3457, 0.0],
+            "scale": [1.035, 1.192, 0.832],
+            "color": [0.5, 1.6, 2.2],
+            "specularScale": 0.0
+        },
+        {
+            "modelPath": "resources/models/rock_tower/rock_tower_s3_b_rock.gltf",
+            "translation": [-1228.381, -15.0, 1279.77],
+            "rotation": [0.0, -1.3457, 0.0],
+            "scale": [0.669, 0.763, 0.693],
+            "color": [0.42, 0.37, 0.32],
+            "specularScale": 0.0
+        },
+        {
+            "modelPath": "resources/models/rock_tower/rock_tower_s3_b_machine.gltf",
+            "translation": [-1228.381, -15.0, 1279.77],
+            "rotation": [0.0, -1.3457, 0.0],
+            "scale": [0.669, 0.763, 0.693],
+            "color": [0.1, 0.11, 0.13],
+            "specularScale": 0.0
+        },
+        {
+            "modelPath": "resources/models/rock_tower/rock_tower_s3_b_light.gltf",
+            "translation": [-1228.381, -15.0, 1279.77],
+            "rotation": [0.0, -1.3457, 0.0],
+            "scale": [0.669, 0.763, 0.693],
+            "color": [0.5, 1.6, 2.2],
+            "specularScale": 0.0
+        },
+        {
+            "modelPath": "resources/models/rock_tower/rock_tower_s3_b_rock.gltf",
+            "translation": [-1289.911, -15.0, 1300.222],
+            "rotation": [0.0, 1.7483, 0.0],
+            "scale": [1.036, 0.891, 0.79],
+            "color": [0.42, 0.37, 0.32],
+            "specularScale": 0.0
+        },
+        {
+            "modelPath": "resources/models/rock_tower/rock_tower_s3_b_machine.gltf",
+            "translation": [-1289.911, -15.0, 1300.222],
+            "rotation": [0.0, 1.7483, 0.0],
+            "scale": [1.036, 0.891, 0.79],
+            "color": [0.1, 0.11, 0.13],
+            "specularScale": 0.0
+        },
+        {
+            "modelPath": "resources/models/rock_tower/rock_tower_s3_b_light.gltf",
+            "translation": [-1289.911, -15.0, 1300.222],
+            "rotation": [0.0, 1.7483, 0.0],
+            "scale": [1.036, 0.891, 0.79],
+            "color": [0.5, 1.6, 2.2],
+            "specularScale": 0.0
+        },
+        {
+            "modelPath": "resources/models/rock_tower/rock_tower_s4_c_rock.gltf",
+            "translation": [-1344.302, -15.0, 1316.138],
+            "rotation": [0.0, 1.764, 0.0],
+            "scale": [0.681, 0.821, 0.855],
+            "color": [0.42, 0.37, 0.32],
+            "specularScale": 0.0
+        },
+        {
+            "modelPath": "resources/models/rock_tower/rock_tower_s4_c_machine.gltf",
+            "translation": [-1344.302, -15.0, 1316.138],
+            "rotation": [0.0, 1.764, 0.0],
+            "scale": [0.681, 0.821, 0.855],
+            "color": [0.1, 0.11, 0.13],
+            "specularScale": 0.0
+        },
+        {
+            "modelPath": "resources/models/rock_tower/rock_tower_s4_c_light.gltf",
+            "translation": [-1344.302, -15.0, 1316.138],
+            "rotation": [0.0, 1.764, 0.0],
+            "scale": [0.681, 0.821, 0.855],
+            "color": [0.5, 1.6, 2.2],
+            "specularScale": 0.0
+        },
+        {
+            "modelPath": "__builtin_box",
+            "translation": [-296.351, 45.45, 953.545],
+            "rotation": [0.0, -1.3105, 0.0],
+            "scale": [12.0, 120.9, 12.0],
+            "color": [0.08, 0.085, 0.1],
+            "specularScale": 0.0
+        },
+        {
+            "modelPath": "__builtin_box",
+            "translation": [-278.849, 45.45, 1019.255],
+            "rotation": [0.0, -1.3105, 0.0],
+            "scale": [12.0, 120.9, 12.0],
+            "color": [0.08, 0.085, 0.1],
+            "specularScale": 0.0
+        },
+        {
+            "modelPath": "__builtin_box",
+            "translation": [-287.6, 32.9, 986.4],
+            "rotation": [0.0, -1.3105, 0.0],
+            "scale": [80.0, 8.0, 12.0],
+            "color": [0.08, 0.085, 0.1],
+            "specularScale": 0.0
+        },
+        {
+            "modelPath": "resources/models/rock_tower/rock_tower_s1_b_rock.gltf",
+            "translation": [-421.43, -15.0, 914.533],
+            "rotation": [0.0, 1.139, 0.0],
+            "scale": [0.83, 0.881, 0.904],
+            "color": [0.42, 0.37, 0.32],
+            "specularScale": 0.0
+        },
+        {
+            "modelPath": "resources/models/rock_tower/rock_tower_s1_b_machine.gltf",
+            "translation": [-421.43, -15.0, 914.533],
+            "rotation": [0.0, 1.139, 0.0],
+            "scale": [0.83, 0.881, 0.904],
+            "color": [0.1, 0.11, 0.13],
+            "specularScale": 0.0
+        },
+        {
+            "modelPath": "resources/models/rock_tower/rock_tower_s1_b_light.gltf",
+            "translation": [-421.43, -15.0, 914.533],
+            "rotation": [0.0, 1.139, 0.0],
+            "scale": [0.83, 0.881, 0.904],
+            "color": [0.5, 1.6, 2.2],
+            "specularScale": 0.0
+        },
+        {
+            "modelPath": "__builtin_box",
+            "translation": [-425.616, 23.56, 923.615],
+            "rotation": [0.0, -2.0026, 0.0],
+            "scale": [6.0, 3.0, 8.0],
+            "color": [0.12, 0.125, 0.14],
+            "specularScale": 0.0
+        },
+        {
+            "modelPath": "resources/models/rock_tower/rock_tower_s2_a_rock.gltf",
+            "translation": [-446.541, -15.0, 969.026],
+            "rotation": [0.0, -2.0026, 0.0],
+            "scale": [0.875, 0.881, 0.846],
+            "color": [0.42, 0.37, 0.32],
+            "specularScale": 0.0
+        },
+        {
+            "modelPath": "resources/models/rock_tower/rock_tower_s2_a_machine.gltf",
+            "translation": [-446.541, -15.0, 969.026],
+            "rotation": [0.0, -2.0026, 0.0],
+            "scale": [0.875, 0.881, 0.846],
+            "color": [0.1, 0.11, 0.13],
+            "specularScale": 0.0
+        },
+        {
+            "modelPath": "resources/models/rock_tower/rock_tower_s2_a_light.gltf",
+            "translation": [-446.541, -15.0, 969.026],
+            "rotation": [0.0, -2.0026, 0.0],
+            "scale": [0.875, 0.881, 0.846],
+            "color": [0.5, 1.6, 2.2],
+            "specularScale": 0.0
+        },
+        {
+            "modelPath": "__builtin_box",
+            "translation": [-442.356, 23.56, 959.944],
+            "rotation": [0.0, -2.0026, 0.0],
+            "scale": [6.0, 3.0, 8.0],
+            "color": [0.12, 0.125, 0.14],
+            "specularScale": 0.0
+        },
+        {
+            "modelPath": "__builtin_box",
+            "translation": [-1300.738, 45.831, 1239.854],
+            "rotation": [0.0, -1.3933, 0.0],
+            "scale": [14.0, 121.662, 14.0],
+            "color": [0.08, 0.085, 0.1],
+            "specularScale": 0.0
+        },
+        {
+            "modelPath": "__builtin_box",
+            "translation": [-1292.617, 45.831, 1285.132],
+            "rotation": [0.0, -1.3933, 0.0],
+            "scale": [14.0, 121.662, 14.0],
+            "color": [0.08, 0.085, 0.1],
+            "specularScale": 0.0
+        },
+        {
+            "modelPath": "__builtin_box",
+            "translation": [-1296.678, 55.662, 1262.493],
+            "rotation": [0.0, -1.3933, 0.0],
+            "scale": [60.0, 8.0, 14.0],
+            "color": [0.08, 0.085, 0.1],
+            "specularScale": 0.0
+        },
+        {
+            "modelPath": "resources/models/tower/tower_panel.obj",
+            "translation": [-1953.747, 518.156, 250.645],
+            "rotation": [0.0, -2.3451, 0.0],
+            "scale": [41.12, 1080.0, 10.0],
+            "color": [0.56, 0.575, 0.62],
+            "specularScale": 0.0,
+            "uvScale": [1.0, 54.0]
+        },
+        {
+            "modelPath": "resources/models/tower/tower_panel.obj",
+            "translation": [-1980.584, 518.156, 279.987],
+            "rotation": [0.0, -2.2782, 0.0],
+            "scale": [41.12, 1080.0, 10.0],
+            "color": [0.56, 0.575, 0.62],
+            "specularScale": 0.0,
+            "uvScale": [1.0, 54.0]
+        },
+        {
+            "modelPath": "resources/models/tower/tower_panel.obj",
+            "translation": [-2005.401, 518.156, 311.056],
+            "rotation": [0.0, -2.2114, 0.0],
+            "scale": [41.12, 1080.0, 10.0],
+            "color": [0.56, 0.575, 0.62],
+            "specularScale": 0.0,
+            "uvScale": [1.0, 54.0]
+        },
+        {
+            "modelPath": "resources/models/tower/tower_panel.obj",
+            "translation": [-2028.088, 518.156, 343.713],
+            "rotation": [0.0, -2.1445, 0.0],
+            "scale": [41.12, 1080.0, 10.0],
+            "color": [0.56, 0.575, 0.62],
+            "specularScale": 0.0,
+            "uvScale": [1.0, 54.0]
+        },
+        {
+            "modelPath": "resources/models/tower/tower_panel.obj",
+            "translation": [-2048.542, 518.156, 377.812],
+            "rotation": [0.0, -2.0777, 0.0],
+            "scale": [41.12, 1080.0, 10.0],
+            "color": [0.56, 0.575, 0.62],
+            "specularScale": 0.0,
+            "uvScale": [1.0, 54.0]
+        },
+        {
+            "modelPath": "resources/models/tower/tower_panel.obj",
+            "translation": [-2066.673, 518.156, 413.202],
+            "rotation": [0.0, -2.0108, 0.0],
+            "scale": [41.12, 1080.0, 10.0],
+            "color": [0.56, 0.575, 0.62],
+            "specularScale": 0.0,
+            "uvScale": [1.0, 54.0]
+        },
+        {
+            "modelPath": "resources/models/tower/tower_panel.obj",
+            "translation": [-2082.4, 518.156, 449.723],
+            "rotation": [0.0, -1.944, 0.0],
+            "scale": [41.12, 1080.0, 10.0],
+            "color": [0.56, 0.575, 0.62],
+            "specularScale": 0.0,
+            "uvScale": [1.0, 54.0]
+        },
+        {
+            "modelPath": "resources/models/tower/tower_panel.obj",
+            "translation": [-2095.653, 518.156, 487.214],
+            "rotation": [0.0, -1.8772, 0.0],
+            "scale": [41.12, 1080.0, 10.0],
+            "color": [0.56, 0.575, 0.62],
+            "specularScale": 0.0,
+            "uvScale": [1.0, 54.0]
+        },
+        {
+            "modelPath": "resources/models/tower/tower_panel.obj",
+            "translation": [-2106.372, 518.156, 525.506],
+            "rotation": [0.0, -1.8103, 0.0],
+            "scale": [41.12, 1080.0, 10.0],
+            "color": [0.56, 0.575, 0.62],
+            "specularScale": 0.0,
+            "uvScale": [1.0, 54.0]
+        },
+        {
+            "modelPath": "resources/models/tower/tower_panel.obj",
+            "translation": [-2114.509, 518.156, 564.428],
+            "rotation": [0.0, -1.7435, 0.0],
+            "scale": [41.12, 1080.0, 10.0],
+            "color": [0.56, 0.575, 0.62],
+            "specularScale": 0.0,
+            "uvScale": [1.0, 54.0]
+        },
+        {
+            "modelPath": "resources/models/tower/tower_panel.obj",
+            "translation": [-2120.029, 518.156, 603.807],
+            "rotation": [0.0, -1.6766, 0.0],
+            "scale": [41.12, 1080.0, 10.0],
+            "color": [0.56, 0.575, 0.62],
+            "specularScale": 0.0,
+            "uvScale": [1.0, 54.0]
+        },
+        {
+            "modelPath": "resources/models/tower/tower_panel.obj",
+            "translation": [-2122.906, 518.156, 643.466],
+            "rotation": [0.0, -1.6098, 0.0],
+            "scale": [41.12, 1080.0, 10.0],
+            "color": [0.56, 0.575, 0.62],
+            "specularScale": 0.0,
+            "uvScale": [1.0, 54.0]
+        },
+        {
+            "modelPath": "resources/models/tower/tower_panel.obj",
+            "translation": [-2123.127, 518.156, 683.23],
+            "rotation": [0.0, -1.5429, 0.0],
+            "scale": [41.12, 1080.0, 10.0],
+            "color": [0.56, 0.575, 0.62],
+            "specularScale": 0.0,
+            "uvScale": [1.0, 54.0]
+        },
+        {
+            "modelPath": "__builtin_box",
+            "translation": [-2128.425, 748.156, 683.377],
+            "rotation": [0.0, -1.5429, 0.0],
+            "scale": [16.0, 0.7, 0.6],
+            "color": [1.1, 1.1, 1.15],
+            "specularScale": 0.0
+        },
+        {
+            "modelPath": "__builtin_box",
+            "translation": [-2128.425, 808.156, 683.377],
+            "rotation": [0.0, -1.5429, 0.0],
+            "scale": [16.0, 0.7, 0.6],
+            "color": [1.1, 1.1, 1.15],
+            "specularScale": 0.0
+        },
+        {
+            "modelPath": "__builtin_box",
+            "translation": [-2128.425, 868.156, 683.377],
+            "rotation": [0.0, -1.5429, 0.0],
+            "scale": [16.0, 0.7, 0.6],
+            "color": [1.1, 1.1, 1.15],
+            "specularScale": 0.0
+        },
+        {
+            "modelPath": "__builtin_box",
+            "translation": [-2128.425, 928.156, 683.377],
+            "rotation": [0.0, -1.5429, 0.0],
+            "scale": [16.0, 0.7, 0.6],
+            "color": [1.1, 1.1, 1.15],
+            "specularScale": 0.0
+        },
+        {
+            "modelPath": "__builtin_box",
+            "translation": [-2128.425, 988.156, 683.377],
+            "rotation": [0.0, -1.5429, 0.0],
+            "scale": [16.0, 0.7, 0.6],
+            "color": [1.1, 1.1, 1.15],
+            "specularScale": 0.0
+        },
+        {
+            "modelPath": "resources/models/tower/tower_panel.obj",
+            "translation": [-2120.692, 518.156, 722.919],
+            "rotation": [0.0, -1.4761, 0.0],
+            "scale": [41.12, 1080.0, 10.0],
+            "color": [0.56, 0.575, 0.62],
+            "specularScale": 0.0,
+            "uvScale": [1.0, 54.0]
+        },
+        {
+            "modelPath": "__builtin_box",
+            "translation": [-2125.968, 648.156, 723.42],
+            "rotation": [0.0, -1.4761, 0.0],
+            "scale": [16.0, 0.7, 0.6],
+            "color": [1.1, 1.1, 1.15],
+            "specularScale": 0.0
+        },
+        {
+            "modelPath": "__builtin_box",
+            "translation": [-2125.968, 708.156, 723.42],
+            "rotation": [0.0, -1.4761, 0.0],
+            "scale": [16.0, 0.7, 0.6],
+            "color": [1.1, 1.1, 1.15],
+            "specularScale": 0.0
+        },
+        {
+            "modelPath": "__builtin_box",
+            "translation": [-2125.968, 768.156, 723.42],
+            "rotation": [0.0, -1.4761, 0.0],
+            "scale": [16.0, 0.7, 0.6],
+            "color": [1.1, 1.1, 1.15],
+            "specularScale": 0.0
+        },
+        {
+            "modelPath": "__builtin_box",
+            "translation": [-2125.968, 828.156, 723.42],
+            "rotation": [0.0, -1.4761, 0.0],
+            "scale": [16.0, 0.7, 0.6],
+            "color": [1.1, 1.1, 1.15],
+            "specularScale": 0.0
+        },
+        {
+            "modelPath": "__builtin_box",
+            "translation": [-2125.968, 888.156, 723.42],
+            "rotation": [0.0, -1.4761, 0.0],
+            "scale": [16.0, 0.7, 0.6],
+            "color": [1.1, 1.1, 1.15],
+            "specularScale": 0.0
+        },
+        {
+            "modelPath": "__builtin_box",
+            "translation": [-2125.968, 948.156, 723.42],
+            "rotation": [0.0, -1.4761, 0.0],
+            "scale": [16.0, 0.7, 0.6],
+            "color": [1.1, 1.1, 1.15],
+            "specularScale": 0.0
+        },
+        {
+            "modelPath": "__builtin_box",
+            "translation": [-2125.968, 1008.156, 723.42],
+            "rotation": [0.0, -1.4761, 0.0],
+            "scale": [16.0, 0.7, 0.6],
+            "color": [1.1, 1.1, 1.15],
+            "specularScale": 0.0
+        },
+        {
+            "modelPath": "resources/models/tower/tower_panel.obj",
+            "translation": [-2115.612, 518.156, 762.357],
+            "rotation": [0.0, -1.4093, 0.0],
+            "scale": [41.12, 1080.0, 10.0],
+            "color": [0.56, 0.575, 0.62],
+            "specularScale": 0.0,
+            "uvScale": [1.0, 54.0]
+        },
+        {
+            "modelPath": "__builtin_box",
+            "translation": [-2120.843, 608.156, 763.209],
+            "rotation": [0.0, -1.4093, 0.0],
+            "scale": [16.0, 0.7, 0.6],
+            "color": [1.1, 1.1, 1.15],
+            "specularScale": 0.0
+        },
+        {
+            "modelPath": "__builtin_box",
+            "translation": [-2120.843, 668.156, 763.209],
+            "rotation": [0.0, -1.4093, 0.0],
+            "scale": [16.0, 0.7, 0.6],
+            "color": [1.1, 1.1, 1.15],
+            "specularScale": 0.0
+        },
+        {
+            "modelPath": "__builtin_box",
+            "translation": [-2120.843, 728.156, 763.209],
+            "rotation": [0.0, -1.4093, 0.0],
+            "scale": [16.0, 0.7, 0.6],
+            "color": [1.1, 1.1, 1.15],
+            "specularScale": 0.0
+        },
+        {
+            "modelPath": "__builtin_box",
+            "translation": [-2120.843, 788.156, 763.209],
+            "rotation": [0.0, -1.4093, 0.0],
+            "scale": [16.0, 0.7, 0.6],
+            "color": [1.1, 1.1, 1.15],
+            "specularScale": 0.0
+        },
+        {
+            "modelPath": "__builtin_box",
+            "translation": [-2120.843, 848.156, 763.209],
+            "rotation": [0.0, -1.4093, 0.0],
+            "scale": [16.0, 0.7, 0.6],
+            "color": [1.1, 1.1, 1.15],
+            "specularScale": 0.0
+        },
+        {
+            "modelPath": "__builtin_box",
+            "translation": [-2120.843, 908.156, 763.209],
+            "rotation": [0.0, -1.4093, 0.0],
+            "scale": [16.0, 0.7, 0.6],
+            "color": [1.1, 1.1, 1.15],
+            "specularScale": 0.0
+        },
+        {
+            "modelPath": "__builtin_box",
+            "translation": [-2120.843, 968.156, 763.209],
+            "rotation": [0.0, -1.4093, 0.0],
+            "scale": [16.0, 0.7, 0.6],
+            "color": [1.1, 1.1, 1.15],
+            "specularScale": 0.0
+        },
+        {
+            "modelPath": "__builtin_box",
+            "translation": [-2120.843, 1028.156, 763.209],
+            "rotation": [0.0, -1.4093, 0.0],
+            "scale": [16.0, 0.7, 0.6],
+            "color": [1.1, 1.1, 1.15],
+            "specularScale": 0.0
+        },
+        {
+            "modelPath": "resources/models/tower/tower_panel.obj",
+            "translation": [-2107.909, 518.156, 801.367],
+            "rotation": [0.0, -1.3424, 0.0],
+            "scale": [41.12, 1080.0, 10.0],
+            "color": [0.56, 0.575, 0.62],
+            "specularScale": 0.0,
+            "uvScale": [1.0, 54.0]
+        },
+        {
+            "modelPath": "__builtin_box",
+            "translation": [-2113.071, 568.156, 802.567],
+            "rotation": [0.0, -1.3424, 0.0],
+            "scale": [16.0, 0.7, 0.6],
+            "color": [1.1, 1.1, 1.15],
+            "specularScale": 0.0
+        },
+        {
+            "modelPath": "__builtin_box",
+            "translation": [-2113.071, 628.156, 802.567],
+            "rotation": [0.0, -1.3424, 0.0],
+            "scale": [16.0, 0.7, 0.6],
+            "color": [1.1, 1.1, 1.15],
+            "specularScale": 0.0
+        },
+        {
+            "modelPath": "__builtin_box",
+            "translation": [-2113.071, 688.156, 802.567],
+            "rotation": [0.0, -1.3424, 0.0],
+            "scale": [16.0, 0.7, 0.6],
+            "color": [1.1, 1.1, 1.15],
+            "specularScale": 0.0
+        },
+        {
+            "modelPath": "__builtin_box",
+            "translation": [-2113.071, 748.156, 802.567],
+            "rotation": [0.0, -1.3424, 0.0],
+            "scale": [16.0, 0.7, 0.6],
+            "color": [1.1, 1.1, 1.15],
+            "specularScale": 0.0
+        },
+        {
+            "modelPath": "__builtin_box",
+            "translation": [-2113.071, 808.156, 802.567],
+            "rotation": [0.0, -1.3424, 0.0],
+            "scale": [16.0, 0.7, 0.6],
+            "color": [1.1, 1.1, 1.15],
+            "specularScale": 0.0
+        },
+        {
+            "modelPath": "__builtin_box",
+            "translation": [-2113.071, 868.156, 802.567],
+            "rotation": [0.0, -1.3424, 0.0],
+            "scale": [16.0, 0.7, 0.6],
+            "color": [1.1, 1.1, 1.15],
+            "specularScale": 0.0
+        },
+        {
+            "modelPath": "__builtin_box",
+            "translation": [-2113.071, 928.156, 802.567],
+            "rotation": [0.0, -1.3424, 0.0],
+            "scale": [16.0, 0.7, 0.6],
+            "color": [1.1, 1.1, 1.15],
+            "specularScale": 0.0
+        },
+        {
+            "modelPath": "__builtin_box",
+            "translation": [-2113.071, 988.156, 802.567],
+            "rotation": [0.0, -1.3424, 0.0],
+            "scale": [16.0, 0.7, 0.6],
+            "color": [1.1, 1.1, 1.15],
+            "specularScale": 0.0
+        },
+        {
+            "modelPath": "resources/models/tower/tower_panel.obj",
+            "translation": [-2097.617, 518.156, 839.776],
+            "rotation": [0.0, -1.2756, 0.0],
+            "scale": [41.12, 1080.0, 10.0],
+            "color": [0.56, 0.575, 0.62],
+            "specularScale": 0.0,
+            "uvScale": [1.0, 54.0]
+        },
+        {
+            "modelPath": "__builtin_box",
+            "translation": [-2102.688, 588.156, 841.318],
+            "rotation": [0.0, -1.2756, 0.0],
+            "scale": [16.0, 0.7, 0.6],
+            "color": [1.1, 1.1, 1.15],
+            "specularScale": 0.0
+        },
+        {
+            "modelPath": "__builtin_box",
+            "translation": [-2102.688, 648.156, 841.318],
+            "rotation": [0.0, -1.2756, 0.0],
+            "scale": [16.0, 0.7, 0.6],
+            "color": [1.1, 1.1, 1.15],
+            "specularScale": 0.0
+        },
+        {
+            "modelPath": "__builtin_box",
+            "translation": [-2102.688, 708.156, 841.318],
+            "rotation": [0.0, -1.2756, 0.0],
+            "scale": [16.0, 0.7, 0.6],
+            "color": [1.1, 1.1, 1.15],
+            "specularScale": 0.0
+        },
+        {
+            "modelPath": "__builtin_box",
+            "translation": [-2102.688, 768.156, 841.318],
+            "rotation": [0.0, -1.2756, 0.0],
+            "scale": [16.0, 0.7, 0.6],
+            "color": [1.1, 1.1, 1.15],
+            "specularScale": 0.0
+        },
+        {
+            "modelPath": "__builtin_box",
+            "translation": [-2102.688, 828.156, 841.318],
+            "rotation": [0.0, -1.2756, 0.0],
+            "scale": [16.0, 0.7, 0.6],
+            "color": [1.1, 1.1, 1.15],
+            "specularScale": 0.0
+        },
+        {
+            "modelPath": "__builtin_box",
+            "translation": [-2102.688, 888.156, 841.318],
+            "rotation": [0.0, -1.2756, 0.0],
+            "scale": [16.0, 0.7, 0.6],
+            "color": [1.1, 1.1, 1.15],
+            "specularScale": 0.0
+        },
+        {
+            "modelPath": "__builtin_box",
+            "translation": [-2102.688, 948.156, 841.318],
+            "rotation": [0.0, -1.2756, 0.0],
+            "scale": [16.0, 0.7, 0.6],
+            "color": [1.1, 1.1, 1.15],
+            "specularScale": 0.0
+        },
+        {
+            "modelPath": "resources/models/tower/tower_panel.obj",
+            "translation": [-2084.783, 518.156, 877.412],
+            "rotation": [0.0, -1.2087, 0.0],
+            "scale": [41.12, 1080.0, 10.0],
+            "color": [0.56, 0.575, 0.62],
+            "specularScale": 0.0,
+            "uvScale": [1.0, 54.0]
+        },
+        {
+            "modelPath": "__builtin_box",
+            "translation": [-2089.739, 548.156, 879.289],
+            "rotation": [0.0, -1.2087, 0.0],
+            "scale": [16.0, 0.7, 0.6],
+            "color": [1.1, 1.1, 1.15],
+            "specularScale": 0.0
+        },
+        {
+            "modelPath": "__builtin_box",
+            "translation": [-2089.739, 608.156, 879.289],
+            "rotation": [0.0, -1.2087, 0.0],
+            "scale": [16.0, 0.7, 0.6],
+            "color": [1.1, 1.1, 1.15],
+            "specularScale": 0.0
+        },
+        {
+            "modelPath": "__builtin_box",
+            "translation": [-2089.739, 668.156, 879.289],
+            "rotation": [0.0, -1.2087, 0.0],
+            "scale": [16.0, 0.7, 0.6],
+            "color": [1.1, 1.1, 1.15],
+            "specularScale": 0.0
+        },
+        {
+            "modelPath": "__builtin_box",
+            "translation": [-2089.739, 728.156, 879.289],
+            "rotation": [0.0, -1.2087, 0.0],
+            "scale": [16.0, 0.7, 0.6],
+            "color": [1.1, 1.1, 1.15],
+            "specularScale": 0.0
+        },
+        {
+            "modelPath": "__builtin_box",
+            "translation": [-2089.739, 788.156, 879.289],
+            "rotation": [0.0, -1.2087, 0.0],
+            "scale": [16.0, 0.7, 0.6],
+            "color": [1.1, 1.1, 1.15],
+            "specularScale": 0.0
+        },
+        {
+            "modelPath": "__builtin_box",
+            "translation": [-2089.739, 848.156, 879.289],
+            "rotation": [0.0, -1.2087, 0.0],
+            "scale": [16.0, 0.7, 0.6],
+            "color": [1.1, 1.1, 1.15],
+            "specularScale": 0.0
+        },
+        {
+            "modelPath": "__builtin_box",
+            "translation": [-2089.739, 908.156, 879.289],
+            "rotation": [0.0, -1.2087, 0.0],
+            "scale": [16.0, 0.7, 0.6],
+            "color": [1.1, 1.1, 1.15],
+            "specularScale": 0.0
+        },
+        {
+            "modelPath": "resources/models/tower/tower_panel.obj",
+            "translation": [-2069.464, 518.156, 914.106],
+            "rotation": [0.0, -1.1419, 0.0],
+            "scale": [41.12, 1080.0, 10.0],
+            "color": [0.56, 0.575, 0.62],
+            "specularScale": 0.0,
+            "uvScale": [1.0, 54.0]
+        },
+        {
+            "modelPath": "__builtin_box",
+            "translation": [-2074.284, 508.156, 916.311],
+            "rotation": [0.0, -1.1419, 0.0],
+            "scale": [16.0, 0.7, 0.6],
+            "color": [1.1, 1.1, 1.15],
+            "specularScale": 0.0
+        },
+        {
+            "modelPath": "__builtin_box",
+            "translation": [-2074.284, 568.156, 916.311],
+            "rotation": [0.0, -1.1419, 0.0],
+            "scale": [16.0, 0.7, 0.6],
+            "color": [1.1, 1.1, 1.15],
+            "specularScale": 0.0
+        },
+        {
+            "modelPath": "__builtin_box",
+            "translation": [-2074.284, 628.156, 916.311],
+            "rotation": [0.0, -1.1419, 0.0],
+            "scale": [16.0, 0.7, 0.6],
+            "color": [1.1, 1.1, 1.15],
+            "specularScale": 0.0
+        },
+        {
+            "modelPath": "__builtin_box",
+            "translation": [-2074.284, 688.156, 916.311],
+            "rotation": [0.0, -1.1419, 0.0],
+            "scale": [16.0, 0.7, 0.6],
+            "color": [1.1, 1.1, 1.15],
+            "specularScale": 0.0
+        },
+        {
+            "modelPath": "__builtin_box",
+            "translation": [-2074.284, 748.156, 916.311],
+            "rotation": [0.0, -1.1419, 0.0],
+            "scale": [16.0, 0.7, 0.6],
+            "color": [1.1, 1.1, 1.15],
+            "specularScale": 0.0
+        },
+        {
+            "modelPath": "__builtin_box",
+            "translation": [-2074.284, 808.156, 916.311],
+            "rotation": [0.0, -1.1419, 0.0],
+            "scale": [16.0, 0.7, 0.6],
+            "color": [1.1, 1.1, 1.15],
+            "specularScale": 0.0
+        },
+        {
+            "modelPath": "resources/models/tower/tower_panel.obj",
+            "translation": [-2051.728, 518.156, 949.696],
+            "rotation": [0.0, -1.075, 0.0],
+            "scale": [41.12, 1080.0, 10.0],
+            "color": [0.56, 0.575, 0.62],
+            "specularScale": 0.0,
+            "uvScale": [1.0, 54.0]
+        },
+        {
+            "modelPath": "__builtin_box",
+            "translation": [-2056.39, 468.156, 952.217],
+            "rotation": [0.0, -1.075, 0.0],
+            "scale": [16.0, 0.7, 0.6],
+            "color": [1.1, 1.1, 1.15],
+            "specularScale": 0.0
+        },
+        {
+            "modelPath": "__builtin_box",
+            "translation": [-2056.39, 528.156, 952.217],
+            "rotation": [0.0, -1.075, 0.0],
+            "scale": [16.0, 0.7, 0.6],
+            "color": [1.1, 1.1, 1.15],
+            "specularScale": 0.0
+        },
+        {
+            "modelPath": "__builtin_box",
+            "translation": [-2056.39, 588.156, 952.217],
+            "rotation": [0.0, -1.075, 0.0],
+            "scale": [16.0, 0.7, 0.6],
+            "color": [1.1, 1.1, 1.15],
+            "specularScale": 0.0
+        },
+        {
+            "modelPath": "__builtin_box",
+            "translation": [-2056.39, 648.156, 952.217],
+            "rotation": [0.0, -1.075, 0.0],
+            "scale": [16.0, 0.7, 0.6],
+            "color": [1.1, 1.1, 1.15],
+            "specularScale": 0.0
+        },
+        {
+            "modelPath": "__builtin_box",
+            "translation": [-2056.39, 708.156, 952.217],
+            "rotation": [0.0, -1.075, 0.0],
+            "scale": [16.0, 0.7, 0.6],
+            "color": [1.1, 1.1, 1.15],
+            "specularScale": 0.0
+        },
+        {
+            "modelPath": "__builtin_box",
+            "translation": [-2056.39, 768.156, 952.217],
+            "rotation": [0.0, -1.075, 0.0],
+            "scale": [16.0, 0.7, 0.6],
+            "color": [1.1, 1.1, 1.15],
+            "specularScale": 0.0
+        },
+        {
+            "modelPath": "resources/models/tower/tower_panel.obj",
+            "translation": [-2031.654, 518.156, 984.021],
+            "rotation": [0.0, -1.0082, 0.0],
+            "scale": [41.12, 1080.0, 10.0],
+            "color": [0.56, 0.575, 0.62],
+            "specularScale": 0.0,
+            "uvScale": [1.0, 54.0]
+        },
+        {
+            "modelPath": "__builtin_box",
+            "translation": [-2036.137, 488.156, 986.848],
+            "rotation": [0.0, -1.0082, 0.0],
+            "scale": [16.0, 0.7, 0.6],
+            "color": [1.1, 1.1, 1.15],
+            "specularScale": 0.0
+        },
+        {
+            "modelPath": "__builtin_box",
+            "translation": [-2036.137, 548.156, 986.848],
+            "rotation": [0.0, -1.0082, 0.0],
+            "scale": [16.0, 0.7, 0.6],
+            "color": [1.1, 1.1, 1.15],
+            "specularScale": 0.0
+        },
+        {
+            "modelPath": "__builtin_box",
+            "translation": [-2036.137, 608.156, 986.848],
+            "rotation": [0.0, -1.0082, 0.0],
+            "scale": [16.0, 0.7, 0.6],
+            "color": [1.1, 1.1, 1.15],
+            "specularScale": 0.0
+        },
+        {
+            "modelPath": "__builtin_box",
+            "translation": [-2036.137, 668.156, 986.848],
+            "rotation": [0.0, -1.0082, 0.0],
+            "scale": [16.0, 0.7, 0.6],
+            "color": [1.1, 1.1, 1.15],
+            "specularScale": 0.0
+        },
+        {
+            "modelPath": "__builtin_box",
+            "translation": [-2036.137, 728.156, 986.848],
+            "rotation": [0.0, -1.0082, 0.0],
+            "scale": [16.0, 0.7, 0.6],
+            "color": [1.1, 1.1, 1.15],
+            "specularScale": 0.0
+        },
+        {
+            "modelPath": "resources/models/tower/tower_panel.obj",
+            "translation": [-2009.333, 518.156, 1016.929],
+            "rotation": [0.0, -0.9414, 0.0],
+            "scale": [41.12, 1080.0, 10.0],
+            "color": [0.56, 0.575, 0.62],
+            "specularScale": 0.0,
+            "uvScale": [1.0, 54.0]
+        },
+        {
+            "modelPath": "__builtin_box",
+            "translation": [-2013.617, 448.156, 1020.049],
+            "rotation": [0.0, -0.9414, 0.0],
+            "scale": [16.0, 0.7, 0.6],
+            "color": [1.1, 1.1, 1.15],
+            "specularScale": 0.0
+        },
+        {
+            "modelPath": "__builtin_box",
+            "translation": [-2013.617, 508.156, 1020.049],
+            "rotation": [0.0, -0.9414, 0.0],
+            "scale": [16.0, 0.7, 0.6],
+            "color": [1.1, 1.1, 1.15],
+            "specularScale": 0.0
+        },
+        {
+            "modelPath": "__builtin_box",
+            "translation": [-2013.617, 568.156, 1020.049],
+            "rotation": [0.0, -0.9414, 0.0],
+            "scale": [16.0, 0.7, 0.6],
+            "color": [1.1, 1.1, 1.15],
+            "specularScale": 0.0
+        },
+        {
+            "modelPath": "__builtin_box",
+            "translation": [-2013.617, 628.156, 1020.049],
+            "rotation": [0.0, -0.9414, 0.0],
+            "scale": [16.0, 0.7, 0.6],
+            "color": [1.1, 1.1, 1.15],
+            "specularScale": 0.0
+        },
+        {
+            "modelPath": "__builtin_box",
+            "translation": [-2013.617, 688.156, 1020.049],
+            "rotation": [0.0, -0.9414, 0.0],
+            "scale": [16.0, 0.7, 0.6],
+            "color": [1.1, 1.1, 1.15],
+            "specularScale": 0.0
+        },
+        {
+            "modelPath": "__builtin_box",
+            "translation": [-2013.617, 748.156, 1020.049],
+            "rotation": [0.0, -0.9414, 0.0],
+            "scale": [16.0, 0.7, 0.6],
+            "color": [1.1, 1.1, 1.15],
+            "specularScale": 0.0
+        },
+        {
+            "modelPath": "resources/models/tower/tower_panel.obj",
+            "translation": [-1984.864, 518.156, 1048.272],
+            "rotation": [0.0, -0.8745, 0.0],
+            "scale": [41.12, 1080.0, 10.0],
+            "color": [0.56, 0.575, 0.62],
+            "specularScale": 0.0,
+            "uvScale": [1.0, 54.0]
+        },
+        {
+            "modelPath": "__builtin_box",
+            "translation": [-1988.93, 408.156, 1051.671],
+            "rotation": [0.0, -0.8745, 0.0],
+            "scale": [16.0, 0.7, 0.6],
+            "color": [1.1, 1.1, 1.15],
+            "specularScale": 0.0
+        },
+        {
+            "modelPath": "__builtin_box",
+            "translation": [-1988.93, 468.156, 1051.671],
+            "rotation": [0.0, -0.8745, 0.0],
+            "scale": [16.0, 0.7, 0.6],
+            "color": [1.1, 1.1, 1.15],
+            "specularScale": 0.0
+        },
+        {
+            "modelPath": "__builtin_box",
+            "translation": [-1988.93, 528.156, 1051.671],
+            "rotation": [0.0, -0.8745, 0.0],
+            "scale": [16.0, 0.7, 0.6],
+            "color": [1.1, 1.1, 1.15],
+            "specularScale": 0.0
+        },
+        {
+            "modelPath": "__builtin_box",
+            "translation": [-1988.93, 588.156, 1051.671],
+            "rotation": [0.0, -0.8745, 0.0],
+            "scale": [16.0, 0.7, 0.6],
+            "color": [1.1, 1.1, 1.15],
+            "specularScale": 0.0
+        },
+        {
+            "modelPath": "__builtin_box",
+            "translation": [-1988.93, 648.156, 1051.671],
+            "rotation": [0.0, -0.8745, 0.0],
+            "scale": [16.0, 0.7, 0.6],
+            "color": [1.1, 1.1, 1.15],
+            "specularScale": 0.0
+        },
+        {
+            "modelPath": "__builtin_box",
+            "translation": [-1988.93, 708.156, 1051.671],
+            "rotation": [0.0, -0.8745, 0.0],
+            "scale": [16.0, 0.7, 0.6],
+            "color": [1.1, 1.1, 1.15],
+            "specularScale": 0.0
+        },
+        {
+            "modelPath": "resources/models/tower/tower_panel.obj",
+            "translation": [-1958.355, 518.156, 1077.911],
+            "rotation": [0.0, -0.8077, 0.0],
+            "scale": [41.12, 1080.0, 10.0],
+            "color": [0.56, 0.575, 0.62],
+            "specularScale": 0.0,
+            "uvScale": [1.0, 54.0]
+        },
+        {
+            "modelPath": "__builtin_box",
+            "translation": [-1962.186, 368.156, 1081.574],
+            "rotation": [0.0, -0.8077, 0.0],
+            "scale": [16.0, 0.7, 0.6],
+            "color": [1.1, 1.1, 1.15],
+            "specularScale": 0.0
+        },
+        {
+            "modelPath": "__builtin_box",
+            "translation": [-1962.186, 428.156, 1081.574],
+            "rotation": [0.0, -0.8077, 0.0],
+            "scale": [16.0, 0.7, 0.6],
+            "color": [1.1, 1.1, 1.15],
+            "specularScale": 0.0
+        },
+        {
+            "modelPath": "__builtin_box",
+            "translation": [-1962.186, 488.156, 1081.574],
+            "rotation": [0.0, -0.8077, 0.0],
+            "scale": [16.0, 0.7, 0.6],
+            "color": [1.1, 1.1, 1.15],
+            "specularScale": 0.0
+        },
+        {
+            "modelPath": "__builtin_box",
+            "translation": [-1962.186, 548.156, 1081.574],
+            "rotation": [0.0, -0.8077, 0.0],
+            "scale": [16.0, 0.7, 0.6],
+            "color": [1.1, 1.1, 1.15],
+            "specularScale": 0.0
+        },
+        {
+            "modelPath": "__builtin_box",
+            "translation": [-1962.186, 608.156, 1081.574],
+            "rotation": [0.0, -0.8077, 0.0],
+            "scale": [16.0, 0.7, 0.6],
+            "color": [1.1, 1.1, 1.15],
+            "specularScale": 0.0
+        },
+        {
+            "modelPath": "__builtin_box",
+            "translation": [-1962.186, 668.156, 1081.574],
+            "rotation": [0.0, -0.8077, 0.0],
+            "scale": [16.0, 0.7, 0.6],
+            "color": [1.1, 1.1, 1.15],
+            "specularScale": 0.0
+        },
+        {
+            "modelPath": "resources/models/tower/tower_panel.obj",
+            "translation": [-1929.927, 518.156, 1105.713],
+            "rotation": [0.0, -0.7408, 0.0],
+            "scale": [41.12, 1080.0, 10.0],
+            "color": [0.56, 0.575, 0.62],
+            "specularScale": 0.0,
+            "uvScale": [1.0, 54.0]
+        },
+        {
+            "modelPath": "__builtin_box",
+            "translation": [-1933.504, 328.156, 1109.624],
+            "rotation": [0.0, -0.7408, 0.0],
+            "scale": [16.0, 0.7, 0.6],
+            "color": [1.1, 1.1, 1.15],
+            "specularScale": 0.0
+        },
+        {
+            "modelPath": "__builtin_box",
+            "translation": [-1933.504, 388.156, 1109.624],
+            "rotation": [0.0, -0.7408, 0.0],
+            "scale": [16.0, 0.7, 0.6],
+            "color": [1.1, 1.1, 1.15],
+            "specularScale": 0.0
+        },
+        {
+            "modelPath": "__builtin_box",
+            "translation": [-1933.504, 448.156, 1109.624],
+            "rotation": [0.0, -0.7408, 0.0],
+            "scale": [16.0, 0.7, 0.6],
+            "color": [1.1, 1.1, 1.15],
+            "specularScale": 0.0
+        },
+        {
+            "modelPath": "__builtin_box",
+            "translation": [-1933.504, 508.156, 1109.624],
+            "rotation": [0.0, -0.7408, 0.0],
+            "scale": [16.0, 0.7, 0.6],
+            "color": [1.1, 1.1, 1.15],
+            "specularScale": 0.0
+        },
+        {
+            "modelPath": "__builtin_box",
+            "translation": [-1933.504, 568.156, 1109.624],
+            "rotation": [0.0, -0.7408, 0.0],
+            "scale": [16.0, 0.7, 0.6],
+            "color": [1.1, 1.1, 1.15],
+            "specularScale": 0.0
+        },
+        {
+            "modelPath": "__builtin_box",
+            "translation": [-1933.504, 628.156, 1109.624],
+            "rotation": [0.0, -0.7408, 0.0],
+            "scale": [16.0, 0.7, 0.6],
+            "color": [1.1, 1.1, 1.15],
+            "specularScale": 0.0
+        },
+        {
+            "modelPath": "resources/models/tower/tower_panel.obj",
+            "translation": [-1899.704, 518.156, 1131.555],
+            "rotation": [0.0, -0.674, 0.0],
+            "scale": [41.12, 1080.0, 10.0],
+            "color": [0.56, 0.575, 0.62],
+            "specularScale": 0.0,
+            "uvScale": [1.0, 54.0]
+        },
+        {
+            "modelPath": "__builtin_box",
+            "translation": [-1903.012, 288.156, 1135.696],
+            "rotation": [0.0, -0.674, 0.0],
+            "scale": [16.0, 0.7, 0.6],
+            "color": [1.1, 1.1, 1.15],
+            "specularScale": 0.0
+        },
+        {
+            "modelPath": "__builtin_box",
+            "translation": [-1903.012, 348.156, 1135.696],
+            "rotation": [0.0, -0.674, 0.0],
+            "scale": [16.0, 0.7, 0.6],
+            "color": [1.1, 1.1, 1.15],
+            "specularScale": 0.0
+        },
+        {
+            "modelPath": "__builtin_box",
+            "translation": [-1903.012, 408.156, 1135.696],
+            "rotation": [0.0, -0.674, 0.0],
+            "scale": [16.0, 0.7, 0.6],
+            "color": [1.1, 1.1, 1.15],
+            "specularScale": 0.0
+        },
+        {
+            "modelPath": "__builtin_box",
+            "translation": [-1903.012, 468.156, 1135.696],
+            "rotation": [0.0, -0.674, 0.0],
+            "scale": [16.0, 0.7, 0.6],
+            "color": [1.1, 1.1, 1.15],
+            "specularScale": 0.0
+        },
+        {
+            "modelPath": "__builtin_box",
+            "translation": [-1903.012, 528.156, 1135.696],
+            "rotation": [0.0, -0.674, 0.0],
+            "scale": [16.0, 0.7, 0.6],
+            "color": [1.1, 1.1, 1.15],
+            "specularScale": 0.0
+        },
+        {
+            "modelPath": "__builtin_box",
+            "translation": [-1903.012, 588.156, 1135.696],
+            "rotation": [0.0, -0.674, 0.0],
+            "scale": [16.0, 0.7, 0.6],
+            "color": [1.1, 1.1, 1.15],
+            "specularScale": 0.0
+        },
+        {
+            "modelPath": "resources/models/tower/tower_panel.obj",
+            "translation": [-1867.823, 518.156, 1155.32],
+            "rotation": [0.0, -0.6072, 0.0],
+            "scale": [41.12, 1080.0, 10.0],
+            "color": [0.56, 0.575, 0.62],
+            "specularScale": 0.0,
+            "uvScale": [1.0, 54.0]
+        },
+        {
+            "modelPath": "__builtin_box",
+            "translation": [-1870.847, 308.156, 1159.673],
+            "rotation": [0.0, -0.6072, 0.0],
+            "scale": [16.0, 0.7, 0.6],
+            "color": [1.1, 1.1, 1.15],
+            "specularScale": 0.0
+        },
+        {
+            "modelPath": "__builtin_box",
+            "translation": [-1870.847, 368.156, 1159.673],
+            "rotation": [0.0, -0.6072, 0.0],
+            "scale": [16.0, 0.7, 0.6],
+            "color": [1.1, 1.1, 1.15],
+            "specularScale": 0.0
+        },
+        {
+            "modelPath": "__builtin_box",
+            "translation": [-1870.847, 428.156, 1159.673],
+            "rotation": [0.0, -0.6072, 0.0],
+            "scale": [16.0, 0.7, 0.6],
+            "color": [1.1, 1.1, 1.15],
+            "specularScale": 0.0
+        },
+        {
+            "modelPath": "__builtin_box",
+            "translation": [-1870.847, 488.156, 1159.673],
+            "rotation": [0.0, -0.6072, 0.0],
+            "scale": [16.0, 0.7, 0.6],
+            "color": [1.1, 1.1, 1.15],
+            "specularScale": 0.0
+        },
+        {
+            "modelPath": "__builtin_box",
+            "translation": [-1870.847, 548.156, 1159.673],
+            "rotation": [0.0, -0.6072, 0.0],
+            "scale": [16.0, 0.7, 0.6],
+            "color": [1.1, 1.1, 1.15],
+            "specularScale": 0.0
+        },
+        {
+            "modelPath": "__builtin_box",
+            "translation": [-1870.847, 608.156, 1159.673],
+            "rotation": [0.0, -0.6072, 0.0],
+            "scale": [16.0, 0.7, 0.6],
+            "color": [1.1, 1.1, 1.15],
+            "specularScale": 0.0
+        },
+        {
+            "modelPath": "resources/models/tower/tower_panel.obj",
+            "translation": [-1834.427, 518.156, 1176.902],
+            "rotation": [0.0, -0.5403, 0.0],
+            "scale": [41.12, 1080.0, 10.0],
+            "color": [0.56, 0.575, 0.62],
+            "specularScale": 0.0,
+            "uvScale": [1.0, 54.0]
+        },
+        {
+            "modelPath": "__builtin_box",
+            "translation": [-1837.153, 268.156, 1181.447],
+            "rotation": [0.0, -0.5403, 0.0],
+            "scale": [16.0, 0.7, 0.6],
+            "color": [1.1, 1.1, 1.15],
+            "specularScale": 0.0
+        },
+        {
+            "modelPath": "__builtin_box",
+            "translation": [-1837.153, 328.156, 1181.447],
+            "rotation": [0.0, -0.5403, 0.0],
+            "scale": [16.0, 0.7, 0.6],
+            "color": [1.1, 1.1, 1.15],
+            "specularScale": 0.0
+        },
+        {
+            "modelPath": "__builtin_box",
+            "translation": [-1837.153, 388.156, 1181.447],
+            "rotation": [0.0, -0.5403, 0.0],
+            "scale": [16.0, 0.7, 0.6],
+            "color": [1.1, 1.1, 1.15],
+            "specularScale": 0.0
+        },
+        {
+            "modelPath": "__builtin_box",
+            "translation": [-1837.153, 448.156, 1181.447],
+            "rotation": [0.0, -0.5403, 0.0],
+            "scale": [16.0, 0.7, 0.6],
+            "color": [1.1, 1.1, 1.15],
+            "specularScale": 0.0
+        },
+        {
+            "modelPath": "__builtin_box",
+            "translation": [-1837.153, 508.156, 1181.447],
+            "rotation": [0.0, -0.5403, 0.0],
+            "scale": [16.0, 0.7, 0.6],
+            "color": [1.1, 1.1, 1.15],
+            "specularScale": 0.0
+        },
+        {
+            "modelPath": "__builtin_box",
+            "translation": [-1837.153, 568.156, 1181.447],
+            "rotation": [0.0, -0.5403, 0.0],
+            "scale": [16.0, 0.7, 0.6],
+            "color": [1.1, 1.1, 1.15],
+            "specularScale": 0.0
+        },
+        {
+            "modelPath": "resources/models/tower/tower_panel.obj",
+            "translation": [-1799.663, 518.156, 1196.206],
+            "rotation": [0.0, -0.4735, 0.0],
+            "scale": [41.12, 1080.0, 10.0],
+            "color": [0.56, 0.575, 0.62],
+            "specularScale": 0.0,
+            "uvScale": [1.0, 54.0]
+        },
+        {
+            "modelPath": "__builtin_box",
+            "translation": [-1802.079, 228.156, 1200.923],
+            "rotation": [0.0, -0.4735, 0.0],
+            "scale": [16.0, 0.7, 0.6],
+            "color": [1.1, 1.1, 1.15],
+            "specularScale": 0.0
+        },
+        {
+            "modelPath": "__builtin_box",
+            "translation": [-1802.079, 288.156, 1200.923],
+            "rotation": [0.0, -0.4735, 0.0],
+            "scale": [16.0, 0.7, 0.6],
+            "color": [1.1, 1.1, 1.15],
+            "specularScale": 0.0
+        },
+        {
+            "modelPath": "__builtin_box",
+            "translation": [-1802.079, 348.156, 1200.923],
+            "rotation": [0.0, -0.4735, 0.0],
+            "scale": [16.0, 0.7, 0.6],
+            "color": [1.1, 1.1, 1.15],
+            "specularScale": 0.0
+        },
+        {
+            "modelPath": "__builtin_box",
+            "translation": [-1802.079, 408.156, 1200.923],
+            "rotation": [0.0, -0.4735, 0.0],
+            "scale": [16.0, 0.7, 0.6],
+            "color": [1.1, 1.1, 1.15],
+            "specularScale": 0.0
+        },
+        {
+            "modelPath": "__builtin_box",
+            "translation": [-1802.079, 468.156, 1200.923],
+            "rotation": [0.0, -0.4735, 0.0],
+            "scale": [16.0, 0.7, 0.6],
+            "color": [1.1, 1.1, 1.15],
+            "specularScale": 0.0
+        },
+        {
+            "modelPath": "__builtin_box",
+            "translation": [-1802.079, 528.156, 1200.923],
+            "rotation": [0.0, -0.4735, 0.0],
+            "scale": [16.0, 0.7, 0.6],
+            "color": [1.1, 1.1, 1.15],
+            "specularScale": 0.0
+        },
+        {
+            "modelPath": "resources/models/tower/tower_panel.obj",
+            "translation": [-1763.687, 518.156, 1213.145],
+            "rotation": [0.0, -0.4066, 0.0],
+            "scale": [41.12, 1080.0, 10.0],
+            "color": [0.56, 0.575, 0.62],
+            "specularScale": 0.0,
+            "uvScale": [1.0, 54.0]
+        },
+        {
+            "modelPath": "__builtin_box",
+            "translation": [-1765.783, 188.156, 1218.013],
+            "rotation": [0.0, -0.4066, 0.0],
+            "scale": [16.0, 0.7, 0.6],
+            "color": [1.1, 1.1, 1.15],
+            "specularScale": 0.0
+        },
+        {
+            "modelPath": "__builtin_box",
+            "translation": [-1765.783, 248.156, 1218.013],
+            "rotation": [0.0, -0.4066, 0.0],
+            "scale": [16.0, 0.7, 0.6],
+            "color": [1.1, 1.1, 1.15],
+            "specularScale": 0.0
+        },
+        {
+            "modelPath": "__builtin_box",
+            "translation": [-1765.783, 308.156, 1218.013],
+            "rotation": [0.0, -0.4066, 0.0],
+            "scale": [16.0, 0.7, 0.6],
+            "color": [1.1, 1.1, 1.15],
+            "specularScale": 0.0
+        },
+        {
+            "modelPath": "__builtin_box",
+            "translation": [-1765.783, 368.156, 1218.013],
+            "rotation": [0.0, -0.4066, 0.0],
+            "scale": [16.0, 0.7, 0.6],
+            "color": [1.1, 1.1, 1.15],
+            "specularScale": 0.0
+        },
+        {
+            "modelPath": "__builtin_box",
+            "translation": [-1765.783, 428.156, 1218.013],
+            "rotation": [0.0, -0.4066, 0.0],
+            "scale": [16.0, 0.7, 0.6],
+            "color": [1.1, 1.1, 1.15],
+            "specularScale": 0.0
+        },
+        {
+            "modelPath": "__builtin_box",
+            "translation": [-1765.783, 488.156, 1218.013],
+            "rotation": [0.0, -0.4066, 0.0],
+            "scale": [16.0, 0.7, 0.6],
+            "color": [1.1, 1.1, 1.15],
+            "specularScale": 0.0
+        },
+        {
+            "modelPath": "resources/models/tower/tower_panel.obj",
+            "translation": [-1726.66, 518.156, 1227.643],
+            "rotation": [0.0, -0.3398, 0.0],
+            "scale": [41.12, 1080.0, 10.0],
+            "color": [0.56, 0.575, 0.62],
+            "specularScale": 0.0,
+            "uvScale": [1.0, 54.0]
+        },
+        {
+            "modelPath": "__builtin_box",
+            "translation": [-1728.427, 148.156, 1232.64],
+            "rotation": [0.0, -0.3398, 0.0],
+            "scale": [16.0, 0.7, 0.6],
+            "color": [1.1, 1.1, 1.15],
+            "specularScale": 0.0
+        },
+        {
+            "modelPath": "__builtin_box",
+            "translation": [-1728.427, 208.156, 1232.64],
+            "rotation": [0.0, -0.3398, 0.0],
+            "scale": [16.0, 0.7, 0.6],
+            "color": [1.1, 1.1, 1.15],
+            "specularScale": 0.0
+        },
+        {
+            "modelPath": "__builtin_box",
+            "translation": [-1728.427, 268.156, 1232.64],
+            "rotation": [0.0, -0.3398, 0.0],
+            "scale": [16.0, 0.7, 0.6],
+            "color": [1.1, 1.1, 1.15],
+            "specularScale": 0.0
+        },
+        {
+            "modelPath": "__builtin_box",
+            "translation": [-1728.427, 328.156, 1232.64],
+            "rotation": [0.0, -0.3398, 0.0],
+            "scale": [16.0, 0.7, 0.6],
+            "color": [1.1, 1.1, 1.15],
+            "specularScale": 0.0
+        },
+        {
+            "modelPath": "__builtin_box",
+            "translation": [-1728.427, 388.156, 1232.64],
+            "rotation": [0.0, -0.3398, 0.0],
+            "scale": [16.0, 0.7, 0.6],
+            "color": [1.1, 1.1, 1.15],
+            "specularScale": 0.0
+        },
+        {
+            "modelPath": "__builtin_box",
+            "translation": [-1728.427, 448.156, 1232.64],
+            "rotation": [0.0, -0.3398, 0.0],
+            "scale": [16.0, 0.7, 0.6],
+            "color": [1.1, 1.1, 1.15],
+            "specularScale": 0.0
+        },
+        {
+            "modelPath": "resources/models/tower/tower_panel.obj",
+            "translation": [-1688.748, 518.156, 1239.635],
+            "rotation": [0.0, -0.2729, 0.0],
+            "scale": [41.12, 1080.0, 10.0],
+            "color": [0.56, 0.575, 0.62],
+            "specularScale": 0.0,
+            "uvScale": [1.0, 54.0]
+        },
+        {
+            "modelPath": "__builtin_box",
+            "translation": [-1690.177, 108.156, 1244.739],
+            "rotation": [0.0, -0.2729, 0.0],
+            "scale": [16.0, 0.7, 0.6],
+            "color": [1.1, 1.1, 1.15],
+            "specularScale": 0.0
+        },
+        {
+            "modelPath": "__builtin_box",
+            "translation": [-1690.177, 168.156, 1244.739],
+            "rotation": [0.0, -0.2729, 0.0],
+            "scale": [16.0, 0.7, 0.6],
+            "color": [1.1, 1.1, 1.15],
+            "specularScale": 0.0
+        },
+        {
+            "modelPath": "__builtin_box",
+            "translation": [-1690.177, 228.156, 1244.739],
+            "rotation": [0.0, -0.2729, 0.0],
+            "scale": [16.0, 0.7, 0.6],
+            "color": [1.1, 1.1, 1.15],
+            "specularScale": 0.0
+        },
+        {
+            "modelPath": "__builtin_box",
+            "translation": [-1690.177, 288.156, 1244.739],
+            "rotation": [0.0, -0.2729, 0.0],
+            "scale": [16.0, 0.7, 0.6],
+            "color": [1.1, 1.1, 1.15],
+            "specularScale": 0.0
+        },
+        {
+            "modelPath": "__builtin_box",
+            "translation": [-1690.177, 348.156, 1244.739],
+            "rotation": [0.0, -0.2729, 0.0],
+            "scale": [16.0, 0.7, 0.6],
+            "color": [1.1, 1.1, 1.15],
+            "specularScale": 0.0
+        },
+        {
+            "modelPath": "__builtin_box",
+            "translation": [-1690.177, 408.156, 1244.739],
+            "rotation": [0.0, -0.2729, 0.0],
+            "scale": [16.0, 0.7, 0.6],
+            "color": [1.1, 1.1, 1.15],
+            "specularScale": 0.0
+        },
+        {
+            "modelPath": "resources/models/tower/tower_panel.obj",
+            "translation": [-1650.119, 518.156, 1249.068],
+            "rotation": [0.0, -0.2061, 0.0],
+            "scale": [41.12, 1080.0, 10.0],
+            "color": [0.56, 0.575, 0.62],
+            "specularScale": 0.0,
+            "uvScale": [1.0, 54.0]
+        },
+        {
+            "modelPath": "__builtin_box",
+            "translation": [-1651.204, 128.156, 1254.256],
+            "rotation": [0.0, -0.2061, 0.0],
+            "scale": [16.0, 0.7, 0.6],
+            "color": [1.1, 1.1, 1.15],
+            "specularScale": 0.0
+        },
+        {
+            "modelPath": "__builtin_box",
+            "translation": [-1651.204, 188.156, 1254.256],
+            "rotation": [0.0, -0.2061, 0.0],
+            "scale": [16.0, 0.7, 0.6],
+            "color": [1.1, 1.1, 1.15],
+            "specularScale": 0.0
+        },
+        {
+            "modelPath": "__builtin_box",
+            "translation": [-1651.204, 248.156, 1254.256],
+            "rotation": [0.0, -0.2061, 0.0],
+            "scale": [16.0, 0.7, 0.6],
+            "color": [1.1, 1.1, 1.15],
+            "specularScale": 0.0
+        },
+        {
+            "modelPath": "__builtin_box",
+            "translation": [-1651.204, 308.156, 1254.256],
+            "rotation": [0.0, -0.2061, 0.0],
+            "scale": [16.0, 0.7, 0.6],
+            "color": [1.1, 1.1, 1.15],
+            "specularScale": 0.0
+        },
+        {
+            "modelPath": "__builtin_box",
+            "translation": [-1651.204, 368.156, 1254.256],
+            "rotation": [0.0, -0.2061, 0.0],
+            "scale": [16.0, 0.7, 0.6],
+            "color": [1.1, 1.1, 1.15],
+            "specularScale": 0.0
+        },
+        {
+            "modelPath": "__builtin_box",
+            "translation": [-1651.204, 428.156, 1254.256],
+            "rotation": [0.0, -0.2061, 0.0],
+            "scale": [16.0, 0.7, 0.6],
+            "color": [1.1, 1.1, 1.15],
+            "specularScale": 0.0
+        },
+        {
+            "modelPath": "resources/models/tower/tower_panel.obj",
+            "translation": [-1610.947, 518.156, 1255.901],
+            "rotation": [0.0, -0.1393, 0.0],
+            "scale": [41.12, 1080.0, 10.0],
+            "color": [0.56, 0.575, 0.62],
+            "specularScale": 0.0,
+            "uvScale": [1.0, 54.0]
+        },
+        {
+            "modelPath": "__builtin_box",
+            "translation": [-1611.683, 88.156, 1261.149],
+            "rotation": [0.0, -0.1393, 0.0],
+            "scale": [16.0, 0.7, 0.6],
+            "color": [1.1, 1.1, 1.15],
+            "specularScale": 0.0
+        },
+        {
+            "modelPath": "__builtin_box",
+            "translation": [-1611.683, 148.156, 1261.149],
+            "rotation": [0.0, -0.1393, 0.0],
+            "scale": [16.0, 0.7, 0.6],
+            "color": [1.1, 1.1, 1.15],
+            "specularScale": 0.0
+        },
+        {
+            "modelPath": "__builtin_box",
+            "translation": [-1611.683, 208.156, 1261.149],
+            "rotation": [0.0, -0.1393, 0.0],
+            "scale": [16.0, 0.7, 0.6],
+            "color": [1.1, 1.1, 1.15],
+            "specularScale": 0.0
+        },
+        {
+            "modelPath": "__builtin_box",
+            "translation": [-1611.683, 268.156, 1261.149],
+            "rotation": [0.0, -0.1393, 0.0],
+            "scale": [16.0, 0.7, 0.6],
+            "color": [1.1, 1.1, 1.15],
+            "specularScale": 0.0
+        },
+        {
+            "modelPath": "__builtin_box",
+            "translation": [-1611.683, 328.156, 1261.149],
+            "rotation": [0.0, -0.1393, 0.0],
+            "scale": [16.0, 0.7, 0.6],
+            "color": [1.1, 1.1, 1.15],
+            "specularScale": 0.0
+        },
+        {
+            "modelPath": "__builtin_box",
+            "translation": [-1611.683, 388.156, 1261.149],
+            "rotation": [0.0, -0.1393, 0.0],
+            "scale": [16.0, 0.7, 0.6],
+            "color": [1.1, 1.1, 1.15],
+            "specularScale": 0.0
+        },
+        {
+            "modelPath": "resources/models/tower/tower_panel.obj",
+            "translation": [-1571.406, 518.156, 1260.101],
+            "rotation": [0.0, -0.0724, 0.0],
+            "scale": [41.12, 1080.0, 10.0],
+            "color": [0.56, 0.575, 0.62],
+            "specularScale": 0.0,
+            "uvScale": [1.0, 54.0]
+        },
+        {
+            "modelPath": "__builtin_box",
+            "translation": [-1571.789, 48.156, 1265.387],
+            "rotation": [0.0, -0.0724, 0.0],
+            "scale": [16.0, 0.7, 0.6],
+            "color": [1.1, 1.1, 1.15],
+            "specularScale": 0.0
+        },
+        {
+            "modelPath": "__builtin_box",
+            "translation": [-1571.789, 108.156, 1265.387],
+            "rotation": [0.0, -0.0724, 0.0],
+            "scale": [16.0, 0.7, 0.6],
+            "color": [1.1, 1.1, 1.15],
+            "specularScale": 0.0
+        },
+        {
+            "modelPath": "__builtin_box",
+            "translation": [-1571.789, 168.156, 1265.387],
+            "rotation": [0.0, -0.0724, 0.0],
+            "scale": [16.0, 0.7, 0.6],
+            "color": [1.1, 1.1, 1.15],
+            "specularScale": 0.0
+        },
+        {
+            "modelPath": "__builtin_box",
+            "translation": [-1571.789, 228.156, 1265.387],
+            "rotation": [0.0, -0.0724, 0.0],
+            "scale": [16.0, 0.7, 0.6],
+            "color": [1.1, 1.1, 1.15],
+            "specularScale": 0.0
+        },
+        {
+            "modelPath": "__builtin_box",
+            "translation": [-1571.789, 288.156, 1265.387],
+            "rotation": [0.0, -0.0724, 0.0],
+            "scale": [16.0, 0.7, 0.6],
+            "color": [1.1, 1.1, 1.15],
+            "specularScale": 0.0
+        },
+        {
+            "modelPath": "__builtin_box",
+            "translation": [-1571.789, 348.156, 1265.387],
+            "rotation": [0.0, -0.0724, 0.0],
+            "scale": [16.0, 0.7, 0.6],
+            "color": [1.1, 1.1, 1.15],
+            "specularScale": 0.0
+        },
+        {
+            "modelPath": "resources/models/tower/tower_panel.obj",
+            "translation": [-1531.672, 518.156, 1261.651],
+            "rotation": [0.0, -0.0056, 0.0],
+            "scale": [41.12, 1080.0, 10.0],
+            "color": [0.56, 0.575, 0.62],
+            "specularScale": 0.0,
+            "uvScale": [1.0, 54.0]
+        },
+        {
+            "modelPath": "__builtin_box",
+            "translation": [-1531.702, 8.156, 1266.951],
+            "rotation": [0.0, -0.0056, 0.0],
+            "scale": [16.0, 0.7, 0.6],
+            "color": [1.1, 1.1, 1.15],
+            "specularScale": 0.0
+        },
+        {
+            "modelPath": "__builtin_box",
+            "translation": [-1531.702, 68.156, 1266.951],
+            "rotation": [0.0, -0.0056, 0.0],
+            "scale": [16.0, 0.7, 0.6],
+            "color": [1.1, 1.1, 1.15],
+            "specularScale": 0.0
+        },
+        {
+            "modelPath": "__builtin_box",
+            "translation": [-1531.702, 128.156, 1266.951],
+            "rotation": [0.0, -0.0056, 0.0],
+            "scale": [16.0, 0.7, 0.6],
+            "color": [1.1, 1.1, 1.15],
+            "specularScale": 0.0
+        },
+        {
+            "modelPath": "__builtin_box",
+            "translation": [-1531.702, 188.156, 1266.951],
+            "rotation": [0.0, -0.0056, 0.0],
+            "scale": [16.0, 0.7, 0.6],
+            "color": [1.1, 1.1, 1.15],
+            "specularScale": 0.0
+        },
+        {
+            "modelPath": "__builtin_box",
+            "translation": [-1531.702, 248.156, 1266.951],
+            "rotation": [0.0, -0.0056, 0.0],
+            "scale": [16.0, 0.7, 0.6],
+            "color": [1.1, 1.1, 1.15],
+            "specularScale": 0.0
+        },
+        {
+            "modelPath": "__builtin_box",
+            "translation": [-1531.702, 308.156, 1266.951],
+            "rotation": [0.0, -0.0056, 0.0],
+            "scale": [16.0, 0.7, 0.6],
+            "color": [1.1, 1.1, 1.15],
+            "specularScale": 0.0
+        },
+        {
+            "modelPath": "resources/models/tower/tower_panel.obj",
+            "translation": [-1491.924, 518.156, 1260.544],
+            "rotation": [0.0, 0.0613, 0.0],
+            "scale": [41.12, 1080.0, 10.0],
+            "color": [0.56, 0.575, 0.62],
+            "specularScale": 0.0,
+            "uvScale": [1.0, 54.0]
+        },
+        {
+            "modelPath": "__builtin_box",
+            "translation": [-1491.599, 28.156, 1265.834],
+            "rotation": [0.0, 0.0613, 0.0],
+            "scale": [16.0, 0.7, 0.6],
+            "color": [1.1, 1.1, 1.15],
+            "specularScale": 0.0
+        },
+        {
+            "modelPath": "__builtin_box",
+            "translation": [-1491.599, 88.156, 1265.834],
+            "rotation": [0.0, 0.0613, 0.0],
+            "scale": [16.0, 0.7, 0.6],
+            "color": [1.1, 1.1, 1.15],
+            "specularScale": 0.0
+        },
+        {
+            "modelPath": "__builtin_box",
+            "translation": [-1491.599, 148.156, 1265.834],
+            "rotation": [0.0, 0.0613, 0.0],
+            "scale": [16.0, 0.7, 0.6],
+            "color": [1.1, 1.1, 1.15],
+            "specularScale": 0.0
+        },
+        {
+            "modelPath": "__builtin_box",
+            "translation": [-1491.599, 208.156, 1265.834],
+            "rotation": [0.0, 0.0613, 0.0],
+            "scale": [16.0, 0.7, 0.6],
+            "color": [1.1, 1.1, 1.15],
+            "specularScale": 0.0
+        },
+        {
+            "modelPath": "__builtin_box",
+            "translation": [-1491.599, 268.156, 1265.834],
+            "rotation": [0.0, 0.0613, 0.0],
+            "scale": [16.0, 0.7, 0.6],
+            "color": [1.1, 1.1, 1.15],
+            "specularScale": 0.0
+        },
+        {
+            "modelPath": "resources/models/tower/tower_panel.obj",
+            "translation": [-1452.338, 518.156, 1256.784],
+            "rotation": [0.0, 0.1281, 0.0],
+            "scale": [41.12, 1080.0, 10.0],
+            "color": [0.56, 0.575, 0.62],
+            "specularScale": 0.0,
+            "uvScale": [1.0, 54.0]
+        },
+        {
+            "modelPath": "__builtin_box",
+            "translation": [-1451.661, -11.844, 1262.041],
+            "rotation": [0.0, 0.1281, 0.0],
+            "scale": [16.0, 0.7, 0.6],
+            "color": [1.1, 1.1, 1.15],
+            "specularScale": 0.0
+        },
+        {
+            "modelPath": "__builtin_box",
+            "translation": [-1451.661, 48.156, 1262.041],
+            "rotation": [0.0, 0.1281, 0.0],
+            "scale": [16.0, 0.7, 0.6],
+            "color": [1.1, 1.1, 1.15],
+            "specularScale": 0.0
+        },
+        {
+            "modelPath": "__builtin_box",
+            "translation": [-1451.661, 108.156, 1262.041],
+            "rotation": [0.0, 0.1281, 0.0],
+            "scale": [16.0, 0.7, 0.6],
+            "color": [1.1, 1.1, 1.15],
+            "specularScale": 0.0
+        },
+        {
+            "modelPath": "__builtin_box",
+            "translation": [-1451.661, 168.156, 1262.041],
+            "rotation": [0.0, 0.1281, 0.0],
+            "scale": [16.0, 0.7, 0.6],
+            "color": [1.1, 1.1, 1.15],
+            "specularScale": 0.0
+        },
+        {
+            "modelPath": "__builtin_box",
+            "translation": [-1451.661, 228.156, 1262.041],
+            "rotation": [0.0, 0.1281, 0.0],
+            "scale": [16.0, 0.7, 0.6],
+            "color": [1.1, 1.1, 1.15],
+            "specularScale": 0.0
+        },
+        {
+            "modelPath": "__builtin_box",
+            "translation": [-1451.661, 288.156, 1262.041],
+            "rotation": [0.0, 0.1281, 0.0],
+            "scale": [16.0, 0.7, 0.6],
+            "color": [1.1, 1.1, 1.15],
+            "specularScale": 0.0
+        },
+        {
+            "modelPath": "resources/models/tower/tower_panel.obj",
+            "translation": [-1413.092, 518.156, 1250.389],
+            "rotation": [0.0, 0.195, 0.0],
+            "scale": [41.12, 1080.0, 10.0],
+            "color": [0.56, 0.575, 0.62],
+            "specularScale": 0.0,
+            "uvScale": [1.0, 54.0]
+        },
+        {
+            "modelPath": "__builtin_box",
+            "translation": [-1412.065, 8.156, 1255.588],
+            "rotation": [0.0, 0.195, 0.0],
+            "scale": [16.0, 0.7, 0.6],
+            "color": [1.1, 1.1, 1.15],
+            "specularScale": 0.0
+        },
+        {
+            "modelPath": "__builtin_box",
+            "translation": [-1412.065, 68.156, 1255.588],
+            "rotation": [0.0, 0.195, 0.0],
+            "scale": [16.0, 0.7, 0.6],
+            "color": [1.1, 1.1, 1.15],
+            "specularScale": 0.0
+        },
+        {
+            "modelPath": "__builtin_box",
+            "translation": [-1412.065, 128.156, 1255.588],
+            "rotation": [0.0, 0.195, 0.0],
+            "scale": [16.0, 0.7, 0.6],
+            "color": [1.1, 1.1, 1.15],
+            "specularScale": 0.0
+        },
+        {
+            "modelPath": "__builtin_box",
+            "translation": [-1412.065, 188.156, 1255.588],
+            "rotation": [0.0, 0.195, 0.0],
+            "scale": [16.0, 0.7, 0.6],
+            "color": [1.1, 1.1, 1.15],
+            "specularScale": 0.0
+        },
+        {
+            "modelPath": "__builtin_box",
+            "translation": [-1412.065, 248.156, 1255.588],
+            "rotation": [0.0, 0.195, 0.0],
+            "scale": [16.0, 0.7, 0.6],
+            "color": [1.1, 1.1, 1.15],
+            "specularScale": 0.0
+        },
+        {
+            "modelPath": "resources/models/tower/tower_panel.obj",
+            "translation": [-1374.36, 518.156, 1241.386],
+            "rotation": [0.0, 0.2618, 0.0],
+            "scale": [41.12, 1080.0, 10.0],
+            "color": [0.56, 0.575, 0.62],
+            "specularScale": 0.0,
+            "uvScale": [1.0, 54.0]
+        },
+        {
+            "modelPath": "__builtin_box",
+            "translation": [-1372.989, 28.156, 1246.506],
+            "rotation": [0.0, 0.2618, 0.0],
+            "scale": [16.0, 0.7, 0.6],
+            "color": [1.1, 1.1, 1.15],
+            "specularScale": 0.0
+        },
+        {
+            "modelPath": "__builtin_box",
+            "translation": [-1372.989, 88.156, 1246.506],
+            "rotation": [0.0, 0.2618, 0.0],
+            "scale": [16.0, 0.7, 0.6],
+            "color": [1.1, 1.1, 1.15],
+            "specularScale": 0.0
+        },
+        {
+            "modelPath": "__builtin_box",
+            "translation": [-1372.989, 148.156, 1246.506],
+            "rotation": [0.0, 0.2618, 0.0],
+            "scale": [16.0, 0.7, 0.6],
+            "color": [1.1, 1.1, 1.15],
+            "specularScale": 0.0
+        },
+        {
+            "modelPath": "__builtin_box",
+            "translation": [-1372.989, 208.156, 1246.506],
+            "rotation": [0.0, 0.2618, 0.0],
+            "scale": [16.0, 0.7, 0.6],
+            "color": [1.1, 1.1, 1.15],
+            "specularScale": 0.0
+        },
+        {
+            "modelPath": "resources/models/tower/tower_panel.obj",
+            "translation": [-1336.317, 518.156, 1229.817],
+            "rotation": [0.0, 0.3286, 0.0],
+            "scale": [41.12, 1080.0, 10.0],
+            "color": [0.56, 0.575, 0.62],
+            "specularScale": 0.0,
+            "uvScale": [1.0, 54.0]
+        },
+        {
+            "modelPath": "__builtin_box",
+            "translation": [-1334.606, -11.844, 1234.833],
+            "rotation": [0.0, 0.3286, 0.0],
+            "scale": [16.0, 0.7, 0.6],
+            "color": [1.1, 1.1, 1.15],
+            "specularScale": 0.0
+        },
+        {
+            "modelPath": "__builtin_box",
+            "translation": [-1334.606, 48.156, 1234.833],
+            "rotation": [0.0, 0.3286, 0.0],
+            "scale": [16.0, 0.7, 0.6],
+            "color": [1.1, 1.1, 1.15],
+            "specularScale": 0.0
+        },
+        {
+            "modelPath": "__builtin_box",
+            "translation": [-1334.606, 108.156, 1234.833],
+            "rotation": [0.0, 0.3286, 0.0],
+            "scale": [16.0, 0.7, 0.6],
+            "color": [1.1, 1.1, 1.15],
+            "specularScale": 0.0
+        },
+        {
+            "modelPath": "__builtin_box",
+            "translation": [-1334.606, 168.156, 1234.833],
+            "rotation": [0.0, 0.3286, 0.0],
+            "scale": [16.0, 0.7, 0.6],
+            "color": [1.1, 1.1, 1.15],
+            "specularScale": 0.0
+        },
+        {
+            "modelPath": "resources/models/tower/tower_panel.obj",
+            "translation": [-1299.131, 518.156, 1215.733],
+            "rotation": [0.0, 0.3955, 0.0],
+            "scale": [41.12, 1080.0, 10.0],
+            "color": [0.56, 0.575, 0.62],
+            "specularScale": 0.0,
+            "uvScale": [1.0, 54.0]
+        },
+        {
+            "modelPath": "__builtin_box",
+            "translation": [-1297.089, 8.156, 1220.623],
+            "rotation": [0.0, 0.3955, 0.0],
+            "scale": [16.0, 0.7, 0.6],
+            "color": [1.1, 1.1, 1.15],
+            "specularScale": 0.0
+        },
+        {
+            "modelPath": "__builtin_box",
+            "translation": [-1297.089, 68.156, 1220.623],
+            "rotation": [0.0, 0.3955, 0.0],
+            "scale": [16.0, 0.7, 0.6],
+            "color": [1.1, 1.1, 1.15],
+            "specularScale": 0.0
+        },
+        {
+            "modelPath": "__builtin_box",
+            "translation": [-1297.089, 128.156, 1220.623],
+            "rotation": [0.0, 0.3955, 0.0],
+            "scale": [16.0, 0.7, 0.6],
+            "color": [1.1, 1.1, 1.15],
+            "specularScale": 0.0
+        },
+        {
+            "modelPath": "resources/models/tower/tower_panel.obj",
+            "translation": [-1262.969, 518.156, 1199.196],
+            "rotation": [0.0, 0.4623, 0.0],
+            "scale": [41.12, 1080.0, 10.0],
+            "color": [0.56, 0.575, 0.62],
+            "specularScale": 0.0,
+            "uvScale": [1.0, 54.0]
+        },
+        {
+            "modelPath": "__builtin_box",
+            "translation": [-1260.605, 28.156, 1203.939],
+            "rotation": [0.0, 0.4623, 0.0],
+            "scale": [16.0, 0.7, 0.6],
+            "color": [1.1, 1.1, 1.15],
+            "specularScale": 0.0
+        },
+        {
+            "modelPath": "__builtin_box",
+            "translation": [-1260.605, 88.156, 1203.939],
+            "rotation": [0.0, 0.4623, 0.0],
+            "scale": [16.0, 0.7, 0.6],
+            "color": [1.1, 1.1, 1.15],
+            "specularScale": 0.0
+        },
+        {
+            "modelPath": "__builtin_box",
+            "translation": [-1260.605, 148.156, 1203.939],
+            "rotation": [0.0, 0.4623, 0.0],
+            "scale": [16.0, 0.7, 0.6],
+            "color": [1.1, 1.1, 1.15],
+            "specularScale": 0.0
+        },
+        {
+            "modelPath": "resources/models/tower/tower_panel.obj",
+            "translation": [-1227.992, 518.156, 1180.28],
+            "rotation": [0.0, 0.5292, 0.0],
+            "scale": [41.12, 1080.0, 10.0],
+            "color": [0.56, 0.575, 0.62],
+            "specularScale": 0.0,
+            "uvScale": [1.0, 54.0]
+        },
+        {
+            "modelPath": "__builtin_box",
+            "translation": [-1225.317, -11.844, 1184.856],
+            "rotation": [0.0, 0.5292, 0.0],
+            "scale": [16.0, 0.7, 0.6],
+            "color": [1.1, 1.1, 1.15],
+            "specularScale": 0.0
+        },
+        {
+            "modelPath": "__builtin_box",
+            "translation": [-1225.317, 48.156, 1184.856],
+            "rotation": [0.0, 0.5292, 0.0],
+            "scale": [16.0, 0.7, 0.6],
+            "color": [1.1, 1.1, 1.15],
+            "specularScale": 0.0
+        },
+        {
+            "modelPath": "__builtin_box",
+            "translation": [-1225.317, 108.156, 1184.856],
+            "rotation": [0.0, 0.5292, 0.0],
+            "scale": [16.0, 0.7, 0.6],
+            "color": [1.1, 1.1, 1.15],
+            "specularScale": 0.0
+        },
+        {
+            "modelPath": "__builtin_box",
+            "translation": [-1225.317, 168.156, 1184.856],
+            "rotation": [0.0, 0.5292, 0.0],
+            "scale": [16.0, 0.7, 0.6],
+            "color": [1.1, 1.1, 1.15],
+            "specularScale": 0.0
+        },
+        {
+            "modelPath": "resources/models/tower/tower_panel.obj",
+            "translation": [-1194.357, 518.156, 1159.071],
+            "rotation": [0.0, 0.596, 0.0],
+            "scale": [41.12, 1080.0, 10.0],
+            "color": [0.56, 0.575, 0.62],
+            "specularScale": 0.0,
+            "uvScale": [1.0, 54.0]
+        },
+        {
+            "modelPath": "__builtin_box",
+            "translation": [-1191.382, 8.156, 1163.457],
+            "rotation": [0.0, 0.596, 0.0],
+            "scale": [16.0, 0.7, 0.6],
+            "color": [1.1, 1.1, 1.15],
+            "specularScale": 0.0
+        },
+        {
+            "modelPath": "__builtin_box",
+            "translation": [-1191.382, 68.156, 1163.457],
+            "rotation": [0.0, 0.596, 0.0],
+            "scale": [16.0, 0.7, 0.6],
+            "color": [1.1, 1.1, 1.15],
+            "specularScale": 0.0
+        },
+        {
+            "modelPath": "__builtin_box",
+            "translation": [-1191.382, 128.156, 1163.457],
+            "rotation": [0.0, 0.596, 0.0],
+            "scale": [16.0, 0.7, 0.6],
+            "color": [1.1, 1.1, 1.15],
+            "specularScale": 0.0
+        },
+        {
+            "modelPath": "resources/models/tower/tower_panel.obj",
+            "translation": [-1162.213, 518.156, 1135.663],
+            "rotation": [0.0, 0.6629, 0.0],
+            "scale": [41.12, 1080.0, 10.0],
+            "color": [0.56, 0.575, 0.62],
+            "specularScale": 0.0,
+            "uvScale": [1.0, 54.0]
+        },
+        {
+            "modelPath": "__builtin_box",
+            "translation": [-1158.952, 28.156, 1139.841],
+            "rotation": [0.0, 0.6629, 0.0],
+            "scale": [16.0, 0.7, 0.6],
+            "color": [1.1, 1.1, 1.15],
+            "specularScale": 0.0
+        },
+        {
+            "modelPath": "__builtin_box",
+            "translation": [-1158.952, 88.156, 1139.841],
+            "rotation": [0.0, 0.6629, 0.0],
+            "scale": [16.0, 0.7, 0.6],
+            "color": [1.1, 1.1, 1.15],
+            "specularScale": 0.0
+        },
+        {
+            "modelPath": "__builtin_box",
+            "translation": [-1158.952, 148.156, 1139.841],
+            "rotation": [0.0, 0.6629, 0.0],
+            "scale": [16.0, 0.7, 0.6],
+            "color": [1.1, 1.1, 1.15],
+            "specularScale": 0.0
+        },
+        {
+            "modelPath": "resources/models/tower/tower_panel.obj",
+            "translation": [-1131.705, 518.156, 1110.16],
+            "rotation": [0.0, 0.7297, 0.0],
+            "scale": [41.12, 1080.0, 10.0],
+            "color": [0.56, 0.575, 0.62],
+            "specularScale": 0.0,
+            "uvScale": [1.0, 54.0]
+        },
+        {
+            "modelPath": "__builtin_box",
+            "translation": [-1128.172, -11.844, 1114.11],
+            "rotation": [0.0, 0.7297, 0.0],
+            "scale": [16.0, 0.7, 0.6],
+            "color": [1.1, 1.1, 1.15],
+            "specularScale": 0.0
+        },
+        {
+            "modelPath": "__builtin_box",
+            "translation": [-1128.172, 48.156, 1114.11],
+            "rotation": [0.0, 0.7297, 0.0],
+            "scale": [16.0, 0.7, 0.6],
+            "color": [1.1, 1.1, 1.15],
+            "specularScale": 0.0
+        },
+        {
+            "modelPath": "__builtin_box",
+            "translation": [-1128.172, 108.156, 1114.11],
+            "rotation": [0.0, 0.7297, 0.0],
+            "scale": [16.0, 0.7, 0.6],
+            "color": [1.1, 1.1, 1.15],
+            "specularScale": 0.0
+        },
+        {
+            "modelPath": "__builtin_box",
+            "translation": [-1128.172, 168.156, 1114.11],
+            "rotation": [0.0, 0.7297, 0.0],
+            "scale": [16.0, 0.7, 0.6],
+            "color": [1.1, 1.1, 1.15],
+            "specularScale": 0.0
+        },
+        {
+            "modelPath": "resources/models/tower/tower_panel.obj",
+            "translation": [-1102.968, 518.156, 1082.676],
+            "rotation": [0.0, 0.7965, 0.0],
+            "scale": [41.12, 1080.0, 10.0],
+            "color": [0.56, 0.575, 0.62],
+            "specularScale": 0.0,
+            "uvScale": [1.0, 54.0]
+        },
+        {
+            "modelPath": "__builtin_box",
+            "translation": [-1099.179, 8.156, 1086.382],
+            "rotation": [0.0, 0.7965, 0.0],
+            "scale": [16.0, 0.7, 0.6],
+            "color": [1.1, 1.1, 1.15],
+            "specularScale": 0.0
+        },
+        {
+            "modelPath": "__builtin_box",
+            "translation": [-1099.179, 68.156, 1086.382],
+            "rotation": [0.0, 0.7965, 0.0],
+            "scale": [16.0, 0.7, 0.6],
+            "color": [1.1, 1.1, 1.15],
+            "specularScale": 0.0
+        },
+        {
+            "modelPath": "__builtin_box",
+            "translation": [-1099.179, 128.156, 1086.382],
+            "rotation": [0.0, 0.7965, 0.0],
+            "scale": [16.0, 0.7, 0.6],
+            "color": [1.1, 1.1, 1.15],
+            "specularScale": 0.0
+        },
+        {
+            "modelPath": "resources/models/tower/tower_panel.obj",
+            "translation": [-1076.132, 518.156, 1053.334],
+            "rotation": [0.0, 0.8634, 0.0],
+            "scale": [41.12, 1080.0, 10.0],
+            "color": [0.56, 0.575, 0.62],
+            "specularScale": 0.0,
+            "uvScale": [1.0, 54.0]
+        },
+        {
+            "modelPath": "__builtin_box",
+            "translation": [-1072.103, 28.156, 1056.778],
+            "rotation": [0.0, 0.8634, 0.0],
+            "scale": [16.0, 0.7, 0.6],
+            "color": [1.1, 1.1, 1.15],
+            "specularScale": 0.0
+        },
+        {
+            "modelPath": "__builtin_box",
+            "translation": [-1072.103, 88.156, 1056.778],
+            "rotation": [0.0, 0.8634, 0.0],
+            "scale": [16.0, 0.7, 0.6],
+            "color": [1.1, 1.1, 1.15],
+            "specularScale": 0.0
+        },
+        {
+            "modelPath": "__builtin_box",
+            "translation": [-1072.103, 148.156, 1056.778],
+            "rotation": [0.0, 0.8634, 0.0],
+            "scale": [16.0, 0.7, 0.6],
+            "color": [1.1, 1.1, 1.15],
+            "specularScale": 0.0
+        },
+        {
+            "modelPath": "resources/models/tower/tower_panel.obj",
+            "translation": [-1051.314, 518.156, 1022.265],
+            "rotation": [0.0, 0.9302, 0.0],
+            "scale": [41.12, 1080.0, 10.0],
+            "color": [0.56, 0.575, 0.62],
+            "specularScale": 0.0,
+            "uvScale": [1.0, 54.0]
+        },
+        {
+            "modelPath": "__builtin_box",
+            "translation": [-1047.065, -11.844, 1025.433],
+            "rotation": [0.0, 0.9302, 0.0],
+            "scale": [16.0, 0.7, 0.6],
+            "color": [1.1, 1.1, 1.15],
+            "specularScale": 0.0
+        },
+        {
+            "modelPath": "__builtin_box",
+            "translation": [-1047.065, 48.156, 1025.433],
+            "rotation": [0.0, 0.9302, 0.0],
+            "scale": [16.0, 0.7, 0.6],
+            "color": [1.1, 1.1, 1.15],
+            "specularScale": 0.0
+        },
+        {
+            "modelPath": "__builtin_box",
+            "translation": [-1047.065, 108.156, 1025.433],
+            "rotation": [0.0, 0.9302, 0.0],
+            "scale": [16.0, 0.7, 0.6],
+            "color": [1.1, 1.1, 1.15],
+            "specularScale": 0.0
+        },
+        {
+            "modelPath": "__builtin_box",
+            "translation": [-1047.065, 168.156, 1025.433],
+            "rotation": [0.0, 0.9302, 0.0],
+            "scale": [16.0, 0.7, 0.6],
+            "color": [1.1, 1.1, 1.15],
+            "specularScale": 0.0
+        },
+        {
+            "modelPath": "resources/models/tower/tower_panel.obj",
+            "translation": [-1028.628, 518.156, 989.608],
+            "rotation": [0.0, 0.9971, 0.0],
+            "scale": [41.12, 1080.0, 10.0],
+            "color": [0.56, 0.575, 0.62],
+            "specularScale": 0.0,
+            "uvScale": [1.0, 54.0]
+        },
+        {
+            "modelPath": "__builtin_box",
+            "translation": [-1024.177, 8.156, 992.485],
+            "rotation": [0.0, 0.9971, 0.0],
+            "scale": [16.0, 0.7, 0.6],
+            "color": [1.1, 1.1, 1.15],
+            "specularScale": 0.0
+        },
+        {
+            "modelPath": "__builtin_box",
+            "translation": [-1024.177, 68.156, 992.485],
+            "rotation": [0.0, 0.9971, 0.0],
+            "scale": [16.0, 0.7, 0.6],
+            "color": [1.1, 1.1, 1.15],
+            "specularScale": 0.0
+        },
+        {
+            "modelPath": "__builtin_box",
+            "translation": [-1024.177, 128.156, 992.485],
+            "rotation": [0.0, 0.9971, 0.0],
+            "scale": [16.0, 0.7, 0.6],
+            "color": [1.1, 1.1, 1.15],
+            "specularScale": 0.0
+        },
+        {
+            "modelPath": "resources/models/tower/tower_panel.obj",
+            "translation": [-1008.173, 518.156, 955.509],
+            "rotation": [0.0, 1.0639, 0.0],
+            "scale": [41.12, 1080.0, 10.0],
+            "color": [0.56, 0.575, 0.62],
+            "specularScale": 0.0,
+            "uvScale": [1.0, 54.0]
+        },
+        {
+            "modelPath": "__builtin_box",
+            "translation": [-1003.54, 28.156, 958.082],
+            "rotation": [0.0, 1.0639, 0.0],
+            "scale": [16.0, 0.7, 0.6],
+            "color": [1.1, 1.1, 1.15],
+            "specularScale": 0.0
+        },
+        {
+            "modelPath": "__builtin_box",
+            "translation": [-1003.54, 88.156, 958.082],
+            "rotation": [0.0, 1.0639, 0.0],
+            "scale": [16.0, 0.7, 0.6],
+            "color": [1.1, 1.1, 1.15],
+            "specularScale": 0.0
+        },
+        {
+            "modelPath": "__builtin_box",
+            "translation": [-1003.54, 148.156, 958.082],
+            "rotation": [0.0, 1.0639, 0.0],
+            "scale": [16.0, 0.7, 0.6],
+            "color": [1.1, 1.1, 1.15],
+            "specularScale": 0.0
+        },
+        {
+            "modelPath": "resources/models/tower/tower_panel.obj",
+            "translation": [-990.042, 518.156, 920.119],
+            "rotation": [0.0, 1.1308, 0.0],
+            "scale": [41.12, 1080.0, 10.0],
+            "color": [0.56, 0.575, 0.62],
+            "specularScale": 0.0,
+            "uvScale": [1.0, 54.0]
+        },
+        {
+            "modelPath": "__builtin_box",
+            "translation": [-985.247, -11.844, 922.377],
+            "rotation": [0.0, 1.1308, 0.0],
+            "scale": [16.0, 0.7, 0.6],
+            "color": [1.1, 1.1, 1.15],
+            "specularScale": 0.0
+        },
+        {
+            "modelPath": "__builtin_box",
+            "translation": [-985.247, 48.156, 922.377],
+            "rotation": [0.0, 1.1308, 0.0],
+            "scale": [16.0, 0.7, 0.6],
+            "color": [1.1, 1.1, 1.15],
+            "specularScale": 0.0
+        },
+        {
+            "modelPath": "__builtin_box",
+            "translation": [-985.247, 108.156, 922.377],
+            "rotation": [0.0, 1.1308, 0.0],
+            "scale": [16.0, 0.7, 0.6],
+            "color": [1.1, 1.1, 1.15],
+            "specularScale": 0.0
+        },
+        {
+            "modelPath": "resources/models/tower/tower_panel.obj",
+            "translation": [-974.315, 518.156, 883.598],
+            "rotation": [0.0, 1.1976, 0.0],
+            "scale": [41.12, 1080.0, 10.0],
+            "color": [0.56, 0.575, 0.62],
+            "specularScale": 0.0,
+            "uvScale": [1.0, 54.0]
+        },
+        {
+            "modelPath": "resources/models/tower/tower_panel.obj",
+            "translation": [-961.063, 518.156, 846.107],
+            "rotation": [0.0, 1.2644, 0.0],
+            "scale": [41.12, 1080.0, 10.0],
+            "color": [0.56, 0.575, 0.62],
+            "specularScale": 0.0,
+            "uvScale": [1.0, 54.0]
+        },
+        {
+            "modelPath": "resources/models/tower/tower_panel.obj",
+            "translation": [-950.344, 518.156, 807.815],
+            "rotation": [0.0, 1.3313, 0.0],
+            "scale": [41.12, 1080.0, 10.0],
+            "color": [0.56, 0.575, 0.62],
+            "specularScale": 0.0,
+            "uvScale": [1.0, 54.0]
+        },
+        {
+            "modelPath": "resources/models/tower/tower_panel.obj",
+            "translation": [-942.206, 518.156, 768.893],
+            "rotation": [0.0, 1.3981, 0.0],
+            "scale": [41.12, 1080.0, 10.0],
+            "color": [0.56, 0.575, 0.62],
+            "specularScale": 0.0,
+            "uvScale": [1.0, 54.0]
+        },
+        {
+            "modelPath": "resources/models/tower/tower_panel.obj",
+            "translation": [-936.687, 518.156, 729.514],
+            "rotation": [0.0, 1.465, 0.0],
+            "scale": [41.12, 1080.0, 10.0],
+            "color": [0.56, 0.575, 0.62],
+            "specularScale": 0.0,
+            "uvScale": [1.0, 54.0]
+        },
+        {
+            "modelPath": "resources/models/tower/tower_panel.obj",
+            "translation": [-933.81, 518.156, 689.854],
+            "rotation": [0.0, 1.5318, 0.0],
+            "scale": [41.12, 1080.0, 10.0],
+            "color": [0.56, 0.575, 0.62],
+            "specularScale": 0.0,
+            "uvScale": [1.0, 54.0]
+        },
+        {
+            "modelPath": "resources/models/tower/tower_panel.obj",
+            "translation": [-933.589, 518.156, 650.091],
+            "rotation": [0.0, 1.5986, 0.0],
+            "scale": [41.12, 1080.0, 10.0],
+            "color": [0.56, 0.575, 0.62],
+            "specularScale": 0.0,
+            "uvScale": [1.0, 54.0]
+        },
+        {
+            "modelPath": "resources/models/tower/tower_panel.obj",
+            "translation": [-936.023, 518.156, 610.402],
+            "rotation": [0.0, 1.6655, 0.0],
+            "scale": [41.12, 1080.0, 10.0],
+            "color": [0.56, 0.575, 0.62],
+            "specularScale": 0.0,
+            "uvScale": [1.0, 54.0]
+        },
+        {
+            "modelPath": "resources/models/tower/tower_panel.obj",
+            "translation": [-941.104, 518.156, 570.964],
+            "rotation": [0.0, 1.7323, 0.0],
+            "scale": [41.12, 1080.0, 10.0],
+            "color": [0.56, 0.575, 0.62],
+            "specularScale": 0.0,
+            "uvScale": [1.0, 54.0]
+        },
+        {
+            "modelPath": "resources/models/tower/tower_panel.obj",
+            "translation": [-948.807, 518.156, 531.954],
+            "rotation": [0.0, 1.7992, 0.0],
+            "scale": [41.12, 1080.0, 10.0],
+            "color": [0.56, 0.575, 0.62],
+            "specularScale": 0.0,
+            "uvScale": [1.0, 54.0]
+        },
+        {
+            "modelPath": "resources/models/tower/tower_panel.obj",
+            "translation": [-959.099, 518.156, 493.545],
+            "rotation": [0.0, 1.866, 0.0],
+            "scale": [41.12, 1080.0, 10.0],
+            "color": [0.56, 0.575, 0.62],
+            "specularScale": 0.0,
+            "uvScale": [1.0, 54.0]
+        },
+        {
+            "modelPath": "resources/models/tower/tower_panel.obj",
+            "translation": [-971.933, 518.156, 455.909],
+            "rotation": [0.0, 1.9329, 0.0],
+            "scale": [41.12, 1080.0, 10.0],
+            "color": [0.56, 0.575, 0.62],
+            "specularScale": 0.0,
+            "uvScale": [1.0, 54.0]
+        },
+        {
+            "modelPath": "resources/models/tower/tower_panel.obj",
+            "translation": [-987.252, 518.156, 419.215],
+            "rotation": [0.0, 1.9997, 0.0],
+            "scale": [41.12, 1080.0, 10.0],
+            "color": [0.56, 0.575, 0.62],
+            "specularScale": 0.0,
+            "uvScale": [1.0, 54.0]
+        },
+        {
+            "modelPath": "resources/models/tower/tower_panel.obj",
+            "translation": [-1004.988, 518.156, 383.625],
+            "rotation": [0.0, 2.0665, 0.0],
+            "scale": [41.12, 1080.0, 10.0],
+            "color": [0.56, 0.575, 0.62],
+            "specularScale": 0.0,
+            "uvScale": [1.0, 54.0]
+        },
+        {
+            "modelPath": "resources/models/tower/tower_panel.obj",
+            "translation": [-1025.061, 518.156, 349.3],
+            "rotation": [0.0, 2.1334, 0.0],
+            "scale": [41.12, 1080.0, 10.0],
+            "color": [0.56, 0.575, 0.62],
+            "specularScale": 0.0,
+            "uvScale": [1.0, 54.0]
+        },
+        {
+            "modelPath": "resources/models/tower/tower_panel.obj",
+            "translation": [-1047.383, 518.156, 316.392],
+            "rotation": [0.0, 2.2002, 0.0],
+            "scale": [41.12, 1080.0, 10.0],
+            "color": [0.56, 0.575, 0.62],
+            "specularScale": 0.0,
+            "uvScale": [1.0, 54.0]
+        },
+        {
+            "modelPath": "resources/models/tower/tower_panel.obj",
+            "translation": [-1071.852, 518.156, 285.049],
+            "rotation": [0.0, 2.2671, 0.0],
+            "scale": [41.12, 1080.0, 10.0],
+            "color": [0.56, 0.575, 0.62],
+            "specularScale": 0.0,
+            "uvScale": [1.0, 54.0]
+        },
+        {
+            "modelPath": "resources/models/tower/tower_panel.obj",
+            "translation": [-1098.36, 518.156, 255.41],
+            "rotation": [0.0, 2.3339, 0.0],
+            "scale": [41.12, 1080.0, 10.0],
+            "color": [0.56, 0.575, 0.62],
+            "specularScale": 0.0,
+            "uvScale": [1.0, 54.0]
+        },
+        {
+            "modelPath": "__builtin_box",
+            "translation": [-3112.099, 1058.156, 741.344],
             "rotation": [0.0, 0.0, 0.0],
-            "scale": [15.0, 60.0, 15.0],
-            "color": [0.05, 0.055, 0.07],
+            "scale": [1448.435, 16.0, 2956.869],
+            "color": [0.03, 0.03, 0.04],
             "specularScale": 0.0
         },
         {
-            "modelPath": "Box/box.gltf",
-            "translation": [55.0, -15.0, 450.0],
+            "modelPath": "__builtin_box",
+            "translation": [-1603.664, 1058.156, 741.344],
             "rotation": [0.0, 0.0, 0.0],
-            "scale": [15.0, 60.0, 15.0],
-            "color": [0.05, 0.055, 0.07],
+            "scale": [1448.435, 16.0, 2956.869],
+            "color": [0.03, 0.03, 0.04],
             "specularScale": 0.0
         },
         {
-            "modelPath": "Box/box.gltf",
-            "translation": [20.0, 10.0, 700.0],
-            "rotation": [0.0, 0.5, 0.0],
-            "scale": [10.0, 40.0, 10.0],
-            "color": [0.05, 0.055, 0.07],
-            "specularScale": 0.0
-        },
-        {
-            "modelPath": "Box/box.gltf",
-            "translation": [-65.0, 20.0, 750.0],
-            "rotation": [0.0, -0.5, 0.0],
-            "scale": [10.0, 40.0, 10.0],
-            "color": [0.05, 0.055, 0.07],
-            "specularScale": 0.0
-        },
-        {
-            "modelPath": "Box/box.gltf",
-            "translation": [85.0, -10.0, 1350.0],
-            "rotation": [0.0, 0.4, 0.0],
-            "scale": [20.0, 80.0, 20.0],
-            "color": [0.05, 0.055, 0.07],
-            "specularScale": 0.0
-        },
-        {
-            "modelPath": "Box/box.gltf",
-            "translation": [-45.0, -10.0, 1650.0],
-            "rotation": [0.0, -0.2, 0.0],
-            "scale": [25.0, 60.0, 25.0],
-            "color": [0.05, 0.055, 0.07],
-            "specularScale": 0.0
-        },
-        {
-            "modelPath": "Box/box.gltf",
-            "translation": [-85.0, -10.0, 1900.0],
-            "rotation": [0.0, 0.5, 0.0],
-            "scale": [20.0, 60.0, 20.0],
-            "color": [0.05, 0.055, 0.07],
-            "specularScale": 0.0
-        },
-        {
-            "modelPath": "Box/box.gltf",
-            "translation": [-18.0, -10.0, 2360.0],
-            "rotation": [0.0, 0.1, 0.0],
-            "scale": [20.0, 65.0, 20.0],
-            "color": [0.05, 0.055, 0.07],
-            "specularScale": 0.0
-        },
-        {
-            "modelPath": "Box/box.gltf",
-            "translation": [38.0, -10.0, 2380.0],
-            "rotation": [0.0, -0.1, 0.0],
-            "scale": [20.0, 65.0, 20.0],
-            "color": [0.05, 0.055, 0.07],
-            "specularScale": 0.0
-        },
-        {
-            "modelPath": "Box/box.gltf",
-            "translation": [-26.0, 0.0, 2980.0],
+            "modelPath": "__builtin_box",
+            "translation": [-2357.881, 1058.156, 1495.561],
             "rotation": [0.0, 0.0, 0.0],
-            "scale": [20.0, 82.0, 20.0],
-            "color": [0.05, 0.055, 0.07],
+            "scale": [60.0, 16.0, 1448.435],
+            "color": [0.03, 0.03, 0.04],
             "specularScale": 0.0
         },
         {
-            "modelPath": "Box/box.gltf",
-            "translation": [30.0, 0.0, 2980.0],
+            "modelPath": "__builtin_box",
+            "translation": [-2357.881, 1058.156, -12.874],
             "rotation": [0.0, 0.0, 0.0],
-            "scale": [20.0, 82.0, 20.0],
-            "color": [0.05, 0.055, 0.07],
+            "scale": [60.0, 16.0, 1448.435],
+            "color": [0.03, 0.03, 0.04],
             "specularScale": 0.0
         },
         {
-            "modelPath": "Box/box.gltf",
-            "translation": [2.0, 53.0, 2980.0],
+            "modelPath": "__builtin_box",
+            "translation": [-2397.763, 1318.156, 738.27],
             "rotation": [0.0, 0.0, 0.0],
-            "scale": [70.0, 10.0, 15.0],
-            "color": [0.05, 0.055, 0.07],
+            "scale": [90.0, 4.0, 90.0],
+            "color": [2.0, 1.8, 1.3],
             "specularScale": 0.0
         },
         {
-            "modelPath": "Box/box.gltf",
-            "translation": [-50.0, 45.0, 1050.0],
-            "rotation": [0.0, 0.2, 0.0],
-            "scale": [15.0, 120.0, 15.0],
-            "color": [0.05, 0.055, 0.07],
+            "modelPath": "__builtin_box",
+            "translation": [-1574.884, 162.622, 1265.456],
+            "rotation": [0.0, -0.0775, 0.0],
+            "scale": [18.0, 18.0, 2.0],
+            "color": [0.02, 0.02, 0.025],
             "specularScale": 0.0
         },
         {
-            "modelPath": "Box/box.gltf",
-            "translation": [62.0, 45.0, 1050.0],
-            "rotation": [0.0, -0.2, 0.0],
-            "scale": [15.0, 120.0, 15.0],
-            "color": [0.05, 0.055, 0.07],
+            "modelPath": "__builtin_box",
+            "translation": [-1648.487, 242.445, 1255.124],
+            "rotation": [0.0, -0.2014, 0.0],
+            "scale": [18.0, 18.0, 2.0],
+            "color": [0.02, 0.02, 0.025],
             "specularScale": 0.0
         },
         {
-            "modelPath": "Box/box.gltf",
-            "translation": [6.0, 105.0, 1050.0],
-            "rotation": [0.0, 0.0, 0.0],
-            "scale": [130.0, 16.0, 16.0],
-            "color": [0.05, 0.055, 0.07],
+            "modelPath": "__builtin_box",
+            "translation": [-1767.539, 372.687, 1217.58],
+            "rotation": [0.0, -0.4096, 0.0],
+            "scale": [18.0, 18.0, 2.0],
+            "color": [0.02, 0.02, 0.025],
             "specularScale": 0.0
         },
         {
-            "modelPath": "Box/box.gltf",
-            "translation": [-75.0, 35.0, 1380.0],
-            "rotation": [0.0, 0.2, 0.0],
-            "scale": [30.0, 90.0, 30.0],
-            "color": [0.05, 0.055, 0.07],
+            "modelPath": "__builtin_box",
+            "translation": [-1807.602, 335.734, 1198.396],
+            "rotation": [0.0, -0.4836, 0.0],
+            "scale": [18.0, 18.0, 2.0],
+            "color": [0.02, 0.02, 0.025],
             "specularScale": 0.0
         },
         {
-            "modelPath": "Box/box.gltf",
-            "translation": [145.0, 35.0, 1635.0],
-            "rotation": [0.0, -0.3, 0.0],
-            "scale": [35.0, 90.0, 15.0],
-            "color": [0.05, 0.055, 0.07],
+            "modelPath": "__builtin_box",
+            "translation": [-1932.549, 548.202, 1110.901],
+            "rotation": [0.0, -0.7382, 0.0],
+            "scale": [18.0, 18.0, 2.0],
+            "color": [0.02, 0.02, 0.025],
+            "specularScale": 0.0
+        },
+        {
+            "modelPath": "__builtin_box",
+            "translation": [-1991.967, 490.759, 1048.481],
+            "rotation": [0.0, -0.8818, 0.0],
+            "scale": [18.0, 18.0, 2.0],
+            "color": [0.02, 0.02, 0.025],
+            "specularScale": 0.0
+        },
+        {
+            "modelPath": "__builtin_box",
+            "translation": [-2046.494, 581.228, 970.395],
+            "rotation": [0.0, -1.0406, 0.0],
+            "scale": [18.0, 18.0, 2.0],
+            "color": [0.02, 0.02, 0.025],
+            "specularScale": 0.0
+        },
+        {
+            "modelPath": "__builtin_box",
+            "translation": [-2111.659, 713.148, 809.767],
+            "rotation": [0.0, -1.3302, 0.0],
+            "scale": [18.0, 18.0, 2.0],
+            "color": [0.02, 0.02, 0.025],
+            "specularScale": 0.0
+        },
+        {
+            "modelPath": "__builtin_box",
+            "translation": [-1624.85, 228.324, 1259.459],
+            "rotation": [0.0, -0.1614, 0.0],
+            "scale": [32.908, 29.765, 2.0],
+            "color": [0.02, 0.02, 0.025],
+            "specularScale": 0.0
+        },
+        {
+            "modelPath": "__builtin_box",
+            "translation": [-1639.738, 216.278, 1256.842],
+            "rotation": [0.0, -0.1865, 0.0],
+            "scale": [18.0, 18.0, 2.0],
+            "color": [0.02, 0.02, 0.025],
             "specularScale": 0.0
         }
     ],
     "spawnEvents": [
         {
             "fireInterval": -1,
-            "isWorldSpaceSpline": false,
+            "isWorldSpace": true,
+            "isWorldSpaceSpline": true,
             "moveDirection": [0.0, 0.0, 1.0],
             "moveType": 0,
             "prefabName": "ZakoEnemy",
-            "spawnOffset": [0.0, 4.0, -15.0],
-            "spawnTime": 1.0,
-            "splineDuration": 0.0,
-            "splineName": ""
+            "spawnOffset": [-18.47, -25.0, 121.43],
+            "spawnTime": 0.6,
+            "splineDuration": 6.4,
+            "splineName": "S1_00.60a_m0"
         },
         {
             "fireInterval": -1,
-            "isWorldSpaceSpline": false,
+            "isWorldSpace": true,
+            "isWorldSpaceSpline": true,
             "moveDirection": [0.0, 0.0, 1.0],
             "moveType": 0,
             "prefabName": "ZakoEnemy",
-            "spawnOffset": [-8.0, 4.0, -20.0],
-            "spawnTime": 1.0,
-            "splineDuration": 0.0,
-            "splineName": ""
+            "spawnOffset": [-5.92, -25.0, 124.29],
+            "spawnTime": 0.62,
+            "splineDuration": 6.4,
+            "splineName": "S1_00.60a_m1"
         },
         {
             "fireInterval": -1,
-            "isWorldSpaceSpline": false,
+            "isWorldSpace": true,
+            "isWorldSpaceSpline": true,
             "moveDirection": [0.0, 0.0, 1.0],
             "moveType": 0,
             "prefabName": "ZakoEnemy",
-            "spawnOffset": [8.0, 4.0, -20.0],
-            "spawnTime": 1.0,
-            "splineDuration": 0.0,
-            "splineName": ""
+            "spawnOffset": [6.68, -25.0, 126.97],
+            "spawnTime": 0.64,
+            "splineDuration": 6.4,
+            "splineName": "S1_00.60a_m2"
         },
         {
             "fireInterval": -1,
-            "isWorldSpaceSpline": false,
+            "isWorldSpace": true,
+            "isWorldSpaceSpline": true,
             "moveDirection": [0.0, 0.0, 1.0],
             "moveType": 0,
             "prefabName": "ZakoEnemy",
-            "spawnOffset": [0.0, 5.5, -10.0],
-            "spawnTime": 3.15,
-            "splineDuration": 0.0,
-            "splineName": ""
+            "spawnOffset": [84.34, 7.15, 428.99],
+            "spawnTime": 1.63,
+            "splineDuration": 5.0,
+            "splineName": "S1_01.75b_m0"
         },
         {
             "fireInterval": -1,
-            "isWorldSpaceSpline": false,
+            "isWorldSpace": true,
+            "isWorldSpaceSpline": true,
             "moveDirection": [0.0, 0.0, 1.0],
             "moveType": 0,
             "prefabName": "ZakoEnemy",
-            "spawnOffset": [-10.0, 4.5, -18.0],
-            "spawnTime": 3.15,
-            "splineDuration": 0.0,
-            "splineName": ""
+            "spawnOffset": [84.34, 7.24, 428.99],
+            "spawnTime": 1.71,
+            "splineDuration": 5.0,
+            "splineName": "S1_01.75b_m1"
         },
         {
             "fireInterval": -1,
-            "isWorldSpaceSpline": false,
+            "isWorldSpace": true,
+            "isWorldSpaceSpline": true,
             "moveDirection": [0.0, 0.0, 1.0],
             "moveType": 0,
             "prefabName": "ZakoEnemy",
-            "spawnOffset": [10.0, 4.5, -18.0],
-            "spawnTime": 3.15,
-            "splineDuration": 0.0,
-            "splineName": ""
+            "spawnOffset": [84.34, 7.32, 428.99],
+            "spawnTime": 1.79,
+            "splineDuration": 5.0,
+            "splineName": "S1_01.75b_m2"
         },
         {
             "fireInterval": -1,
-            "isWorldSpaceSpline": false,
+            "isWorldSpace": true,
+            "isWorldSpaceSpline": true,
             "moveDirection": [0.0, 0.0, 1.0],
             "moveType": 0,
             "prefabName": "ZakoEnemy",
-            "spawnOffset": [-20.0, 3.5, -26.0],
-            "spawnTime": 3.15,
-            "splineDuration": 0.0,
-            "splineName": ""
+            "spawnOffset": [84.34, 7.39, 428.99],
+            "spawnTime": 1.87,
+            "splineDuration": 5.0,
+            "splineName": "S1_01.75b_m3"
         },
         {
             "fireInterval": -1,
-            "isWorldSpaceSpline": false,
+            "isWorldSpace": true,
+            "isWorldSpaceSpline": true,
             "moveDirection": [0.0, 0.0, 1.0],
             "moveType": 0,
             "prefabName": "ZakoEnemy",
-            "spawnOffset": [20.0, 3.5, -26.0],
-            "spawnTime": 3.15,
-            "splineDuration": 0.0,
-            "splineName": ""
+            "spawnOffset": [-22.99, 3.8, 551.45],
+            "spawnTime": 2.55,
+            "splineDuration": 3.9,
+            "splineName": "S1_02.55c_m0"
         },
         {
             "fireInterval": -1,
-            "isWorldSpaceSpline": false,
-            "moveDirection": [0.0, -0.1, -1.0],
+            "isWorldSpace": true,
+            "isWorldSpaceSpline": true,
+            "moveDirection": [0.0, 0.0, 1.0],
             "moveType": 0,
             "prefabName": "ZakoEnemy",
-            "spawnOffset": [-45.0, 6.0, 430.0],
-            "spawnTime": 4.6,
-            "splineDuration": 0.0,
-            "splineName": ""
+            "spawnOffset": [-13.78, 6.8, 555.33],
+            "spawnTime": 2.55,
+            "splineDuration": 3.9,
+            "splineName": "S1_02.55c_m1"
         },
         {
             "fireInterval": -1,
-            "isWorldSpaceSpline": false,
-            "moveDirection": [0.1, -0.1, -1.0],
+            "isWorldSpace": true,
+            "isWorldSpaceSpline": true,
+            "moveDirection": [0.0, 0.0, 1.0],
             "moveType": 0,
             "prefabName": "ZakoEnemy",
-            "spawnOffset": [-75.0, 6.0, 425.0],
-            "spawnTime": 4.6,
-            "splineDuration": 0.0,
-            "splineName": ""
+            "spawnOffset": [-4.57, 3.8, 559.24],
+            "spawnTime": 2.55,
+            "splineDuration": 3.9,
+            "splineName": "S1_02.55c_m2"
         },
         {
             "fireInterval": -1,
-            "isWorldSpaceSpline": false,
-            "moveDirection": [-0.1, -0.1, -1.0],
+            "isWorldSpace": true,
+            "isWorldSpaceSpline": true,
+            "moveDirection": [0.0, 0.0, 1.0],
             "moveType": 0,
             "prefabName": "ZakoEnemy",
-            "spawnOffset": [-15.0, 6.0, 425.0],
-            "spawnTime": 4.6,
+            "spawnOffset": [115.47, -39.0, 588.21],
+            "spawnTime": 3.6,
+            "splineDuration": 5.7,
+            "splineName": "S1_03.60r_m0"
+        },
+        {
+            "fireInterval": -1,
+            "isWorldSpace": true,
+            "isWorldSpaceSpline": true,
+            "moveDirection": [0.0, 0.0, 1.0],
+            "moveType": 0,
+            "prefabName": "ZakoEnemy",
+            "spawnOffset": [111.97, -29.1, 590.34],
+            "spawnTime": 3.6,
+            "splineDuration": 5.7,
+            "splineName": "S1_03.60r_m1"
+        },
+        {
+            "fireInterval": -1,
+            "isWorldSpace": true,
+            "isWorldSpaceSpline": true,
+            "moveDirection": [0.0, 0.0, 1.0],
+            "moveType": 0,
+            "prefabName": "ZakoEnemy",
+            "spawnOffset": [103.6, -25.0, 595.63],
+            "spawnTime": 3.6,
+            "splineDuration": 5.7,
+            "splineName": "S1_03.60r_m2"
+        },
+        {
+            "fireInterval": -1,
+            "isWorldSpace": true,
+            "isWorldSpaceSpline": true,
+            "moveDirection": [0.0, 0.0, 1.0],
+            "moveType": 0,
+            "prefabName": "ZakoEnemy",
+            "spawnOffset": [95.26, -29.1, 600.97],
+            "spawnTime": 3.6,
+            "splineDuration": 5.7,
+            "splineName": "S1_03.60r_m3"
+        },
+        {
+            "fireInterval": -1,
+            "isWorldSpace": true,
+            "isWorldSpaceSpline": true,
+            "moveDirection": [0.0, 0.0, 1.0],
+            "moveType": 0,
+            "prefabName": "ZakoEnemy",
+            "spawnOffset": [91.84, -39.0, 603.23],
+            "spawnTime": 3.6,
+            "splineDuration": 5.7,
+            "splineName": "S1_03.60r_m4"
+        },
+        {
+            "fireInterval": -1,
+            "isWorldSpace": true,
+            "isWorldSpaceSpline": true,
+            "moveDirection": [0.0, 0.0, 1.0],
+            "moveType": 0,
+            "prefabName": "ZakoEnemy",
+            "spawnOffset": [95.34, -48.9, 601.09],
+            "spawnTime": 3.6,
+            "splineDuration": 5.7,
+            "splineName": "S1_03.60r_m5"
+        },
+        {
+            "fireInterval": -1,
+            "isWorldSpace": true,
+            "isWorldSpaceSpline": true,
+            "moveDirection": [0.0, 0.0, 1.0],
+            "moveType": 0,
+            "prefabName": "ZakoEnemy",
+            "spawnOffset": [103.71, -53.0, 595.8],
+            "spawnTime": 3.6,
+            "splineDuration": 5.7,
+            "splineName": "S1_03.60r_m6"
+        },
+        {
+            "fireInterval": -1,
+            "isWorldSpace": true,
+            "isWorldSpaceSpline": true,
+            "moveDirection": [0.0, 0.0, 1.0],
+            "moveType": 0,
+            "prefabName": "ZakoEnemy",
+            "spawnOffset": [112.05, -48.9, 590.47],
+            "spawnTime": 3.6,
+            "splineDuration": 5.7,
+            "splineName": "S1_03.60r_m7"
+        },
+        {
+            "fireInterval": -1,
+            "isWorldSpace": true,
+            "isWorldSpaceSpline": true,
+            "moveDirection": [0.0, 0.0, 1.0],
+            "moveType": 0,
+            "prefabName": "ZakoEnemy",
+            "spawnOffset": [107.66, -25.0, 809.96],
+            "spawnTime": 4.55,
+            "splineDuration": 4.8,
+            "splineName": "S1_04.55d_m0"
+        },
+        {
+            "fireInterval": -1,
+            "isWorldSpace": true,
+            "isWorldSpaceSpline": true,
+            "moveDirection": [0.0, 0.0, 1.0],
+            "moveType": 0,
+            "prefabName": "ZakoEnemy",
+            "spawnOffset": [88.17, -25.0, 836.74],
+            "spawnTime": 4.69,
+            "splineDuration": 4.8,
+            "splineName": "S1_04.55d_m1"
+        },
+        {
+            "fireInterval": -1,
+            "isWorldSpace": true,
+            "isWorldSpaceSpline": true,
+            "moveDirection": [0.0, 0.0, 1.0],
+            "moveType": 0,
+            "prefabName": "ZakoEnemy",
+            "spawnOffset": [60.68, -25.0, 858.81],
+            "spawnTime": 4.83,
+            "splineDuration": 4.8,
+            "splineName": "S1_04.55d_m2"
+        },
+        {
+            "fireInterval": -1,
+            "isWorldSpace": true,
+            "isWorldSpaceSpline": true,
+            "moveDirection": [0.0, 0.0, 1.0],
+            "moveType": 0,
+            "prefabName": "ZakoEnemy",
+            "spawnOffset": [-235.96, -5.03, 987.69],
+            "spawnTime": 5.956,
+            "splineDuration": 4.766,
+            "splineName": "S1_06.15f_m0"
+        },
+        {
+            "fireInterval": -1,
+            "isWorldSpace": true,
+            "isWorldSpaceSpline": true,
+            "moveDirection": [0.0, 0.0, 1.0],
+            "moveType": 0,
+            "prefabName": "ZakoEnemy",
+            "spawnOffset": [-235.96, 4.97, 987.69],
+            "spawnTime": 5.996,
+            "splineDuration": 4.766,
+            "splineName": "S1_06.15f_m1"
+        },
+        {
+            "fireInterval": -1,
+            "isWorldSpace": true,
+            "isWorldSpaceSpline": true,
+            "moveDirection": [0.0, 0.0, 1.0],
+            "moveType": 0,
+            "prefabName": "ZakoEnemy",
+            "spawnOffset": [-235.96, 14.97, 987.69],
+            "spawnTime": 6.036,
+            "splineDuration": 4.766,
+            "splineName": "S1_06.15f_m2"
+        },
+        {
+            "fireInterval": -1,
+            "isWorldSpace": true,
+            "isWorldSpaceSpline": true,
+            "moveDirection": [0.0, 0.0, 1.0],
+            "moveType": 0,
+            "prefabName": "ZakoEnemy",
+            "spawnOffset": [-235.96, 24.97, 987.69],
+            "spawnTime": 6.076,
+            "splineDuration": 4.766,
+            "splineName": "S1_06.15f_m3"
+        },
+        {
+            "fireInterval": -1,
+            "isWorldSpace": true,
+            "isWorldSpaceSpline": true,
+            "moveDirection": [0.0, 0.0, 1.0],
+            "moveType": 0,
+            "prefabName": "ZakoEnemy",
+            "spawnOffset": [-644.91, 9.8, 890.63],
+            "spawnTime": 6.46,
+            "splineDuration": 12.598,
+            "splineName": "S1_06.80g_m0"
+        },
+        {
+            "fireInterval": -1,
+            "isWorldSpace": true,
+            "isWorldSpaceSpline": true,
+            "moveDirection": [0.0, 0.0, 1.0],
+            "moveType": 0,
+            "prefabName": "ZakoEnemy",
+            "spawnOffset": [-644.91, 21.8, 890.63],
+            "spawnTime": 6.527,
+            "splineDuration": 12.598,
+            "splineName": "S1_06.80g_m1"
+        },
+        {
+            "fireInterval": -1,
+            "isWorldSpace": true,
+            "isWorldSpaceSpline": true,
+            "moveDirection": [0.0, 0.0, 1.0],
+            "moveType": 0,
+            "prefabName": "ZakoEnemy",
+            "spawnOffset": [-644.91, 9.8, 890.63],
+            "spawnTime": 6.594,
+            "splineDuration": 12.598,
+            "splineName": "S1_06.80g_m2"
+        },
+        {
+            "fireInterval": -1,
+            "isWorldSpace": true,
+            "isWorldSpaceSpline": false,
+            "moveDirection": [0.0, 0.0, 1.0],
+            "moveType": 7,
+            "prefabName": "ZakoEnemy",
+            "spawnOffset": [-629.3, 26.5, 887.24],
+            "spawnTime": 6.8,
             "splineDuration": 0.0,
             "splineName": ""
         },
         {
             "fireInterval": -1,
+            "isWorldSpace": true,
             "isWorldSpaceSpline": false,
-            "moveType": 2,
+            "moveDirection": [0.0, 0.0, 1.0],
+            "moveType": 7,
             "prefabName": "ZakoEnemy",
-            "spawnOffset": [-130.0, 4.0, 185.0],
-            "spawnTime": 7.2,
+            "spawnOffset": [-633.09, 26.5, 901.38],
+            "spawnTime": 6.8,
             "splineDuration": 0.0,
             "splineName": ""
         },
         {
             "fireInterval": -1,
-            "isWorldSpaceSpline": false,
-            "moveType": 2,
+            "isWorldSpace": true,
+            "isWorldSpaceSpline": true,
+            "moveDirection": [0.0, 0.0, 1.0],
+            "moveType": 0,
             "prefabName": "ZakoEnemy",
-            "spawnOffset": [-140.0, 4.5, 197.0],
-            "spawnTime": 7.2,
-            "splineDuration": 0.0,
-            "splineName": ""
+            "spawnOffset": [-686.44, 16.89, 1141.73],
+            "spawnTime": 7.573,
+            "splineDuration": 9.872,
+            "splineName": "S1_08.10h_m0"
         },
         {
             "fireInterval": -1,
-            "isWorldSpaceSpline": false,
-            "moveType": 2,
+            "isWorldSpace": true,
+            "isWorldSpaceSpline": true,
+            "moveDirection": [0.0, 0.0, 1.0],
+            "moveType": 0,
             "prefabName": "ZakoEnemy",
-            "spawnOffset": [-150.0, 5.0, 209.0],
-            "spawnTime": 7.2,
-            "splineDuration": 0.0,
-            "splineName": ""
+            "spawnOffset": [-686.44, 28.89, 1141.73],
+            "spawnTime": 7.639,
+            "splineDuration": 9.872,
+            "splineName": "S1_08.10h_m1"
         },
         {
             "fireInterval": -1,
-            "isWorldSpaceSpline": false,
-            "moveType": 2,
+            "isWorldSpace": true,
+            "isWorldSpaceSpline": true,
+            "moveDirection": [0.0, 0.0, 1.0],
+            "moveType": 0,
             "prefabName": "ZakoEnemy",
-            "spawnOffset": [130.0, 4.0, 165.0],
+            "spawnOffset": [-686.44, 16.89, 1141.73],
+            "spawnTime": 7.706,
+            "splineDuration": 9.872,
+            "splineName": "S1_08.10h_m2"
+        },
+        {
+            "fireInterval": -1,
+            "isWorldSpace": true,
+            "isWorldSpaceSpline": true,
+            "moveDirection": [0.0, 0.0, 1.0],
+            "moveType": 0,
+            "prefabName": "ZakoEnemy",
+            "spawnOffset": [-686.44, 28.89, 1141.73],
+            "spawnTime": 7.773,
+            "splineDuration": 9.872,
+            "splineName": "S1_08.10h_m3"
+        },
+        {
+            "fireInterval": -1,
+            "isWorldSpace": true,
+            "isWorldSpaceSpline": true,
+            "moveDirection": [0.0, 0.0, 1.0],
+            "moveType": 0,
+            "prefabName": "ZakoEnemy",
+            "spawnOffset": [-790.65, 19.99, 1183.35],
+            "spawnTime": 8.08,
+            "splineDuration": 7.623,
+            "splineName": "S1_08.45i_m0"
+        },
+        {
+            "fireInterval": -1,
+            "isWorldSpace": true,
+            "isWorldSpaceSpline": true,
+            "moveDirection": [0.0, 0.0, 1.0],
+            "moveType": 0,
+            "prefabName": "ZakoEnemy",
+            "spawnOffset": [-790.65, 31.99, 1183.35],
+            "spawnTime": 8.12,
+            "splineDuration": 7.623,
+            "splineName": "S1_08.45i_m1"
+        },
+        {
+            "fireInterval": -1,
+            "isWorldSpace": true,
+            "isWorldSpaceSpline": true,
+            "moveDirection": [0.0, 0.0, 1.0],
+            "moveType": 0,
+            "prefabName": "ZakoEnemy",
+            "spawnOffset": [-790.65, 19.99, 1183.35],
+            "spawnTime": 8.16,
+            "splineDuration": 7.623,
+            "splineName": "S1_08.45i_m2"
+        },
+        {
+            "fireInterval": -1,
+            "isWorldSpace": true,
+            "isWorldSpaceSpline": true,
+            "moveDirection": [0.0, 0.0, 1.0],
+            "moveType": 0,
+            "prefabName": "ZakoEnemy",
+            "spawnOffset": [-790.65, 31.99, 1183.35],
+            "spawnTime": 8.2,
+            "splineDuration": 7.623,
+            "splineName": "S1_08.45i_m3"
+        },
+        {
+            "fireInterval": -1,
+            "isWorldSpace": true,
+            "isWorldSpaceSpline": true,
+            "moveDirection": [-0.9659, 0.0, 0.2588],
+            "moveType": 0,
+            "prefabName": "FloatingFortress",
+            "spawnOffset": [-833.08, 35.55, 1225.78],
             "spawnTime": 8.5,
-            "splineDuration": 0.0,
-            "splineName": ""
-        },
-        {
-            "fireInterval": -1,
-            "isWorldSpaceSpline": false,
-            "moveType": 2,
-            "prefabName": "ZakoEnemy",
-            "spawnOffset": [140.0, 4.5, 177.0],
-            "spawnTime": 8.5,
-            "splineDuration": 0.0,
-            "splineName": ""
-        },
-        {
-            "fireInterval": -1,
-            "isWorldSpaceSpline": false,
-            "moveType": 2,
-            "prefabName": "ZakoEnemy",
-            "spawnOffset": [150.0, 5.0, 189.0],
-            "spawnTime": 8.5,
-            "splineDuration": 0.0,
-            "splineName": ""
-        },
-        {
-            "fireInterval": -1,
-            "isWorldSpaceSpline": false,
-            "moveType": 2,
-            "prefabName": "ZakoEnemy",
-            "spawnOffset": [160.0, 5.5, 201.0],
-            "spawnTime": 8.5,
-            "splineDuration": 0.0,
-            "splineName": ""
-        },
-        {
-            "fireInterval": -1,
-            "isWorldSpaceSpline": false,
-            "moveType": 4,
-            "prefabName": "ZakoEnemy",
-            "spawnOffset": [0.0, 3.5, 70.0],
-            "spawnTime": 10.0,
-            "splineDuration": 0.0,
-            "splineName": ""
-        },
-        {
-            "fireInterval": -1,
-            "isWorldSpaceSpline": false,
-            "moveType": 4,
-            "prefabName": "ZakoEnemy",
-            "spawnOffset": [-14.0, 5.5, 82.0],
-            "spawnTime": 10.0,
-            "splineDuration": 0.0,
-            "splineName": ""
-        },
-        {
-            "fireInterval": -1,
-            "isWorldSpaceSpline": false,
-            "moveType": 4,
-            "prefabName": "ZakoEnemy",
-            "spawnOffset": [14.0, 5.5, 82.0],
-            "spawnTime": 10.0,
-            "splineDuration": 0.0,
-            "splineName": ""
+            "splineDuration": 14.5,
+            "splineName": "S1_fortress"
         },
         {
             "fireInterval": -1,
             "isWorldSpace": true,
-            "isWorldSpaceSpline": false,
-            "moveType": 7,
-            "prefabName": "ZakoEnemy",
-            "spawnOffset": [-18.0, 22.0, 2340.0],
-            "spawnTime": 8.0,
-            "splineDuration": 0.0,
-            "splineName": ""
+            "isWorldSpaceSpline": true,
+            "moveDirection": [0.0, 0.0, 1.0],
+            "moveType": 0,
+            "prefabName": "MechSerpent",
+            "spawnOffset": [-1571.81, 160.73, 1250.04],
+            "spawnTime": 12.11,
+            "splineDuration": 2.2,
+            "splineName": "S1_serpent_preview",
+            "serpent": {
+                "cores": [],
+                "stopSeconds": 1.7,
+                "chargeSeconds": 1.5,
+                "appearSeconds": 0.4,
+                "wallZap": true
+            }
         },
         {
             "fireInterval": -1,
             "isWorldSpace": true,
-            "isWorldSpaceSpline": false,
-            "moveType": 7,
+            "isWorldSpaceSpline": true,
+            "moveDirection": [0.0, 0.0, 1.0],
+            "moveType": 0,
             "prefabName": "ZakoEnemy",
-            "spawnOffset": [38.0, 22.0, 2360.0],
-            "spawnTime": 8.0,
-            "splineDuration": 0.0,
-            "splineName": ""
-        },
-        {
-            "fireInterval": -1,
-            "isWorldSpace": false,
-            "isWorldSpaceSpline": false,
-            "moveType": 4,
-            "prefabName": "ZakoEnemy",
-            "spawnOffset": [-16.0, 9.5, 88.0],
-            "spawnTime": 13.0,
-            "splineDuration": 0.0,
-            "splineName": ""
-        },
-        {
-            "fireInterval": -1,
-            "isWorldSpace": false,
-            "isWorldSpaceSpline": false,
-            "moveType": 4,
-            "prefabName": "ZakoEnemy",
-            "spawnOffset": [-14.0, -0.5, 82.0],
-            "spawnTime": 13.0,
-            "splineDuration": 0.0,
-            "splineName": ""
-        },
-        {
-            "fireInterval": -1,
-            "isWorldSpace": false,
-            "isWorldSpaceSpline": false,
-            "moveType": 4,
-            "prefabName": "ZakoEnemy",
-            "spawnOffset": [16.0, 9.5, 88.0],
-            "spawnTime": 13.3,
-            "splineDuration": 0.0,
-            "splineName": ""
-        },
-        {
-            "fireInterval": -1,
-            "isWorldSpace": false,
-            "isWorldSpaceSpline": false,
-            "moveType": 4,
-            "prefabName": "ZakoEnemy",
-            "spawnOffset": [14.0, -0.5, 82.0],
-            "spawnTime": 13.3,
-            "splineDuration": 0.0,
-            "splineName": ""
+            "spawnOffset": [-1611.2, 226.52, 1250.82],
+            "spawnTime": 12.8,
+            "splineDuration": 4.25,
+            "splineName": "S1_s3_z1_m0"
         },
         {
             "fireInterval": -1,
             "isWorldSpace": true,
-            "isWorldSpaceSpline": false,
-            "moveType": 7,
+            "isWorldSpaceSpline": true,
+            "moveDirection": [0.0, 0.0, 1.0],
+            "moveType": 0,
             "prefabName": "ZakoEnemy",
-            "spawnOffset": [2.0, 55.0, 2960.0],
-            "spawnTime": 11.0,
-            "splineDuration": 0.0,
-            "splineName": ""
+            "spawnOffset": [-1618.24, 220.96, 1249.77],
+            "spawnTime": 12.85,
+            "splineDuration": 4.25,
+            "splineName": "S1_s3_z1_m1"
         },
         {
             "fireInterval": -1,
             "isWorldSpace": true,
-            "isWorldSpaceSpline": false,
-            "moveType": 7,
+            "isWorldSpaceSpline": true,
+            "moveDirection": [0.0, 0.0, 1.0],
+            "moveType": 0,
             "prefabName": "ZakoEnemy",
-            "spawnOffset": [-26.0, 45.0, 2960.0],
-            "spawnTime": 11.0,
-            "splineDuration": 0.0,
-            "splineName": ""
+            "spawnOffset": [-1625.36, 215.24, 1248.63],
+            "spawnTime": 12.9,
+            "splineDuration": 4.25,
+            "splineName": "S1_s3_z1_m2"
         },
         {
             "fireInterval": -1,
             "isWorldSpace": true,
-            "isWorldSpaceSpline": false,
-            "moveType": 7,
+            "isWorldSpaceSpline": true,
+            "moveDirection": [0.0, 0.0, 1.0],
+            "moveType": 0,
             "prefabName": "ZakoEnemy",
-            "spawnOffset": [30.0, 45.0, 2960.0],
-            "spawnTime": 11.0,
-            "splineDuration": 0.0,
-            "splineName": ""
+            "spawnOffset": [-1632.59, 209.34, 1247.38],
+            "spawnTime": 12.95,
+            "splineDuration": 4.25,
+            "splineName": "S1_s3_z1_m3"
+        },
+        {
+            "fireInterval": -1,
+            "isWorldSpace": true,
+            "isWorldSpaceSpline": true,
+            "moveDirection": [0.0, 0.0, 1.0],
+            "moveType": 0,
+            "prefabName": "MechSerpent",
+            "spawnOffset": [-1757.8, 377.22, 1204.79],
+            "spawnTime": 13.51,
+            "splineDuration": 1.7,
+            "splineName": "S1_serpent_first",
+            "serpent": {
+                "cores": [1, 3],
+                "stopSeconds": 1.2,
+                "chargeSeconds": 3.0,
+                "appearSeconds": 0.212,
+                "zapMax": 1
+            }
+        },
+        {
+            "fireInterval": -1,
+            "isWorldSpace": true,
+            "isWorldSpaceSpline": true,
+            "moveDirection": [0.0, 0.0, 1.0],
+            "moveType": 0,
+            "prefabName": "ZakoEnemy",
+            "spawnOffset": [-1972.45, 429.72, 1099.31],
+            "spawnTime": 14.6,
+            "splineDuration": 2.0,
+            "splineName": "S1_s3_z2_m0"
+        },
+        {
+            "fireInterval": -1,
+            "isWorldSpace": true,
+            "isWorldSpaceSpline": true,
+            "moveDirection": [0.0, 0.0, 1.0],
+            "moveType": 0,
+            "prefabName": "ZakoEnemy",
+            "spawnOffset": [-1978.06, 445.46, 1093.47],
+            "spawnTime": 14.65,
+            "splineDuration": 2.0,
+            "splineName": "S1_s3_z2_m1"
+        },
+        {
+            "fireInterval": -1,
+            "isWorldSpace": true,
+            "isWorldSpaceSpline": true,
+            "moveDirection": [0.0, 0.0, 1.0],
+            "moveType": 0,
+            "prefabName": "ZakoEnemy",
+            "spawnOffset": [-1983.59, 461.19, 1087.56],
+            "spawnTime": 14.7,
+            "splineDuration": 2.0,
+            "splineName": "S1_s3_z2_m2"
+        },
+        {
+            "fireInterval": -1,
+            "isWorldSpace": true,
+            "isWorldSpaceSpline": true,
+            "moveDirection": [0.0, 0.0, 1.0],
+            "moveType": 0,
+            "prefabName": "ZakoEnemy",
+            "spawnOffset": [-1989.04, 476.92, 1081.6],
+            "spawnTime": 14.75,
+            "splineDuration": 2.0,
+            "splineName": "S1_s3_z2_m3"
+        },
+        {
+            "fireInterval": -1,
+            "isWorldSpace": true,
+            "isWorldSpaceSpline": true,
+            "moveDirection": [0.0, 0.0, 1.0],
+            "moveType": 0,
+            "prefabName": "MechSerpent",
+            "spawnOffset": [-1919.11, 551.28, 1102.02],
+            "spawnTime": 15.01,
+            "splineDuration": 1.7,
+            "splineName": "S1_serpent_second",
+            "serpent": {
+                "cores": [1, 2, 3],
+                "stopSeconds": 1.2,
+                "chargeSeconds": 2.8,
+                "appearSeconds": 0.212,
+                "zapMax": 1
+            }
+        },
+        {
+            "fireInterval": -1,
+            "isWorldSpace": true,
+            "isWorldSpaceSpline": true,
+            "moveDirection": [0.0, 0.0, 1.0],
+            "moveType": 0,
+            "prefabName": "MechSerpent",
+            "spawnOffset": [-2032.42, 580.0, 963.56],
+            "spawnTime": 16.15,
+            "splineDuration": 4.75,
+            "splineName": "S1_serpent_climax",
+            "serpent": {
+                "cores": [1, 2, 3, 4, 5, 6, 7, 8],
+                "stopSeconds": 4.25,
+                "chargeSeconds": 4.0,
+                "appearSeconds": 1.781,
+                "zapMax": 2,
+                "final": true,
+                "warnSeconds": 1.5,
+                "warnPoint": [-2046.49, 581.23, 970.4],
+                "warnYaw": -1.0406
+            }
         },
         {
             "fireInterval": -1,
             "isWorldSpaceSpline": false,
             "moveDirection": [0.0, 0.0, 1.0],
-            "moveType": 0,
-            "prefabName": "ZakoEnemy",
-            "spawnOffset": [0.0, 3.0, -15.0],
-            "spawnTime": 16.2,
-            "splineDuration": 0.0,
-            "splineName": ""
-        },
-        {
-            "fireInterval": -1,
-            "isWorldSpaceSpline": false,
-            "moveDirection": [0.0, 0.0, 1.0],
-            "moveType": 0,
-            "prefabName": "ZakoEnemy",
-            "spawnOffset": [-8.0, 2.0, -20.0],
-            "spawnTime": 16.2,
-            "splineDuration": 0.0,
-            "splineName": ""
-        },
-        {
-            "fireInterval": -1,
-            "isWorldSpaceSpline": false,
-            "moveDirection": [0.0, 0.0, 1.0],
-            "moveType": 0,
-            "prefabName": "ZakoEnemy",
-            "spawnOffset": [8.0, 2.0, -20.0],
-            "spawnTime": 16.2,
-            "splineDuration": 0.0,
-            "splineName": ""
-        },
-        {
-            "fireInterval": -1,
-            "isWorldSpaceSpline": false,
             "moveType": 0,
             "prefabName": "Boss",
             "spawnOffset": [0.0, 20.0, 250.0],
-            "spawnTime": 17.6,
+            "spawnTime": 21.0,
             "splineDuration": 0.0,
             "splineName": ""
         }

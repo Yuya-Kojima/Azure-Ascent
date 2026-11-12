@@ -1,12 +1,14 @@
 #pragma once
 #include "Math/Transform.h"
+#include <memory>
 #include <string>
 
 enum class ActorTag {
     Untagged,
     Player,
     Enemy,
-    LockOnTarget
+    LockOnTarget,
+    ShotTarget  // ロックオンはできず、通常ショットの狙いの助けだけが効く相手
 };
 
 inline std::string ActorTagToString(ActorTag tag) {
@@ -14,6 +16,7 @@ inline std::string ActorTagToString(ActorTag tag) {
         case ActorTag::Player: return "Player";
         case ActorTag::Enemy: return "Enemy";
         case ActorTag::LockOnTarget: return "LockOnTarget";
+        case ActorTag::ShotTarget: return "ShotTarget";
         case ActorTag::Untagged:
         default: return "Untagged";
     }
@@ -23,6 +26,7 @@ inline ActorTag StringToActorTag(const std::string& str) {
     if (str == "Player") return ActorTag::Player;
     if (str == "Enemy") return ActorTag::Enemy;
     if (str == "LockOnTarget") return ActorTag::LockOnTarget;
+    if (str == "ShotTarget") return ActorTag::ShotTarget;
     return ActorTag::Untagged;
 }
 
@@ -33,6 +37,10 @@ class BaseActor {
 public:
     BaseActor();
     virtual ~BaseActor() = default;
+
+    // 目印を Actor ごとに 1 つにするため、コピーを禁止する
+    BaseActor(const BaseActor&) = delete;
+    BaseActor& operator=(const BaseActor&) = delete;
 
     virtual void Initialize() {}
     virtual void Update() {}
@@ -58,6 +66,9 @@ public:
     ActorTag GetTag() const { return tag_; }
     void SetTag(ActorTag tag) { tag_ = tag; }
 
+    // この Actor が破棄されるまで期限切れにならない目印（ActorRef が使う）
+    std::weak_ptr<const void> GetLifeToken() const { return lifeToken_; }
+
 protected:
     // 3D空間上の位置・回転・スケール
     Transform transform_;
@@ -71,4 +82,8 @@ protected:
 
     // 連続衝突判定（カプセル）用の速度を計算する
     Vector3 CalculateVelocityForCollision();
+
+private:
+    // Actor と一緒に破棄され、GetLifeToken() で配った weak_ptr を期限切れにする
+    std::shared_ptr<const void> lifeToken_ = std::make_shared<char>(0);
 };

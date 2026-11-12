@@ -6,16 +6,22 @@
 #include "Renderer/PostProcess.h"
 #include <memory>
 
+class ICamera;
+class TiledLightCuller;
+
 class RenderPipeline {
 public:
   RenderPipeline() = default;
   ~RenderPipeline() = default;
 
   // 初期化（レンダーターゲットやブルームの生成）
-  void Initialize(Dx12Core* dx12Core, SrvManager* srvManager);
+  void Initialize(Dx12Core* dx12Core, SrvManager* srvManager, TiledLightCuller* tiledLightCuller);
 
-  // 3D描画パスの開始（HDRキャンバスをターゲットにセット）
+  // 3D描画パスの開始。命令の列を A から P・B に分け、P に深度だけの絵の準備を、B に HDR キャンバスの設定とクリアを積む
   void Begin3DPass(Dx12Core* dx12Core);
+
+  // 3D描画パスの終わり。P に積むのを止め、マス分けの CS を P に積む
+  void End3DPass(const ICamera* camera);
 
   // ポストプロセス処理（Bloom, モーションブラー等）を実行し、メイン画面へ焼き付ける
   void DrawPostProcess(Dx12Core* dx12Core, SrvManager* srvManager, PostProcess* currentScenePostProcess);
@@ -31,6 +37,8 @@ public:
 
 private:
   bool isEditorMode_ = false;
+  SrvManager* srvManager_ = nullptr;
+  TiledLightCuller* tiledLightCuller_ = nullptr;
   std::unique_ptr<RenderTexture> editorGameViewTexture_ = nullptr;
   std::unique_ptr<RenderTexture> mainRenderTexture_ = nullptr;
   std::unique_ptr<Bloom> bloom_ = nullptr;

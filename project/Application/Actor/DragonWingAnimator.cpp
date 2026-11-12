@@ -948,6 +948,14 @@ float DragonWingAnimator::UpdateHead(const Matrix4x4 &worldMatrix) const {
       config_.headTurnLead * kDegToRad * currentState_.asymmetry;
   forward = RotateVector(MakeRotateAxisAngleQuaternion(worldUp, turnLead),
                          forward);
+  // 向ける先があれば、前向きはその向き（体から逸らせる角度は下で headMaxAngle に抑える）
+  if (lookDirection_) {
+    const Vector3 look =
+        TransformDirection(*lookDirection_, Inverse(worldMatrix));
+    if (Length(look) > kMinDirectionLength) {
+      forward = Normalize(look);
+    }
+  }
 
   // 上向き: 前向きに垂直なまま、ロールを除いた上向き（世界の上に最も近い向き）へ headLevelRoll の割合だけ寄せる
   const Vector3 keptUp = PerpendicularDirection(bodyUp, forward, bodyUp);

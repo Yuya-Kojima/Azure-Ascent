@@ -30,6 +30,12 @@
     <ClCompile Include="Scene\FractureTestScene.cpp">
       <Filter>ソース ファイル</Filter>
     </ClCompile>
+    <ClCompile Include="Scene\ZakoViewScene.cpp">
+      <Filter>ソース ファイル</Filter>
+    </ClCompile>
+    <ClCompile Include="Actor\EnemyLights.cpp">
+      <Filter>ソース ファイル</Filter>
+    </ClCompile>
     <ClCompile Include="Scene\SceneFactory.cpp">
       <Filter>ソース ファイル</Filter>
     </ClCompile>
@@ -43,6 +49,9 @@
       <Filter>ソース ファイル</Filter>
     </ClCompile>
     <ClCompile Include="Actor\Enemy.cpp">
+      <Filter>ソース ファイル</Filter>
+    </ClCompile>
+    <ClCompile Include="Camera\SerpentCameraDirector.cpp">
       <Filter>ソース ファイル</Filter>
     </ClCompile>
     <ClCompile Include="Camera\RailCamera.cpp">
@@ -120,6 +129,9 @@
     <ClCompile Include="Scene\ResultSequence.cpp">
       <Filter>ソース ファイル</Filter>
     </ClCompile>
+    <ClCompile Include="Scene\PauseMenu.cpp">
+      <Filter>ソース ファイル</Filter>
+    </ClCompile>
     <ClCompile Include="Scene\StageSelectLightning.cpp">
       <Filter>ソース ファイル</Filter>
     </ClCompile>
@@ -174,6 +186,18 @@
     <ClCompile Include="Actor\BossWeakPoint.cpp">
       <Filter>ソース ファイル</Filter>
     </ClCompile>
+    <ClCompile Include="Actor\EnemyPart.cpp">
+      <Filter>ソース ファイル</Filter>
+    </ClCompile>
+    <ClCompile Include="Actor\FloatingFortress.cpp">
+      <Filter>ソース ファイル</Filter>
+    </ClCompile>
+    <ClCompile Include="Actor\InterceptCue.cpp">
+      <Filter>ソース ファイル</Filter>
+    </ClCompile>
+    <ClCompile Include="Actor\MechSerpent.cpp">
+      <Filter>ソース ファイル</Filter>
+    </ClCompile>
     <ClCompile Include="Actor\BossCore.cpp">
       <Filter>ソース ファイル</Filter>
     </ClCompile>
@@ -199,6 +223,8 @@
     <FxCompile Include="resources\shaders\CloudTopNoise.CS.hlsl" />
     <FxCompile Include="resources\shaders\CloudSea.March.PS.hlsl" />
     <FxCompile Include="resources\shaders\CloudSea.Composite.PS.hlsl" />
+    <FxCompile Include="resources\shaders\Object3d.DepthPrepass.PS.hlsl" />
+    <FxCompile Include="resources\shaders\LightCulling.CS.hlsl" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Core\Game.h">
@@ -216,6 +242,12 @@
     <ClInclude Include="Scene\FractureTestScene.h">
       <Filter>ヘッダー ファイル</Filter>
     </ClInclude>
+    <ClInclude Include="Scene\ZakoViewScene.h">
+      <Filter>ヘッダー ファイル</Filter>
+    </ClInclude>
+    <ClInclude Include="Actor\EnemyLights.h">
+      <Filter>ヘッダー ファイル</Filter>
+    </ClInclude>
     <ClInclude Include="Scene\SceneFactory.h">
       <Filter>ヘッダー ファイル</Filter>
     </ClInclude>
@@ -229,6 +261,9 @@
       <Filter>ヘッダー ファイル</Filter>
     </ClInclude>
     <ClInclude Include="Actor\Enemy.h">
+      <Filter>ヘッダー ファイル</Filter>
+    </ClInclude>
+    <ClInclude Include="Camera\SerpentCameraDirector.h">
       <Filter>ヘッダー ファイル</Filter>
     </ClInclude>
     <ClInclude Include="Camera\RailCamera.h">
@@ -306,6 +341,9 @@
     <ClInclude Include="Scene\ResultSequence.h">
       <Filter>ヘッダー ファイル</Filter>
     </ClInclude>
+    <ClInclude Include="Scene\PauseMenu.h">
+      <Filter>ヘッダー ファイル</Filter>
+    </ClInclude>
     <ClInclude Include="Score\VolleyId.h">
       <Filter>ヘッダー ファイル</Filter>
     </ClInclude>
@@ -378,6 +416,21 @@
     <ClInclude Include="Actor\BossWeakPoint.h">
       <Filter>ヘッダー ファイル</Filter>
     </ClInclude>
+    <ClInclude Include="Actor\EnemyPart.h">
+      <Filter>ヘッダー ファイル</Filter>
+    </ClInclude>
+    <ClInclude Include="Actor\FloatingFortress.h">
+      <Filter>ヘッダー ファイル</Filter>
+    </ClInclude>
+    <ClInclude Include="Actor\ILockOnHittable.h">
+      <Filter>ヘッダー ファイル</Filter>
+    </ClInclude>
+    <ClInclude Include="Actor\InterceptCue.h">
+      <Filter>ヘッダー ファイル</Filter>
+    </ClInclude>
+    <ClInclude Include="Actor\MechSerpent.h">
+      <Filter>ヘッダー ファイル</Filter>
+    </ClInclude>
     <ClInclude Include="Actor\BossCore.h">
       <Filter>ヘッダー ファイル</Filter>
     </ClInclude>
@@ -387,5 +440,6 @@
     <None Include="resources\shaders\Sprite.hlsli" />
     <None Include="resources\shaders\Skybox.hlsli" />
     <None Include="resources\shaders\CloudSea.hlsli" />
+    <None Include="resources\shaders\LightCulling.hlsli" />
   </ItemGroup>
 </Project>

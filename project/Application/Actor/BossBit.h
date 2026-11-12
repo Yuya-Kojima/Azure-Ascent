@@ -14,6 +14,8 @@ public:
     void Initialize() override;
     void Update() override;
     void TakeDamage(int damage, bool isSelfDestruct = false) override;
+    // 退避中はロックオンできない
+    bool CanBeLockedOn() const override { return !isSpreadingOut_; }
 
     // 親となるボスを設定
     void SetBoss(Boss* boss) { boss_ = boss; }

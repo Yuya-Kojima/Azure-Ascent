@@ -31,6 +31,12 @@ public:
     /// </summary>
     std::string GetModelPath(const std::string& prefabName) const;
 
+    /// <summary>
+    /// プレハブの光る部品のモデルを読み込んでおく（敵を生成したときに読み込みが起きないようにする）
+    /// 光る部品のないプレハブでは何もしない
+    /// </summary>
+    void PreloadLightModels(const std::string& prefabName) const;
+
 private:
     PrefabManager() = default;
     ~PrefabManager() = default;

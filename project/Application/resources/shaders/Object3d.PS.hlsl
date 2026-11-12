@@ -1,6 +1,7 @@
 #include "Object3d.hlsli"
 #include "Common.hlsli"
 #include "Lighting.hlsli"
+#include "LightCulling.hlsli"
 
 Texture2D<float4> gTexture : register(t0);
 TextureCube<float4> gEnvironmentTexture : register(t1);
@@ -15,8 +16,11 @@ struct PixelShaderOutput {
 };
 
 ConstantBuffer<Camera> gCamera : register(b2);
-ConstantBuffer<PointLight> gPointLight : register(b3);
-ConstantBuffer<SpotLight> gSpotLight : register(b4);
+ConstantBuffer<LightCounts> gLightCounts : register(b3);
+StructuredBuffer<PointLight> gPointLights : register(t3);
+StructuredBuffer<SpotLight> gSpotLights : register(t4);
+// マスごとのライトの名簿（LightCulling.hlsli の形）
+StructuredBuffer<uint> gTileLights : register(t5);
 
 struct FogData {
     float4 color;
@@ -57,6 +61,29 @@ static const float kHoleWhitePower = 8.0f;
 // 傷を描く面の向き：面の向きと傷の外向きの内積がこの範囲で、薄い→そのまま描く（0.5 ≒ 60 度）
 static const float kWoundFacingFadeLow = 0.4f;
 static const float kWoundFacingFadeHigh = 0.6f;
+
+//=========================
+// マスごとのライトの数の表示（debugView 6）
+//=========================
+// この数以上は赤で塗る
+static const uint kTileHeatMax = 32;
+// マスの境目の画素に掛ける明るさ
+static const float kTileBorderBrightness = 0.6f;
+
+// ライトの数を色にする。0 は黒、1 から上は 青 → 緑 → 黄 → 赤
+float3 TileHeatColor(uint count) {
+	if (count == 0) {
+		return float3(0.0f, 0.0f, 0.0f);
+	}
+	float t = saturate(float(count - 1) / float(kTileHeatMax - 1)) * 3.0f;
+	if (t < 1.0f) {
+		return lerp(float3(0.0f, 0.0f, 1.0f), float3(0.0f, 1.0f, 0.0f), t);
+	}
+	if (t < 2.0f) {
+		return lerp(float3(0.0f, 1.0f, 0.0f), float3(1.0f, 1.0f, 0.0f), t - 1.0f);
+	}
+	return lerp(float3(1.0f, 1.0f, 0.0f), float3(1.0f, 0.0f, 0.0f), t - 2.0f);
+}
 
 // 0〜1 の決まった乱数（同じ n なら同じ値）
 float Hash11(float n) {
@@ -224,6 +251,12 @@ GeometryShaderOutput input) {
     // No lighting (Emissive / Laser)
     //=========================
 	if (gMaterial.enableLighting == 0) {
+		// 色をそのまま出す（1 を超える色はブルームでにじむ）
+		if (gMaterial.flatUnlit > 0.0f) {
+			output.color = base;
+			return output;
+		}
+
 		float3 toEye = normalize(gCamera.worldPosition - input.worldPosition);
 		float3 normal = normalize(input.normal);
 		// 視線と法線の角度からフレネル係数を計算（中心部ほど大きい）
@@ -267,20 +300,71 @@ GeometryShaderOutput input) {
 		return output;
 	}
 
+	// このマスの名簿の先頭（マスごとの名簿を使わないときは読まない）
+	uint tileBase = 0;
+	if (gLightCounts.useTiles != 0) {
+		tileBase = GetTileBase(input.position.xy, gLightCounts.tileCountX);
+	}
+
+	if (gDirectionalLight.debugView == 6) {
+		// マスに入る点 + スポットの数を色で塗る（マスごとの名簿を使わないときは名簿全体の数）
+		uint tileLightCount = gLightCounts.pointLightCount + gLightCounts.spotLightCount;
+		if (gLightCounts.useTiles != 0) {
+			tileLightCount = gTileLights[tileBase + kTilePointCountOffset] + gTileLights[tileBase + kTileSpotCountOffset];
+		}
+		float3 heat = TileHeatColor(tileLightCount);
+		// マスの左と上の 1 画素を暗くして、マスの形を見えるようにする
+		uint2 pixelInTile = uint2(input.position.xy) % kTileSize;
+		if (pixelInTile.x == 0 || pixelInTile.y == 0) {
+			heat *= kTileBorderBrightness;
+		}
+		output.color = float4(heat, 1.0f);
+		return output;
+	}
+
 	float3 baseColor = gMaterial.color.rgb * textureColor.rgb;
 		
 	//=========================
 	// Lighting Calculations
 	//=========================
 	LightResult dirLight = CalculateDirectionalLight(gDirectionalLight, normal, toEye, gMaterial.shininess, baseColor);
-	LightResult pointLight = CalculatePointLight(gPointLight, input.worldPosition, normal, toEye, gMaterial.shininess, baseColor);
-	LightResult spotLight = CalculateSpotLight(gSpotLight, input.worldPosition, normal, toEye, gMaterial.shininess, baseColor);
+	float3 diffuseSum = dirLight.diffuse;
+	float3 specularSum = dirLight.specular;
+
+	// 足すライトの数。マスごとの名簿を使うときはこのマスの数、使わないときは名簿全体の数
+	uint pointCount = gLightCounts.pointLightCount;
+	uint spotCount = gLightCounts.spotLightCount;
+	if (gLightCounts.useTiles != 0) {
+		pointCount = gTileLights[tileBase + kTilePointCountOffset];
+		spotCount = gTileLights[tileBase + kTileSpotCountOffset];
+	}
+
+	// 点の光を足す（マスごとの名簿を使うときは、名簿に書かれた番号のライトを読む）
+	for (uint k = 0; k < pointCount; ++k) {
+		uint pointIndex = k;
+		if (gLightCounts.useTiles != 0) {
+			pointIndex = gTileLights[tileBase + kTilePointIndexOffset + k];
+		}
+		LightResult pointLight = CalculatePointLight(gPointLights[pointIndex], input.worldPosition, normal, toEye, gMaterial.shininess, baseColor);
+		diffuseSum += pointLight.diffuse;
+		specularSum += pointLight.specular;
+	}
+
+	// スポットライトを足す
+	for (uint s = 0; s < spotCount; ++s) {
+		uint spotIndex = s;
+		if (gLightCounts.useTiles != 0) {
+			spotIndex = gTileLights[tileBase + kTileSpotIndexOffset + s];
+		}
+		LightResult spotLight = CalculateSpotLight(gSpotLights[spotIndex], input.worldPosition, normal, toEye, gMaterial.shininess, baseColor);
+		diffuseSum += spotLight.diffuse;
+		specularSum += spotLight.specular;
+	}
 
 	//=========================
 	// Output
 	//=========================
-	float3 specular = (dirLight.specular + pointLight.specular + spotLight.specular) * gMaterial.specularScale;
-	output.color.rgb = dirLight.diffuse + pointLight.diffuse + spotLight.diffuse + specular;
+	output.color.rgb = diffuseSum + specularSum * gMaterial.specularScale;
 
 	// 環境光
 	output.color.rgb += CalculateHemisphereAmbient(gDirectionalLight, normal, baseColor);

@@ -1,7 +1,11 @@
 #include "Render/Renderer/RenderPipeline.h"
 #include "Core/WindowSystem.h"
+#include "Render/Light/TiledLightCuller.h"
 
-void RenderPipeline::Initialize(Dx12Core* dx12Core, SrvManager* srvManager) {
+void RenderPipeline::Initialize(Dx12Core* dx12Core, SrvManager* srvManager, TiledLightCuller* tiledLightCuller) {
+  srvManager_ = srvManager;
+  tiledLightCuller_ = tiledLightCuller;
+
   const Vector4 kRenderTargetClearValue{ 0.1f, 0.25f, 0.5f, 1.0f }; // 背景色をDx12Coreと同じ青色に統一
 
   // HDRキャンバス (mainRenderTexture_) の作成
@@ -31,6 +35,13 @@ void RenderPipeline::Initialize(Dx12Core* dx12Core, SrvManager* srvManager) {
 }
 
 void RenderPipeline::Begin3DPass(Dx12Core* dx12Core) {
+  // A を閉じて B に積み始める。列をまたぐと SRV ヒープの設定は引き継がれないので積み直す
+  dx12Core->BeginScene3DCommandLists();
+  srvManager_->PreDraw();
+
+  // P: 深度だけの絵のクリア（Tiled Culling がオフのフレームは何も積まない）
+  tiledLightCuller_->BeginPrepass();
+
   // メインのオフスクリーンテクスチャ（HDRキャンバス）を描画対象に設定
   mainRenderTexture_->TransitionToRenderTarget(dx12Core);
   
@@ -44,6 +55,10 @@ void RenderPipeline::Begin3DPass(Dx12Core* dx12Core) {
   
   // 画面クリア
   mainRenderTexture_->Clear(dx12Core);
+}
+
+void RenderPipeline::End3DPass(const ICamera* camera) {
+  tiledLightCuller_->Dispatch(camera);
 }
 
 void RenderPipeline::DrawPostProcess(Dx12Core* dx12Core, SrvManager* srvManager, PostProcess* currentScenePostProcess) {

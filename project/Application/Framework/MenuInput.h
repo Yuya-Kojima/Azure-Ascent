@@ -18,6 +18,16 @@ bool IsDecideTriggered(Input *input);
 bool IsSkipHeld(Input *input);
 
 /// <summary>
+/// ポーズを開く（Esc・パッドの Start）。シーンの切り替え中は false
+/// </summary>
+bool IsPauseTriggered(Input *input);
+
+/// <summary>
+/// 戻る（Esc・パッドの Start・B）。シーンの切り替え中は false
+/// </summary>
+bool IsBackTriggered(Input *input);
+
+/// <summary>
 /// 上（W・↑・十字キー上）
 /// </summary>
 bool IsUpTriggered(Input *input);

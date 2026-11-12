@@ -1,6 +1,7 @@
 #include "StageSelectLightning.h"
 #include "Camera/ICamera.h"
 #include "Render/CloudSea/CloudSea.h"
+#include "Render/Light/LightManager.h"
 #include "Renderer/Object3dRenderer.h"
 #include "Renderer/PostProcess.h"
 #include "Renderer/TrailRenderer.h"
@@ -311,15 +312,18 @@ void StageSelectLightning::ApplyLight(Object3dRenderer *renderer,
     dl->backRimColor = {rim.x, rim.y, rim.z, 1.0f};
   }
   // 上から照らす赤い点の光（上を向いた面ほど赤くなる）
-  if (auto *pl = renderer->GetPointLightData()) {
-    const Vector3 position = dragonPos_ + right_ * dragonLightOffset_.x +
-                             kWorldUp * dragonLightOffset_.y +
-                             forward_ * dragonLightOffset_.z;
-    pl->color = {glowColor_.x, glowColor_.y, glowColor_.z, 1.0f};
-    pl->position = position;
-    pl->intensity = dragonLightIntensity_ * flash;
-    pl->radius = dragonLightRadius_;
-    pl->decay = dragonLightDecay_;
+  if (flash > 0.0f) {
+    if (LightManager *lightManager = renderer->GetLightManager()) {
+      LightManager::PointLight light;
+      light.color = {glowColor_.x, glowColor_.y, glowColor_.z, 1.0f};
+      light.position = dragonPos_ + right_ * dragonLightOffset_.x +
+                       kWorldUp * dragonLightOffset_.y +
+                       forward_ * dragonLightOffset_.z;
+      light.intensity = dragonLightIntensity_ * flash;
+      light.radius = dragonLightRadius_;
+      light.decay = dragonLightDecay_;
+      lightManager->AddPointLight(light);
+    }
   }
 }
 

@@ -1,4 +1,5 @@
 #include "Debug/GpuTimer.h"
+#include <algorithm>
 #include <cassert>
 
 void GpuTimer::Initialize(Dx12Core *dx12Core) {
@@ -32,9 +33,10 @@ void GpuTimer::Initialize(Dx12Core *dx12Core) {
   assert(SUCCEEDED(hr));
 }
 
-void GpuTimer::Begin() {
-  dx12Core_->GetCommandList()->EndQuery(queryHeap_.Get(),
-                                        D3D12_QUERY_TYPE_TIMESTAMP, 0);
+void GpuTimer::Begin() { Begin(dx12Core_->GetCommandList()); }
+
+void GpuTimer::Begin(ID3D12GraphicsCommandList *commandList) {
+  commandList->EndQuery(queryHeap_.Get(), D3D12_QUERY_TYPE_TIMESTAMP, 0);
 }
 
 void GpuTimer::End() {
@@ -46,20 +48,54 @@ void GpuTimer::End() {
 }
 
 float GpuTimer::GetMilliseconds() {
-  // フレームの終わりに GPU を待っているので、前のフレームで積んだ結果は読める
-  if (hasPendingResult_) {
-    const D3D12_RANGE readRange = {0, sizeof(uint64_t) * kQueryCount_};
-    uint64_t *timestamps = nullptr;
-    HRESULT hr = readbackResource_->Map(
-        0, &readRange, reinterpret_cast<void **>(&timestamps));
-    if (SUCCEEDED(hr) && timestamps) {
-      const float latest = float(double(timestamps[1] - timestamps[0]) /
-                                 double(frequency_) * 1000.0);
-      milliseconds_ += (latest - milliseconds_) * kSmoothing_;
-      const D3D12_RANGE writtenRange = {0, 0};
-      readbackResource_->Unmap(0, &writtenRange);
-    }
-    hasPendingResult_ = false;
-  }
+  ReadPendingResult();
   return milliseconds_;
+}
+
+GpuTimer::WindowStats GpuTimer::GetWindowStats() {
+  ReadPendingResult();
+  return lastWindowStats_;
+}
+
+void GpuTimer::ReadPendingResult() {
+  // フレームの終わりに GPU を待っているので、前のフレームで積んだ結果は読める
+  if (!hasPendingResult_) {
+    return;
+  }
+  hasPendingResult_ = false;
+
+  const D3D12_RANGE readRange = {0, sizeof(uint64_t) * kQueryCount_};
+  uint64_t *timestamps = nullptr;
+  HRESULT hr = readbackResource_->Map(
+      0, &readRange, reinterpret_cast<void **>(&timestamps));
+  if (FAILED(hr) || !timestamps) {
+    return;
+  }
+  const float latest = float(double(timestamps[1] - timestamps[0]) /
+                             double(frequency_) * 1000.0);
+  const D3D12_RANGE writtenRange = {0, 0};
+  readbackResource_->Unmap(0, &writtenRange);
+
+  // 慣らした値: 前の値に新しい値を kSmoothing_ の割合で混ぜる
+  milliseconds_ += (latest - milliseconds_) * kSmoothing_;
+
+  // 区切りの集計: kWindowSampleCount_ 回たまったら結果を確定し、次の区切りを始める
+  if (windowCount_ == 0) {
+    windowMin_ = latest;
+    windowMax_ = latest;
+  } else {
+    windowMin_ = (std::min)(windowMin_, latest);
+    windowMax_ = (std::max)(windowMax_, latest);
+  }
+  windowSum_ += latest;
+  ++windowCount_;
+
+  if (windowCount_ >= kWindowSampleCount_) {
+    lastWindowStats_.average = float(windowSum_ / double(windowCount_));
+    lastWindowStats_.min = windowMin_;
+    lastWindowStats_.max = windowMax_;
+    lastWindowStats_.isValid = true;
+    windowSum_ = 0.0;
+    windowCount_ = 0;
+  }
 }

@@ -3,6 +3,11 @@
 #include "../Effect/EffectManager.h"
 #include "Actor/Behavior/BehaviorFighter.h"
 #include "Actor/DragonModel.h"
+#include "Actor/EnemyPart.h"
+#include "Actor/FloatingFortress.h"
+#include "Actor/ILockOnHittable.h"
+#include "Actor/InterceptCue.h"
+#include "Actor/MechSerpent.h"
 #include "Actor/Behavior/BehaviorMeteor.h"
 #include "Actor/Behavior/BehaviorSineWave.h"
 #include "Actor/Behavior/BehaviorSpline.h"
@@ -12,6 +17,7 @@
 #include "Actor/Behavior/BehaviorTurret.h"
 #include "Audio/SoundManager.h"
 #include "Camera/GameCamera.h"
+#include "Camera/SerpentCameraDirector.h"
 #include "Debug/DebugCamera.h"
 #include "Debug/ImGuiManager.h"
 #include "Debug/Logger.h"
@@ -39,6 +45,7 @@
 #include "StageIntro.h"
 #include "GameOverSequence.h"
 #include "GameHud.h"
+#include "PauseMenu.h"
 #include "ResultSequence.h"
 #include "Score/ScoreKeeper.h"
 #include "Score/StageRecord.h"
@@ -152,7 +159,10 @@ void GamePlayScene::PreloadResources(EngineBase *engine) {
 
   // ロード時に事前にモデルを割る
   // 撃破時に割ると、その瞬間に計算とGPUバッファの作成が集中してカクつくため
-  for (const char *prefabName : {"ZakoEnemy", "FastEnemy", "TankEnemy"}) {
+  for (const char *prefabName :
+       {"ZakoEnemy", "FastEnemy", "TankEnemy", "ZakoEye", "ZakoArrow"}) {
+    // 光る部品のモデルも読み込んでおく（光る部品は割らない）
+    PrefabManager::GetInstance()->PreloadLightModels(prefabName);
     // プレハブからモデルのパスを読む
     std::string modelPath =
         PrefabManager::GetInstance()->GetModelPath(prefabName);
@@ -179,6 +189,10 @@ void GamePlayScene::PreloadResources(EngineBase *engine) {
                                     "resources/Sounds/player_damage.wav");
   SoundManager::GetInstance()->Load("boss_charge",
                                     "resources/Sounds/boss_charge.wav");
+  SoundManager::GetInstance()->Load("intercept_warn",
+                                    "resources/Sounds/intercept_warn.wav");
+  SoundManager::GetInstance()->Load("intercept_lock",
+                                    "resources/Sounds/intercept_lock.wav");
   SoundManager::GetInstance()->Load("boss_counter",
                                     "resources/Sounds/boss_counter.mp3");
   SoundManager::GetInstance()->Load("ui_decide",
@@ -303,6 +317,12 @@ void GamePlayScene::Initialize(EngineBase *engine) {
   gameOverSequence_ = std::make_unique<GameOverSequence>();
   gameOverSequence_->Initialize(engine_->GetSpriteRenderer());
 
+  // 迎撃の印と、大蛇の出来事で動かすカメラ
+  interceptCue_ = std::make_unique<InterceptCue>();
+  interceptCue_->Initialize(engine_->GetSpriteRenderer());
+  serpentCamera_ = std::make_unique<SerpentCameraDirector>();
+  serpentCamera_->Initialize();
+
   // 評価
   scoreConfig_.Load();
   scoreKeeper_ = std::make_unique<ScoreKeeper>();
@@ -310,6 +330,8 @@ void GamePlayScene::Initialize(EngineBase *engine) {
   hud_->Initialize(engine_->GetSpriteRenderer());
   resultSequence_ = std::make_unique<ResultSequence>();
   resultSequence_->Initialize(engine_->GetSpriteRenderer());
+  pauseMenu_ = std::make_unique<PauseMenu>();
+  pauseMenu_->Initialize(engine_->GetSpriteRenderer());
   skipHold_ = std::make_unique<SkipHold>();
   skipHold_->Initialize(engine_->GetSpriteRenderer());
 
@@ -357,6 +379,7 @@ void GamePlayScene::Initialize(EngineBase *engine) {
 
 void GamePlayScene::Finalize() {
   SoundManager::GetInstance()->StopBGM();
+  SoundManager::GetInstance()->SetBGMVolume(1.0f);
   // 平行光源は全シーン共通なので、このシーンで足した環境光と逆光の縁を外しておく
   StageLighting::ResetSharedLight(engine_->GetObject3dRenderer());
 }
@@ -398,6 +421,8 @@ void GamePlayScene::Update() {
 
     // ゲーム状態のリセット
     gameState_ = GameState::Play;
+    pauseMenu_->Close();
+    SoundManager::GetInstance()->SetBGMVolume(1.0f);
     stageIntro_->Stop();
     gameOverSequence_->Stop();
     railCamera_->SetSpeedScale(1.0f);
@@ -407,7 +432,7 @@ void GamePlayScene::Update() {
     UIManager::GetInstance()->Load("resources/UI/GamePlayUI.json");
 
     // 残っている敵や弾をクリア
-    runtimeEnemies_.clear();
+    ClearRuntimeEnemies();
     ActorManager::GetInstance()->Clear();
     CollisionManager::GetInstance()->Clear(); // コライダー残留バグ対策
 
@@ -481,10 +506,15 @@ void GamePlayScene::Update() {
     }
   }
 
+  // ポーズ画面。開いている間は、エディタの一時停止と同じに世界の時間を止める
+  const bool isPauseMenuOpen = UpdatePauseMenu(input);
+  const bool isWorldPaused = isPaused_ || isPauseMenuOpen;
+
   //=======================
   // ゲーム進行状態の更新
   //=======================
-  if (gameState_ == GameState::Play) {
+  // ポーズ画面を開いている間は、ゲームオーバー・クリアへ移らない
+  if (gameState_ == GameState::Play && !isPauseMenuOpen) {
     if (player_ && player_->IsDead()) {
       StartGameOver();
     } else if (railCamera_ && railCamera_->IsFinished()) {
@@ -514,7 +544,7 @@ void GamePlayScene::Update() {
 
   // 開始演出中はレール・敵・弾・当たり判定を止める
   bool shouldUpdateWorld =
-      ((isPlayMode_ && !isPaused_ && hitStopTimer_ <= 0) || doStep_) &&
+      ((isPlayMode_ && !isWorldPaused && hitStopTimer_ <= 0) || doStep_) &&
       gameState_ != GameState::Intro;
 
   // ゲームオーバーの間は、世界の時間の速さに合わせて、進めるフレームを間引く
@@ -553,7 +583,7 @@ void GamePlayScene::Update() {
     // 開始演出の後半は、操作の前からレールを動かし始める
     const bool isRailMoving =
         shouldUpdateWorld ||
-        (gameState_ == GameState::Intro && isPlayMode_ && !isPaused_ &&
+        (gameState_ == GameState::Intro && isPlayMode_ && !isWorldPaused &&
          stageIntro_->GetRailSpeedRatio() > 0.0f);
     if (!isRailMoving) {
       bool autoMoveCache = railCamera_->GetAutoMove();
@@ -568,7 +598,7 @@ void GamePlayScene::Update() {
 
   // 開始演出：自機の位置を動かし、演出カメラで映す（操作へ移る間も演出カメラで映す）
   if (gameState_ == GameState::Intro || !stageIntro_->IsFinished()) {
-    if (isPlayMode_ && !isPaused_) {
+    if (isPlayMode_ && !isWorldPaused) {
       UpdateIntro();
     }
     if (!useDebugCamera_) {
@@ -587,7 +617,7 @@ void GamePlayScene::Update() {
   }
 
   // 目標カード
-  if (isPlayMode_ && !isPaused_) {
+  if (isPlayMode_ && !isWorldPaused) {
     stageIntro_->UpdateCaption();
   }
 
@@ -601,8 +631,8 @@ void GamePlayScene::Update() {
                             activeCamera, postProcess_.get());
   }
 
-  // ポストエフェクトとエフェクトマネージャーの更新
-  if (postProcess_) {
+  // ポストエフェクトとエフェクトマネージャーの更新（ポーズ画面を開いている間は止める）
+  if (postProcess_ && !isPauseMenuOpen) {
     EffectManager::GetInstance()->Update(activeCamera);
   }
 
@@ -612,6 +642,20 @@ void GamePlayScene::Update() {
     for (auto &ev : spawnEvents_) {
       if (t < ev.spawnTime) {
         ev.hasSpawned = false; // シークバック時にフラグをリセット
+      } else if (shouldUpdateWorld && !ev.hasSpawned && t >= ev.spawnTime &&
+                 ev.prefabName == kFortressPrefabName_) {
+        // 浮かぶ砦は部品と一緒に出す（Playモード時のみ）
+        if (isPlayMode_) {
+          SpawnFortress(ev);
+        }
+        ev.hasSpawned = true;
+      } else if (shouldUpdateWorld && !ev.hasSpawned && t >= ev.spawnTime &&
+                 ev.prefabName == kSerpentPrefabName_) {
+        // 大蛇の出番は光る節と一緒に出す（Playモード時のみ）
+        if (isPlayMode_) {
+          SpawnSerpent(ev);
+        }
+        ev.hasSpawned = true;
       } else if (shouldUpdateWorld && !ev.hasSpawned && t >= ev.spawnTime) {
         // スポーン位置の計算
         Vector3 spawnWorldPos;
@@ -744,6 +788,26 @@ void GamePlayScene::Update() {
   // 基底クラスにも現在のアクティブカメラを教える（Gizmo描画などで使うため）
   SetActiveCamera(const_cast<ICamera *>(activeCamera));
 
+  // 砦と大蛇を動かしてから、それらに付いた部品を含む敵を動かす
+  for (auto &fortress : fortresses_) {
+    if (shouldUpdateWorld) {
+      fortress->Update();
+    } else {
+      fortress->UpdateTransform();
+    }
+  }
+  for (auto &serpent : serpents_) {
+    if (shouldUpdateWorld) {
+      serpent->Update();
+    } else {
+      serpent->UpdateTransform();
+    }
+    // 大蛇の出来事でカメラとレールを動かす
+    for (MechSerpent::Event event : serpent->TakeEvents()) {
+      serpentCamera_->OnEvent(event, *serpent, *railCamera_);
+    }
+  }
+
   // 敵の更新 (Playモードで生成された敵のみ)
   for (auto &enemy : runtimeEnemies_) {
     if (shouldUpdateWorld) {
@@ -760,19 +824,40 @@ void GamePlayScene::Update() {
   // 死亡済みの敵は除外してダングリングポインタを渡さないようにする
   std::vector<BaseActor *> lockOnTargets;
   for (auto &e : runtimeEnemies_) {
-    if (!e->IsDead() && e->IsLockOnTarget()) {
+    if (!e->IsDead() && e->CanBeLockedOn()) {
       lockOnTargets.push_back(e.get());
     }
   }
 
-  // 敵の弾（ロックオン対象としてタグ付けされたもの）もリストに加える
-  std::vector<BaseActor *> bulletTargets =
-      ActorManager::GetInstance()->FindActorsWithTag(ActorTag::LockOnTarget);
-  lockOnTargets.insert(lockOnTargets.end(), bulletTargets.begin(),
-                       bulletTargets.end());
+  // ActorManager が持つ物（ボスの部品・敵の弾など）からも、今ロックオンできる物を加える
+  std::vector<BaseActor *> managedTargets =
+      ActorManager::GetInstance()->FindActorsIf([](BaseActor *actor) {
+        auto *hittable = dynamic_cast<ILockOnHittable *>(actor);
+        return hittable && hittable->CanBeLockedOn();
+      });
+  lockOnTargets.insert(lockOnTargets.end(), managedTargets.begin(),
+                       managedTargets.end());
+
+  // 敵を隠す箱。箱のモデルは -0.5〜0.5 の立方体なので、ワールド行列の逆で箱の中の座標へ移し、
+  // 2 倍して LockOn が使う -1〜1 の立方体にそろえる
+  lockOnOccluders_.clear();
+  const Matrix4x4 toUnitCube = MakeScaleMatrix({2.0f, 2.0f, 2.0f});
+  for (const auto &obj : sceneObjects_) {
+    if (obj->GetModelPath() == kOccluderModelPath_ ||
+        obj->GetModelPath() == kTowerPanelModelPath_) {
+      lockOnOccluders_.push_back(
+          Multiply(Inverse(obj->GetWorldMatrix()), toUnitCube));
+    }
+  }
+  for (const auto &fortress : fortresses_) {
+    fortress->AppendOccluders(lockOnOccluders_);
+  }
 
   if (player_) {
     player_->SetLockOnTargets(lockOnTargets);
+    player_->SetShotTargets(
+        ActorManager::GetInstance()->FindActorsWithTag(ActorTag::ShotTarget));
+    player_->SetLockOnOccluders(&lockOnOccluders_);
   }
 
   // 死亡済みの敵を削除（デストラクタ内でコライダーも自動登録解除される）
@@ -783,13 +868,24 @@ void GamePlayScene::Update() {
                                            return e->IsDead();
                                          }),
                           runtimeEnemies_.end());
+    fortresses_.erase(std::remove_if(fortresses_.begin(), fortresses_.end(),
+                                     [](const std::unique_ptr<FloatingFortress> &f) {
+                                       return f->IsFinished();
+                                     }),
+                      fortresses_.end());
+    serpents_.erase(std::remove_if(serpents_.begin(), serpents_.end(),
+                                   [](const std::unique_ptr<MechSerpent> &s) {
+                                     return s->IsFinished();
+                                   }),
+                    serpents_.end());
   }
 
   // アクティブカメラを描画で使用する
   engine_->GetObject3dRenderer()->SetDefaultCamera(activeCamera);
 
   if (skybox_) {
-    const float kSkyTimeStep = 1.0f / 60.0f;
+    // ポーズ画面を開いている間は、空と雲海の時間も止める
+    const float kSkyTimeStep = isPauseMenuOpen ? 0.0f : 1.0f / 60.0f;
     skyTimer_ += kSkyTimeStep;
     // 開始演出の間は演出が出来事の時刻を決め、それ以外はここで進める
     if (stageIntro_->IsFinished()) {
@@ -819,6 +915,12 @@ void GamePlayScene::Update() {
     } else {
       player_->UpdateTransform();
     }
+    // 迎撃の合図は、レールカメラの画面に描く。時間は世界と一緒に進める
+    if (shouldUpdateWorld) {
+      interceptCue_->Update(railCamera_->GetViewProjectionMatrix());
+    }
+    // 狙われている間は、合図の拍に合わせて自機の体を赤く光らせる
+    player_->SetThreatGlow(interceptCue_->GetThreat());
     // 羽ばたきは開始演出中も進め、ポーズ・ヒットストップ中は止める
     // ゲームオーバーの間は、時間がゆっくりになっても翼は普通の速さで進める
     float wingDeltaTime =
@@ -846,8 +948,8 @@ void GamePlayScene::Update() {
     CollisionManager::GetInstance()->Update();
   }
 
-  // HUD（開始演出のあとに現し、ゲームオーバーでは被弾から消していく）
-  if (player_ && railCamera_) {
+  // HUD（開始演出のあとに現し、ゲームオーバーでは被弾から消していく。ポーズ画面を開いている間は止める）
+  if (player_ && railCamera_ && !isPauseMenuOpen) {
     float hudAlpha = hudFadeSec_ > 0.0f ? hudFadeTimer_ / hudFadeSec_ : 1.0f;
     if (gameState_ == GameState::GameOver) {
       hudAlpha = gameOverSequence_->GetHudAlpha();
@@ -1025,16 +1127,10 @@ void GamePlayScene::Update() {
 
       changed |= ImGui::SliderFloat((const char *)u8"ロックオンの吸いつき範囲",
                                     &config.lockOnRadius, 10.0f, 500.0f);
-      changed |= ImGui::SliderFloat((const char *)u8"ホーミング弾のスピード",
-                                    &config.homingSpeed, 0.1f, 5.0f);
-      changed |=
-          ImGui::SliderInt((const char *)u8"追尾を開始するまでのフレーム",
-                           &config.homingFallTime, 0, 300);
-      changed |=
-          ImGui::SliderFloat((const char *)u8"追尾のカーブの鋭さ",
-                             &config.homingStrengthIncrease, 0.001f, 0.1f);
-      changed |= ImGui::SliderFloat((const char *)u8"旋回力（追尾力）",
-                                    &config.homingStrengthMax, 0.01f, 1.0f);
+      changed |= ImGui::SliderFloat((const char *)u8"ロックオン弾の届く秒",
+                                    &config.homingFlightSeconds, 0.1f, 1.5f);
+      changed |= ImGui::SliderFloat((const char *)u8"ロックオン弾のふくらみ（フレーム）",
+                                    &config.homingBulgeFrames, 0.0f, 40.0f);
       changed |= ImGui::SliderFloat((const char *)u8"ホーミング弾の左右拡散幅",
                                     &config.homingSpreadX, 0.0f, 2.0f);
       changed |= ImGui::SliderFloat((const char *)u8"ホーミング弾の上方初速",
@@ -1047,6 +1143,12 @@ void GamePlayScene::Update() {
                                     &config.reticleFriction, 0.5f, 0.99f);
       changed |= ImGui::SliderFloat((const char *)u8"照準の最高速度",
                                     &config.reticleMaxSpeed, 1.0f, 100.0f);
+      changed |= ImGui::SliderFloat((const char *)u8"自機の画面の上下の基本の位置（m、負で下）",
+                                    &config.playerBaseOffsetY, -5.0f, 1.0f);
+      changed |= ImGui::SliderFloat((const char *)u8"自機が照準の位置の9割へ着く秒",
+                                    &config.playerFollowTime, 0.05f, 2.0f);
+      changed |= ImGui::SliderFloat((const char *)u8"自機の動きの減衰（1で行き過ぎない）",
+                                    &config.playerFollowDamping, 0.3f, 1.5f);
       changed |= ImGui::SliderFloat((const char *)u8"ロール（バンク）の強さ",
                                     &config.rollStrength, 0.0f, 20.0f);
       changed |= ImGui::SliderFloat((const char *)u8"ピッチ（上下）の追従強度",
@@ -1082,6 +1184,34 @@ void GamePlayScene::Update() {
                                     &config.wingHover, 0.0f, 1.0f);
       changed |= ImGui::SliderFloat((const char *)u8"上昇で体を起こす量",
                                     &config.wingClimbHover, 0.0f, 20.0f);
+      ImGui::SeparatorText((const char *)u8"レールの曲がり・登り");
+      changed |= ImGui::SliderFloat((const char *)u8"曲がる速さ 1度/秒あたりの傾き（度）",
+                                    &config.railBankPerTurn, 0.0f, 10.0f);
+      changed |= ImGui::SliderFloat((const char *)u8"曲がりで傾ける最大（度）",
+                                    &config.railBankMax, 0.0f, 90.0f);
+      changed |= ImGui::SliderFloat((const char *)u8"登りの角度に対する機首上げの割合",
+                                    &config.railClimbNose, 0.0f, 1.0f);
+      changed |= ImGui::SliderFloat((const char *)u8"曲がる速さ 1度/秒あたりの外への流れ（m）",
+                                    &config.railLagPerTurn, 0.0f, 0.5f);
+      changed |= ImGui::SliderFloat((const char *)u8"登り 1度あたりの下への遅れ（m）",
+                                    &config.railLagPerClimb, 0.0f, 0.1f);
+      changed |= ImGui::SliderFloat((const char *)u8"曲がり・登りの追従の割合",
+                                    &config.railFollow, 0.005f, 0.3f);
+      ImGui::Text((const char *)u8"今の曲がる速さ %.1f 度/秒  登り %.1f 度",
+                  player_->GetRailTurnRate(), player_->GetRailClimb());
+      // 自機が画面のどこに映っているか（画面は 1280x720、中央は y=360）
+      {
+        const ICamera *shownCamera = GetActiveCamera() ? GetActiveCamera() : railCamera_.get();
+        const Vector2 screen = WorldToScreen(player_->GetTransform().translate,
+                                             shownCamera->GetViewProjectionMatrix(), 1280.0f, 720.0f);
+        const Vector2 offset = player_->GetFramingOffset();
+        ImGui::Text((const char *)u8"自機の画面の位置 x %.0f  y %.0f（中央 640, 360）", screen.x, screen.y);
+        ImGui::Text((const char *)u8"構図の中の位置 右 %.2f  上 %.2f m", offset.x, offset.y);
+        ImGui::Text((const char *)u8"映しているカメラ: %s  開始演出 %s（操作の効き %.2f）",
+                    shownCamera == railCamera_.get() ? "Rail" : "Other",
+                    stageIntro_->IsFinished() ? (const char *)u8"終わり" : (const char *)u8"途中",
+                    stageIntro_->GetControlRatio());
+      }
 
       if (changed) {
         player_->SetActionConfigDirty(true);
@@ -1102,6 +1232,9 @@ void GamePlayScene::Update() {
     EffectManager::GetInstance()->DrawEditorUI(railCamera_.get());
     FractureCache::GetInstance()->DrawEditorUI();
   } else if (currentSelectType_ == EditorSelectType::RailCamera) {
+    DrawLookKeysUI();
+    serpentCamera_->DrawImGui();
+
     ImGui::Text("Rail Camera Waypoints");
     ImGui::Separator();
 
@@ -1135,7 +1268,7 @@ void GamePlayScene::Update() {
     ImGui::TextDisabled("%s", selected->GetModelPath().c_str());
     ImGui::Separator();
 
-    const char *tagItems[] = {"Untagged", "Player", "Enemy", "LockOnTarget"};
+    const char *tagItems[] = {"Untagged", "Player", "Enemy", "LockOnTarget", "ShotTarget"};
     int currentItem = static_cast<int>(selected->tag_);
     if (ImGui::Combo("Tag", &currentItem, tagItems, IM_ARRAYSIZE(tagItems))) {
       selected->tag_ = static_cast<ActorTag>(currentItem);
@@ -1584,6 +1717,14 @@ void GamePlayScene::DrawEditorUI() {
     ImGui::SameLine();
     ImGui::Text(" | ");
   }
+  // 当たり判定の線の表示を切り替える
+  ImGui::SameLine();
+  bool showColliders = CollisionManager::GetInstance()->IsDebugDrawEnabled();
+  if (ImGui::Checkbox("Colliders", &showColliders)) {
+    CollisionManager::GetInstance()->SetDebugDrawEnabled(showColliders);
+  }
+  ImGui::SameLine();
+  ImGui::Text(" | ");
   ImGui::SameLine();
   ImGui::Text("Gizmo:");
   ImGui::SameLine();
@@ -1846,6 +1987,12 @@ void GamePlayScene::Draw3D() {
       enemy->Draw3D();
     }
   }
+  for (auto &fortress : fortresses_) {
+    fortress->Draw();
+  }
+  for (auto &serpent : serpents_) {
+    serpent->Draw();
+  }
   for (auto &obj : sceneObjects_) {
     obj->Draw();
   }
@@ -1991,6 +2138,11 @@ void GamePlayScene::Draw2D() {
     }
   }
 
+  // 迎撃の印（光る節のまわりの放電・自機へ走る電撃）
+  if (gameState_ == GameState::Play) {
+    interceptCue_->Draw();
+  }
+
   // スプライト（UI）の描画。開始演出中は HUD を出さない。クリアしたあとはリザルトを出す
   if (gameState_ != GameState::Intro) {
     UIManager::GetInstance()->Draw();
@@ -2012,6 +2164,9 @@ void GamePlayScene::Draw2D() {
 
   // 演出を飛ばす長押しの案内は一番手前に出す
   skipHold_->Draw();
+
+  // ポーズ画面は、止めた画面の上に出す
+  pauseMenu_->Draw();
 }
 
 void GamePlayScene::StartIntro() {
@@ -2071,6 +2226,7 @@ void GamePlayScene::UpdateIntro() {
     Transform &playerTransform = player_->GetTransform();
     playerTransform.translate = stageIntro_->GetDragonPosition();
     playerTransform.rotate = stageIntro_->GetDragonRotation();
+    player_->UseExternalTransform();
     player_->SetExternalWingState(stageIntro_->GetWingState());
 
     // 飛び出しに合わせて操作を始める（演出は続き、操作の効き具合を少しずつ上げる。HUD と照準はこのあと現れる）
@@ -2088,8 +2244,12 @@ void GamePlayScene::BlendPlayerWithIntro() {
   Transform &playerTransform = player_->GetTransform();
   playerTransform.translate = Lerp(stageIntro_->GetDragonPosition(),
                                    playerTransform.translate, control);
-  playerTransform.rotate = Lerp(stageIntro_->GetDragonRotation(),
-                                playerTransform.rotate, control);
+  // 向きは差を -π〜π に丸めて、近い向きへ混ぜる
+  const Vector3 &introRotate = stageIntro_->GetDragonRotation();
+  playerTransform.rotate = {LerpAngle(introRotate.x, playerTransform.rotate.x, control),
+                            LerpAngle(introRotate.y, playerTransform.rotate.y, control),
+                            LerpAngle(introRotate.z, playerTransform.rotate.z, control)};
+  player_->BlendOrientationFrom(introRotate, control);
   player_->UpdateTransform();
 }
 
@@ -2126,6 +2286,7 @@ void GamePlayScene::UpdateGameOver() {
   Transform &playerTransform = player_->GetTransform();
   playerTransform.translate = gameOverSequence_->GetDragonPosition();
   playerTransform.rotate = gameOverSequence_->GetDragonRotation();
+  player_->UseExternalTransform();
   player_->SetExternalWingState(gameOverSequence_->GetWingState());
   player_->SetWingGesture(gameOverSequence_->GetGesture());
 
@@ -2196,28 +2357,65 @@ void GamePlayScene::UpdateClear() {
                      : nullptr;
   resultSequence_->Update(input);
 
-  const float kCloudTransitionSec = 1.0f;
-  const Vector4 kCloudColor = {1.0f, 1.0f, 1.0f, 1.0f};
   switch (resultSequence_->ConsumeChoice()) {
   case ResultSequence::Choice::Again:
-    // 拠点へ降りずに、雲を抜けてもう一度ステージの開始演出から
     SoundManager::GetInstance()->PlaySE("ui_decide");
-    SceneManager::GetInstance()->SetNextTransitionFade(
-        kCloudTransitionSec, Fade::FadeType::Cloud, kCloudColor,
-        Fade::EasingType::Linear);
-    SceneManager::GetInstance()->ChangeScene("GAMEPLAY");
+    RetryStage();
     break;
   case ResultSequence::Choice::Base:
-    // ステージセレクト（雲の下の拠点）へ戻るので、雲を抜けて降下する
     SoundManager::GetInstance()->PlaySE("ui_decide");
-    SceneManager::GetInstance()->SetNextTransitionFade(
-        kCloudTransitionSec, Fade::FadeType::CloudDescend, kCloudColor,
-        Fade::EasingType::Linear);
-    SceneManager::GetInstance()->ChangeScene("STAGE_SELECT");
+    ReturnToBase();
     break;
   case ResultSequence::Choice::None:
     break;
   }
+}
+
+bool GamePlayScene::UpdatePauseMenu(Input *input) {
+  // このフレームの初めに開いていたか（閉じたフレームの決定の押下を、自機の射撃に渡さない）
+  const bool wasOpen = pauseMenu_->IsOpen();
+  if (!wasOpen) {
+    if (input && gameState_ == GameState::Play && !isPaused_ &&
+        MenuInput::IsPauseTriggered(input)) {
+      pauseMenu_->Open();
+      SoundManager::GetInstance()->StopAllSE();
+      SoundManager::GetInstance()->SetBGMVolume(kPauseBgmVolume_);
+    }
+    return pauseMenu_->IsOpen();
+  }
+
+  // 決定の音は板が鳴らす
+  pauseMenu_->Update(input);
+  switch (pauseMenu_->ConsumeChoice()) {
+  case PauseMenu::Choice::Resume:
+    SoundManager::GetInstance()->SetBGMVolume(1.0f);
+    break;
+  case PauseMenu::Choice::Again:
+    RetryStage();
+    break;
+  case PauseMenu::Choice::Base:
+    ReturnToBase();
+    break;
+  case PauseMenu::Choice::None:
+    break;
+  }
+  return true;
+}
+
+void GamePlayScene::RetryStage() {
+  // 拠点へ降りずに、雲を抜けてもう一度ステージの開始演出から
+  SceneManager::GetInstance()->SetNextTransitionFade(
+      kCloudTransitionSec_, Fade::FadeType::Cloud, kCloudTransitionColor_,
+      Fade::EasingType::Linear);
+  SceneManager::GetInstance()->ChangeScene("GAMEPLAY");
+}
+
+void GamePlayScene::ReturnToBase() {
+  // ステージセレクト（雲の下の拠点）へ戻るので、雲を抜けて降下する
+  SceneManager::GetInstance()->SetNextTransitionFade(
+      kCloudTransitionSec_, Fade::FadeType::CloudDescend, kCloudTransitionColor_,
+      Fade::EasingType::Linear);
+  SceneManager::GetInstance()->ChangeScene("STAGE_SELECT");
 }
 
 float GamePlayScene::GetBossSpawnTime() const {
@@ -2266,6 +2464,29 @@ void GamePlayScene::SaveLevel(const std::string &filename) {
     evJson["moveType"] = static_cast<int>(ev.moveType);
     evJson["moveDirection"] = {ev.moveDirection.x, ev.moveDirection.y,
                                ev.moveDirection.z};
+    if (ev.prefabName == kSerpentPrefabName_) {
+      const SerpentSpec &s = ev.serpent;
+      nlohmann::json serpentJson;
+      serpentJson["cores"] = s.coreSegments;
+      serpentJson["stopSeconds"] = s.stopSeconds;
+      serpentJson["chargeSeconds"] = s.chargeSeconds;
+      serpentJson["appearSeconds"] = s.appearSeconds;
+      if (s.zapMax > 0) {
+        serpentJson["zapMax"] = s.zapMax;
+      }
+      if (s.wallZap) {
+        serpentJson["wallZap"] = true;
+      }
+      if (s.isFinal) {
+        serpentJson["final"] = true;
+      }
+      if (s.warnSeconds > 0.0f) {
+        serpentJson["warnSeconds"] = s.warnSeconds;
+        serpentJson["warnPoint"] = {s.warnPoint.x, s.warnPoint.y, s.warnPoint.z};
+        serpentJson["warnYaw"] = s.warnYaw;
+      }
+      evJson["serpent"] = serpentJson;
+    }
     spawnEventsArray.push_back(evJson);
   }
   root["spawnEvents"] = spawnEventsArray;
@@ -2284,6 +2505,11 @@ void GamePlayScene::SaveLevel(const std::string &filename) {
     const Vector4 color = obj->GetColor();
     oJson["color"] = {color.x, color.y, color.z};
     oJson["specularScale"] = obj->GetSpecularScale();
+    // テクスチャの繰り返し回数（1 のときは書かない）
+    const Matrix4x4 uv = obj->GetUVTransform();
+    if (uv.m[0][0] != 1.0f || uv.m[1][1] != 1.0f) {
+      oJson["uvScale"] = {uv.m[0][0], uv.m[1][1]};
+    }
     sceneObjectsArray.push_back(oJson);
   }
   root["sceneObjects"] = sceneObjectsArray;
@@ -2298,18 +2524,89 @@ void GamePlayScene::SaveLevel(const std::string &filename) {
     file << std::setw(4) << root << std::endl;
   }
 
-  // カメラレール（waypoints）を camera_rail.json に別途保存
-  nlohmann::json waypointsRoot;
+  // カメラレールは camera_rail.json に別途保存
+  SaveCameraRail();
+}
+
+#ifdef USE_IMGUI
+void GamePlayScene::DrawLookKeysUI() {
+  if (!railCamera_) {
+    return;
+  }
+  ImGui::SeparatorText("カメラの向き");
+  ImGui::TextDisabled("yaw: 左が負（度） roll: 傾き（度） out: 右へずらす（m）");
+  ImGui::TextDisabled("キーの間は smoothstep、最初と最後のキーの外は 0");
+
+  const float currentT = railCamera_->GetT();
+  const RailCamera::LookKey now = railCamera_->SampleLook(currentT);
+  ImGui::Text("今 t=%.2f  yaw %.1f  roll %.1f  out %.1f", currentT, now.yaw,
+              now.roll, now.out);
+
+  auto &keys = railCamera_->GetLookKeysRef();
+  int eraseIndex = -1;
+  ImGui::PushID("LookKeys");
+  for (size_t i = 0; i < keys.size(); ++i) {
+    ImGui::PushID(static_cast<int>(i));
+    ImGui::SetNextItemWidth(70.0f);
+    ImGui::DragFloat("t", &keys[i].t, 0.01f, 0.0f, 0.0f, "%.2f");
+    ImGui::SameLine();
+    ImGui::SetNextItemWidth(60.0f);
+    ImGui::DragFloat("yaw", &keys[i].yaw, 0.5f, -180.0f, 180.0f, "%.1f");
+    ImGui::SameLine();
+    ImGui::SetNextItemWidth(60.0f);
+    ImGui::DragFloat("roll", &keys[i].roll, 0.5f, -180.0f, 180.0f, "%.1f");
+    ImGui::SameLine();
+    ImGui::SetNextItemWidth(60.0f);
+    ImGui::DragFloat("out", &keys[i].out, 0.1f, -100.0f, 100.0f, "%.1f");
+    ImGui::SameLine();
+    if (ImGui::SmallButton("消す")) {
+      eraseIndex = static_cast<int>(i);
+    }
+    ImGui::PopID();
+  }
+  ImGui::PopID();
+
+  if (eraseIndex >= 0) {
+    keys.erase(keys.begin() + eraseIndex);
+  }
+  // ドラッグ中は並びを変えず、手を離したら t の順に並べ直す
+  if (!ImGui::IsAnyItemActive()) {
+    railCamera_->SortLookKeys();
+  }
+
+  if (ImGui::Button("今の t にキーを足す")) {
+    RailCamera::LookKey key = now;
+    key.t = currentT;
+    keys.push_back(key);
+    railCamera_->SortLookKeys();
+  }
+  ImGui::SameLine();
+  if (ImGui::Button("カメラの向きを保存")) {
+    SaveCameraRail();
+  }
+  ImGui::Spacing();
+}
+#endif
+
+void GamePlayScene::SaveCameraRail() {
+  nlohmann::json railRoot;
   nlohmann::json waypointsArray = nlohmann::json::array();
+  nlohmann::json lookKeysArray = nlohmann::json::array();
   if (railCamera_) {
     for (const auto &wp : railCamera_->GetWaypoints()) {
       waypointsArray.push_back({wp.x, wp.y, wp.z});
     }
+    for (const auto &key : railCamera_->GetLookKeys()) {
+      lookKeysArray.push_back(
+          {{"t", key.t}, {"yaw", key.yaw}, {"roll", key.roll}, {"out", key.out}});
+    }
   }
-  waypointsRoot["waypoints"] = waypointsArray;
+  railRoot["waypoints"] = waypointsArray;
+  railRoot["lookKeys"] = lookKeysArray;
+  std::filesystem::create_directories("resources/levels");
   std::ofstream railFile("resources/levels/camera_rail.json");
   if (railFile.is_open()) {
-    railFile << std::setw(4) << waypointsRoot << std::endl;
+    railFile << std::setw(4) << railRoot << std::endl;
   }
 }
 
@@ -2333,7 +2630,7 @@ void GamePlayScene::LoadLevel(const std::string &filename) {
   }
 
   // 古い敵をクリア
-  runtimeEnemies_.clear();
+  ClearRuntimeEnemies();
   sceneObjects_.clear();
   selectedSceneObjectIndex_ = -1;
   spawnEvents_.clear();
@@ -2375,7 +2672,23 @@ void GamePlayScene::LoadLevel(const std::string &filename) {
                             evJson["moveDirection"][1],
                             evJson["moveDirection"][2]};
       } else {
-        ev.moveDirection = {0.0f, 0.0f, 1.0f}; // デフォルトは前進（互換性維持）
+        ev.moveDirection = {0.0f, 0.0f, 1.0f}; // 移動方向の指定がなければ前進
+      }
+      if (evJson.contains("serpent")) {
+        const auto &serpentJson = evJson["serpent"];
+        ev.serpent.coreSegments = serpentJson.value("cores", std::vector<int>{});
+        ev.serpent.stopSeconds = serpentJson.value("stopSeconds", 0.0f);
+        ev.serpent.chargeSeconds = serpentJson.value("chargeSeconds", 0.0f);
+        ev.serpent.appearSeconds = serpentJson.value("appearSeconds", 0.0f);
+        ev.serpent.zapMax = serpentJson.value("zapMax", 0);
+        ev.serpent.wallZap = serpentJson.value("wallZap", false);
+        ev.serpent.isFinal = serpentJson.value("final", false);
+        ev.serpent.warnSeconds = serpentJson.value("warnSeconds", 0.0f);
+        if (serpentJson.contains("warnPoint")) {
+          ev.serpent.warnPoint = {serpentJson["warnPoint"][0], serpentJson["warnPoint"][1],
+                                  serpentJson["warnPoint"][2]};
+        }
+        ev.serpent.warnYaw = serpentJson.value("warnYaw", 0.0f);
       }
 
       ev.hasSpawned = false;
@@ -2404,6 +2717,11 @@ void GamePlayScene::LoadLevel(const std::string &filename) {
       }
       if (oJson.contains("specularScale"))
         obj->SetSpecularScale(oJson["specularScale"]);
+      // テクスチャの繰り返し回数（横, 縦）
+      if (oJson.contains("uvScale")) {
+        obj->SetUVTransform(MakeScaleMatrix(
+            {oJson["uvScale"][0].get<float>(), oJson["uvScale"][1].get<float>(), 1.0f}));
+      }
     }
   }
 
@@ -2422,11 +2740,128 @@ void GamePlayScene::LoadLevel(const std::string &filename) {
           railCamera_->Initialize(loadedWaypoints);
         }
       }
+      // 顔の向きのキー（ないときは振らない）
+      std::vector<RailCamera::LookKey> lookKeys;
+      if (railRoot.contains("lookKeys")) {
+        for (auto &kJson : railRoot["lookKeys"]) {
+          RailCamera::LookKey key;
+          key.t = kJson.value("t", 0.0f);
+          key.yaw = kJson.value("yaw", 0.0f);
+          key.roll = kJson.value("roll", 0.0f);
+          key.out = kJson.value("out", 0.0f);
+          lookKeys.push_back(key);
+        }
+      }
+      if (railCamera_) {
+        railCamera_->SetLookKeys(lookKeys);
+      }
     } catch (const nlohmann::json::parse_error &e) {
       Logger::Log(
           std::string("[GamePlayScene] camera_rail.json parse error: ") +
           e.what());
     }
+  }
+}
+
+void GamePlayScene::SpawnFortress(const SpawnEvent &ev) {
+  auto spline = loadedSplines_.find(ev.splineName);
+  if (spline == loadedSplines_.end() || spline->second.size() < 2) {
+    Logger::Log("[GamePlayScene] 浮かぶ砦の道筋が見つからない: " + ev.splineName + "\n");
+    return;
+  }
+
+  // 出し方の moveDirection が 0 でなければ、その向き（ワールド）に固定する
+  std::optional<float> heading;
+  if (std::abs(ev.moveDirection.x) + std::abs(ev.moveDirection.z) > 1e-6f) {
+    heading = std::atan2(ev.moveDirection.x, ev.moveDirection.z);
+  }
+
+  auto fortress = std::make_unique<FloatingFortress>();
+  fortress->Initialize(engine_->GetObject3dRenderer(), railCamera_.get(),
+                       spline->second, ev.spawnTime, ev.splineDuration, heading);
+
+  const auto &specs = FloatingFortress::GetPartSpecs();
+  for (int i = 0; i < FloatingFortress::kPartCount; ++i) {
+    auto part = std::make_unique<EnemyPart>();
+    part->Initialize();
+    part->SetTag(ActorTag::Enemy);
+    auto model = std::make_unique<Object3d>();
+    model->Initialize(engine_->GetObject3dRenderer());
+    model->SetModel(kOccluderModelPath_);
+    model->SetSpecularScale(0.0f);
+    part->SetModel(std::move(model));
+    part->SetBaseColor(kFortressPartColor_);
+    part->SetCamera(railCamera_.get());
+    part->SetPlayer(player_.get());
+    part->Setup(fortress.get(), i, specs[i].role, specs[i].localPosition,
+                specs[i].halfSize);
+    fortress->SetPart(i, part.get());
+
+    // ふだんの敵と同じに、出た敵として数え、自機の弾で倒したときだけ撃破に数える
+    EnemyPart *partPtr = part.get();
+    const int scoreId = scoreKeeper_->OnEnemySpawned(ev.spawnTime);
+    part->SetOnDestroyedCallback([this, scoreId, partPtr](bool isSelfDestruct) {
+      if (!isSelfDestruct) {
+        scoreKeeper_->OnEnemyKilled(scoreId, partPtr->GetLastHitVolley(),
+                                    partPtr->GetTransform().translate);
+      }
+    });
+    runtimeEnemies_.push_back(std::move(part));
+  }
+  fortresses_.push_back(std::move(fortress));
+}
+
+void GamePlayScene::SpawnSerpent(const SpawnEvent &ev) {
+  auto spline = loadedSplines_.find(ev.splineName);
+  if (spline == loadedSplines_.end() || spline->second.size() < 2) {
+    Logger::Log("[GamePlayScene] 大蛇の道筋が見つからない: " + ev.splineName + "\n");
+    return;
+  }
+
+  auto serpent = std::make_unique<MechSerpent>();
+  serpent->Initialize(engine_->GetObject3dRenderer(), railCamera_.get(), player_.get(),
+                      interceptCue_.get(), spline->second, ev.spawnTime, ev.splineDuration,
+                      ev.serpent);
+
+  const auto &specs = serpent->GetPartSpecs();
+  for (int i = 0; i < static_cast<int>(specs.size()); ++i) {
+    auto part = std::make_unique<EnemyPart>();
+    part->Initialize();
+    part->SetTag(ActorTag::Enemy);
+    auto model = std::make_unique<Object3d>();
+    model->Initialize(engine_->GetObject3dRenderer());
+    model->SetModel(kOccluderModelPath_);
+    model->SetSpecularScale(0.0f);
+    part->SetModel(std::move(model));
+    part->SetBaseColor(specs[i].color);
+    part->SetCamera(railCamera_.get());
+    part->SetPlayer(player_.get());
+    part->Setup(serpent.get(), i, specs[i].role, specs[i].localPosition, specs[i].halfSize);
+    serpent->SetPart(i, part.get());
+
+    // ふだんの敵と同じに、出た敵として数え、自機の弾で倒したときだけ撃破に数える
+    EnemyPart *partPtr = part.get();
+    const int scoreId = scoreKeeper_->OnEnemySpawned(ev.spawnTime);
+    part->SetOnDestroyedCallback([this, scoreId, partPtr](bool isSelfDestruct) {
+      if (!isSelfDestruct) {
+        scoreKeeper_->OnEnemyKilled(scoreId, partPtr->GetLastHitVolley(),
+                                    partPtr->GetTransform().translate);
+      }
+    });
+    runtimeEnemies_.push_back(std::move(part));
+  }
+  serpents_.push_back(std::move(serpent));
+}
+
+void GamePlayScene::ClearRuntimeEnemies() {
+  runtimeEnemies_.clear();
+  fortresses_.clear();
+  serpents_.clear();
+  if (interceptCue_) {
+    interceptCue_->Clear();
+  }
+  if (railCamera_) {
+    railCamera_->ResetEventControls();
   }
 }
 

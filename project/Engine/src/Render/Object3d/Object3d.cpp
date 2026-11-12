@@ -3,11 +3,14 @@
 #include "Debug/Logger.h"
 #include "Math/MathUtil.h"
 #include "Model/ModelManager.h"
+#include "Render/Light/LightManager.h"
+#include "Render/Light/TiledLightCuller.h"
 #include "Renderer/Object3dRenderer.h"
 #include "Texture/TextureManager.h"
 #include <cassert>
 #include <fstream>
 #include <numbers>
+#include <unordered_set>
 
 void Object3d::Initialize(Object3dRenderer *object3dRenderer) {
 
@@ -69,8 +72,7 @@ void Object3d::Update() {
       localMatrix = MakeIdentity4x4();
   }
 
-  Matrix4x4 worldMatrix = MakeAffineMatrix(transform_.scale, transform_.rotate,
-                                           transform_.translate);
+  Matrix4x4 worldMatrix = MakeTransformMatrix();
 
   if (parent_) {
       worldMatrix = Multiply(worldMatrix, parent_->GetWorldMatrix());
@@ -105,9 +107,17 @@ void Object3d::Draw() {
   assert(cameraForGPUResource &&
          "Object3d::Draw: cameraForGPUResource is null");
 
-  Microsoft::WRL::ComPtr<ID3D12GraphicsCommandList> commandList =
-      dx12Core_->GetCommandList();
+  ID3D12GraphicsCommandList *commandList = dx12Core_->GetCommandList();
   assert(commandList && "Object3d::Draw: commandList is null");
+  RecordDraw(commandList);
+
+  // 深度だけの描画を記録中なら、同じ物を P にも積む（GPU では 3D の描画より先に動く）
+  if (object3dRenderer_->IsRecordingPrepass()) {
+    RecordDraw(object3dRenderer_->PreparePrepassCommandList());
+  }
+}
+
+void Object3d::RecordDraw(ID3D12GraphicsCommandList *commandList) {
 
   // マテリアルCBufferの場所を設定
   commandList->SetGraphicsRootConstantBufferView(
@@ -126,13 +136,21 @@ void Object3d::Draw() {
   commandList->SetGraphicsRootConstantBufferView(
       4, cameraForGPUResource->GetGPUVirtualAddress());
 
-  // PointLight
+  // 点の光・スポットライトの数と名簿
+  const LightManager *lightManager = object3dRenderer_->GetLightManager();
+  assert(lightManager && "Object3d::Draw: lightManager is null");
   commandList->SetGraphicsRootConstantBufferView(
-      5, object3dRenderer_->GetPointLightResource()->GetGPUVirtualAddress());
+      5, lightManager->GetCountsAddress());
+  commandList->SetGraphicsRootShaderResourceView(
+      6, lightManager->GetPointLightsAddress());
+  commandList->SetGraphicsRootShaderResourceView(
+      10, lightManager->GetSpotLightsAddress());
 
-  // SpotLight
-  commandList->SetGraphicsRootConstantBufferView(
-      6, object3dRenderer_->GetSpotLightResource()->GetGPUVirtualAddress());
+  // マスごとのライトの名簿（Tiled Culling がオフでも渡す。シェーダーは useTiles が 0 なら読まない）
+  const TiledLightCuller *tiledLightCuller = object3dRenderer_->GetTiledLightCuller();
+  assert(tiledLightCuller && "Object3d::Draw: tiledLightCuller is null");
+  commandList->SetGraphicsRootShaderResourceView(
+      11, tiledLightCuller->GetTileLightsAddress());
 
   // Environment Map (Skybox)
   commandList->SetGraphicsRootDescriptorTable(
@@ -148,7 +166,7 @@ void Object3d::Draw() {
 
   // 3Dモデルが割り当てられていれば描画する
   if (model_) {
-    model_->Draw(skinCluster_);
+    model_->Draw(commandList, skinCluster_);
   }
 }
 
@@ -161,19 +179,19 @@ void Object3d::SetModel(const std::string &filePath) {
   // モデルを検索し、セット
   model_ = ModelManager::GetInstance()->FindModel(filePath);
 
-  // LoadModel と SetModel の引数不一致（スペルミス等）を即座に検知する
+  // モデルが見つからないときは止めずに、マゼンタと黒の市松模様のエラー用モデルで描く。
+  // ログは同じパスにつき 1 回だけ出す
   if (!model_) {
-    Logger::Log(std::string("[Object3d] SetModel failed. Model not found: ") +
-                filePath);
-    Logger::Log("[Object3d] Falling back to ERROR model (magenta cube).");
+    static std::unordered_set<std::string> reportedPaths;
+    if (reportedPaths.insert(filePath).second) {
+      Logger::Log(std::string("[Object3d] SetModel failed. Model not found: ") +
+                  filePath + "\n");
+      Logger::Log("[Object3d] Falling back to ERROR model (magenta checker cube).\n");
+    }
 
-    // リリースビルドでのクラッシュを防ぐため、目立つエラー用モデルをセットする
     std::string fallbackPath = "error.obj";
     ModelManager::GetInstance()->LoadModel(fallbackPath);
     model_ = ModelManager::GetInstance()->FindModel(fallbackPath);
-
-    // 開発中はエラーに気づけるようアサートを残す（リリースビルドでは無視され進行する）
-    assert(false && "Object3d::SetModel: model not loaded / not found (Fallback applied)");
   }
 
   // モデルのデフォルトマテリアルをコピー
@@ -255,6 +273,7 @@ void Object3d::CreateMaterialData() {
   materialData->rimPower = 3.0f;
   materialData->backRimScale = 0.0f;
   materialData->specularScale = 1.0f;
+  materialData->flatUnlit = 0.0f;
 
   materialData->enableDissolve = 0;
   materialData->dissolveThreshold = 0.0f;

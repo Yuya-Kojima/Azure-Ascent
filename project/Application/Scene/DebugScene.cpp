@@ -12,12 +12,14 @@
 #include "Model/ModelManager.h"
 #include "Particle/Particle.h"
 #include "Particle/ParticleManager.h"
+#include "Render/Light/LightManager.h"
 #include "Render/Primitive/Sphere.h"
 #include "Renderer/Object3dRenderer.h"
 #include "Renderer/PostProcess.h"
 #include "Renderer/SpriteRenderer.h"
 #include "Scene/SceneManager.h"
 #include "Texture/TextureManager.h"
+#include <algorithm>
 #include <cmath>
 #include <fstream>
 #include <numbers>
@@ -825,8 +827,37 @@ void DebugScene::Update() {
   // パーティクルの射出処理(GPU)
   ParticleManager::GetInstance()->Emit();
 
+  if (lightGridEnabled_) {
+    AddLightGrid();
+  }
+
 #ifdef USE_IMGUI
   auto *renderer = engine_->GetObject3dRenderer();
+
+  //========================
+  // ライトを格子状に並べる台
+  //========================
+  ImGui::Begin("World Settings");
+  if (ImGui::CollapsingHeader("Light Grid Test",
+                              ImGuiTreeNodeFlags_DefaultOpen)) {
+    ImGui::Checkbox("Enable##LightGrid", &lightGridEnabled_);
+    ImGui::SliderInt("Point Count", &lightGridPointCount_, 0,
+                     static_cast<int>(LightManager::kMaxPointLights_));
+    ImGui::SliderInt("Spot Count", &lightGridSpotCount_, 0,
+                     static_cast<int>(LightManager::kMaxSpotLights_));
+    ImGui::DragFloat3("Center##LightGrid", &lightGridCenter_.x, 0.1f);
+    ImGui::DragFloat("Spacing##LightGrid", &lightGridSpacing_, 0.05f, 0.1f,
+                     50.0f);
+    ImGui::DragFloat("Radius##LightGrid", &lightGridRadius_, 0.05f, 0.1f,
+                     50.0f);
+    ImGui::DragFloat("Intensity##LightGrid", &lightGridIntensity_, 0.05f,
+                     0.0f, 20.0f);
+    ImGui::DragFloat("Spot Height##LightGrid", &lightGridSpotHeight_, 0.05f,
+                     0.0f, 50.0f);
+    ImGui::SliderAngle("Spot Angle##LightGrid", &lightGridSpotAngle_, 1.0f,
+                       89.0f);
+  }
+  ImGui::End();
 
   //========================
   // PostProcess Settings UI
@@ -963,6 +994,55 @@ void DebugScene::Update() {
   ImGui::End();
 
 #endif // USE_IMGUI
+}
+
+void DebugScene::AddLightGrid() const {
+  LightManager *lightManager = engine_->GetLightManager();
+
+  // count 個を、なるべく正方形になる格子の何列目・何行目に置くかを決め、
+  // 格子の中心が center に来る位置を返す
+  auto gridPosition = [&](int index, int count, const Vector3 &center) {
+    const int side =
+        (std::max)(1, static_cast<int>(std::ceil(std::sqrt(float(count)))));
+    const float half = float(side - 1) * 0.5f;
+    const float x = (float(index % side) - half) * lightGridSpacing_;
+    const float z = (float(index / side) - half) * lightGridSpacing_;
+    return Vector3{center.x + x, center.y, center.z + z};
+  };
+
+  // 番号ごとに色相をずらした、彩度・明度が最大の色
+  auto hueColor = [](int index, int count) {
+    const float hue = float(index) / float((std::max)(count, 1)) * 6.0f;
+    const float r = std::clamp(std::abs(hue - 3.0f) - 1.0f, 0.0f, 1.0f);
+    const float g = std::clamp(2.0f - std::abs(hue - 2.0f), 0.0f, 1.0f);
+    const float b = std::clamp(2.0f - std::abs(hue - 4.0f), 0.0f, 1.0f);
+    return Vector4{r, g, b, 1.0f};
+  };
+
+  for (int i = 0; i < lightGridPointCount_; ++i) {
+    LightManager::PointLight light;
+    light.color = hueColor(i, lightGridPointCount_);
+    light.position = gridPosition(i, lightGridPointCount_, lightGridCenter_);
+    light.intensity = lightGridIntensity_;
+    light.radius = lightGridRadius_;
+    lightManager->AddPointLight(light);
+  }
+
+  // スポットライトは格子の中心から上げた所に並べ、真下を照らす
+  const Vector3 spotCenter = {lightGridCenter_.x,
+                              lightGridCenter_.y + lightGridSpotHeight_,
+                              lightGridCenter_.z};
+  for (int i = 0; i < lightGridSpotCount_; ++i) {
+    LightManager::SpotLight light;
+    light.color = hueColor(i, lightGridSpotCount_);
+    light.position = gridPosition(i, lightGridSpotCount_, spotCenter);
+    light.direction = {0.0f, -1.0f, 0.0f};
+    light.intensity = lightGridIntensity_;
+    // 届く距離は上げた高さの 2 倍（真下の床まで届く長さ）
+    light.distance = lightGridSpotHeight_ * 2.0f;
+    light.cosAngle = std::cos(lightGridSpotAngle_);
+    lightManager->AddSpotLight(light);
+  }
 }
 
 void DebugScene::Draw() { Draw3D(); }

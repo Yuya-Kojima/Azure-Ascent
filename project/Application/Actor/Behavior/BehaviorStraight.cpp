@@ -68,8 +68,8 @@ void BehaviorStraight::Update(Enemy* enemy) {
     enemy->GetTransform().translate.y += moveDirection_.y * currentSpeed;
     enemy->GetTransform().translate.z += moveDirection_.z * currentSpeed;
 
-    // 画面外（カメラの視界外）へ抜けたら自然に消滅（展開直後の誤消滅を防ぐため2.0秒経過後）
-    if (aliveTime > 2.0f && !enemy->IsInScreen(50.0f)) {
+    // 出現から 2 秒たったあと、画面の外に 1 秒続けていたら消滅
+    if (aliveTime > 2.0f && enemy->HasLeftScreen()) {
         enemy->Destroy();
         return;
     }

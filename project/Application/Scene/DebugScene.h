@@ -145,6 +145,24 @@ private: // メンバ変数(ゲーム用)
   void CreateObjectsRecursive(const LevelData::ObjectData &objectData,
                               Object3d *parent);
 
+  //========================
+  // ライトを格子状に並べる台（ライトの数と重さを確かめる）
+  //========================
+  bool lightGridEnabled_ = false;
+  int lightGridPointCount_ = 16;              // 並べる点の光の数
+  int lightGridSpotCount_ = 0;                // 並べるスポットライトの数
+  Vector3 lightGridCenter_ = {0.0f, 1.5f, 0.0f}; // 格子の中心
+  float lightGridSpacing_ = 3.0f;             // 隣のライトとの間隔
+  float lightGridRadius_ = 4.0f;              // 点の光の届く距離
+  float lightGridIntensity_ = 2.0f;           // 輝度
+  float lightGridSpotHeight_ = 4.0f;          // スポットライトを格子の中心から上げる高さ
+  float lightGridSpotAngle_ = 0.5f;           // スポットライトの円錐の半分の角度（ラジアン）
+
+  /// <summary>
+  /// 格子のライトを名簿に書く（毎フレーム呼ぶ）
+  /// </summary>
+  void AddLightGrid() const;
+
 public: // メンバ関数
   /// <summary>
   /// 初期化

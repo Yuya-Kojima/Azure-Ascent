@@ -1,11 +1,14 @@
 #include "HomingBullet.h"
 #include "Actor/Enemy.h"
+#include "Actor/ILockOnHittable.h"
+#include "Camera/RailCamera.h"
 #include "Collision/SphereCollider.h"
 #include "Debug/Logger.h"
 #include "Math/MathUtil.h"
 #include "Render/Object3d/Object3d.h"
 #include "Render/Renderer/LineRenderer.h"
 #include <Windows.h>
+#include <algorithm>
 #include <cmath>
 
 #include "Collision/CollisionManager.h"
@@ -14,11 +17,24 @@
 #include "Render/Renderer/Object3dRenderer.h"
 #include "Effect/EffectManager.h"
 
+namespace {
+
+// 構図から見た位置（右・上・前の m）をワールドの位置へ直す
+Vector3 FramingToWorld(const RailCamera::Framing &frame, const Vector3 &local) {
+  return frame.position + frame.right * local.x + frame.up * local.y +
+         frame.forward * local.z;
+}
+
+// ロックオン弾の着弾・散る演出の色（シアン）
+const Vector4 kHomingHitColor = {0.6f, 2.5f, 4.0f, 1.0f};
+
+} // namespace
+
 HomingBullet::HomingBullet() {}
 HomingBullet::~HomingBullet() {
   FinishVolley();
   if (onDestroyCallback_) {
-    onDestroyCallback_(originalTarget_);
+    onDestroyCallback_(originalTarget_.Get());
   }
   if (collider_) {
     CollisionManager::GetInstance()->Remove(collider_.get());
@@ -26,9 +42,30 @@ HomingBullet::~HomingBullet() {
 }
 
 void HomingBullet::Initialize(Object3dRenderer *renderer,
-                              const Vector3 &startPos, BaseActor *target,
-                              const Vector3 &initialVelocity) {
+                              const RailCamera *camera,
+                              const Vector3 &localStart,
+                              const Vector3 &localBulge, BaseActor *target,
+                              float flightSeconds) {
   renderer_ = renderer;
+  camera_ = camera;
+  localStart_ = localStart;
+  localBulge_ = localBulge;
+  target_ = target;
+  originalTarget_ = target;
+  // 0 秒で割らないよう、届く秒は 1 フレーム以上にする
+  flightSeconds_ = (std::max)(flightSeconds, kFrameTime_);
+  elapsedSeconds_ = 0.0f;
+
+  const RailCamera::Framing &frame = camera_->GetFraming();
+  const Vector3 startPos = FramingToWorld(frame, localStart_);
+  const Vector3 bulgePos = FramingToWorld(frame, localBulge_);
+  if (target) {
+    endPoint_ = target->GetTransform().translate;
+  } else {
+    // 狙う敵がいなければ、P0 から P1 の向きへ同じだけ先へ進んだ所を終わりの点にする
+    endPoint_ = bulgePos + (bulgePos - startPos);
+  }
+
   object3d_ = std::make_unique<Object3d>();
   object3d_->Initialize(renderer);
 
@@ -38,32 +75,17 @@ void HomingBullet::Initialize(Object3dRenderer *renderer,
   object3d_->SetEnableLighting(false);
   object3d_->SetColor({0.3f, 3.5f, 5.0f, 1.0f}); // シアン（自己発光）
   object3d_->SetTranslation(startPos);
-
-  velocity_ = initialVelocity;
-  target_ = target;
-  originalTarget_ = target;
-  lifeTimer_ = 180;
+  transform_.translate = startPos;
 
   // コライダーの設定
   collider_ = std::make_unique<SphereCollider>(this);
   collider_->SetRadius(1.0f);
   collider_->SetAttribute(kCollisionAttributePlayerBullet);
   collider_->SetMask(kCollisionAttributeEnemy | kCollisionAttributeEnemyBullet);
-  collider_->SetVelocity(velocity_);
   CollisionManager::GetInstance()->Register(collider_.get());
 
-  // 初速ベクトルから初期回転を計算
-  float lenSq = velocity_.x * velocity_.x + velocity_.y * velocity_.y +
-                velocity_.z * velocity_.z;
-  if (lenSq > 0.0001f) {
-    float yaw = std::atan2(velocity_.x, velocity_.z);
-    float xzLen =
-        std::sqrt(velocity_.x * velocity_.x + velocity_.z * velocity_.z);
-    float pitch = std::atan2(-velocity_.y, xzLen);
-    Vector3 rot = {pitch + (std::numbers::pi_v<float> * 0.5f), yaw, 0.0f};
-    object3d_->SetRotation(rot);
-    transform_.rotate = rot;
-  }
+  // 撃った瞬間は、ふくらみの点へ向ける（ベジェの s=0 の向き）
+  FaceDirection(bulgePos - startPos);
 
   object3d_->Update();
 }
@@ -72,75 +94,37 @@ void HomingBullet::Update() {
   if (isDead_)
     return;
 
-  lifeTimer_--;
-  if (lifeTimer_ <= 0) {
-    isDead_ = true;
-    return;
-  }
-
-  // ターゲットが生きていれば誘導ベクトルを計算
-  if (target_) {
-    if (target_->IsDead()) {
-      target_ =
-          nullptr; // ターゲットが死んだら誘導をやめ、そのまま直進・落下させる
-    }
+  // 狙った敵が先に倒れた・消えたら、最後にいた所（endPoint_）をそのまま終わりの点にする
+  BaseActor *target = target_.Get();
+  if (target && target->IsDead()) {
+    target_.Reset();
+    target = nullptr;
   }
   // 狙う敵がいなければ、射撃の弾としては終わり
-  if (!target_) {
+  if (!target) {
     FinishVolley();
+  } else {
+    endPoint_ = target->GetTransform().translate;
   }
 
-  if (target_) {
-    Vector3 currentPos = object3d_->GetTranslation();
-    Vector3 targetPos = target_->GetTransform().translate;
+  // 撃ってからの秒を進め、ベジェの上の今の位置へ動かす
+  // 届く秒にいちばん近いフレームで s=1 にする
+  elapsedSeconds_ += kFrameTime_;
+  const bool arrived = elapsedSeconds_ + kFrameTime_ * 0.5f >= flightSeconds_;
+  const float s = arrived ? 1.0f : elapsedSeconds_ / flightSeconds_;
 
-    Vector3 toTarget = {targetPos.x - currentPos.x, targetPos.y - currentPos.y,
-                        targetPos.z - currentPos.z};
-
-    // 発射直後の拡散ディレイ時間が終了したら、ターゲットに向けて誘導を開始
-    if (lifeTimer_ <= homingFallTime_) {
-      Vector3 normToTarget = Normalize(toTarget);
-      Vector3 desiredVelocity = {normToTarget.x * speed_,
-                                 normToTarget.y * speed_,
-                                 normToTarget.z * speed_};
-
-      velocity_ = Lerp(velocity_, desiredVelocity, homingStrength_);
-
-      // 滑らかに弧を描きながら敵へ突き刺さる
-      homingStrength_ += homingStrengthIncrease_;
-      if (homingStrength_ > homingStrengthMax_) {
-        homingStrength_ = homingStrengthMax_;
-      }
-    }
-  }
-
-  // 座標を更新
-  Vector3 pos = object3d_->GetTranslation();
-  pos.x += velocity_.x;
-  pos.y += velocity_.y;
-  pos.z += velocity_.z;
+  const Vector3 prevPos = object3d_->GetTranslation();
+  const Vector3 pos = CalcPosition(s);
+  const Vector3 moved = pos - prevPos;
   object3d_->SetTranslation(pos);
   // コライダーの中心座標を同期させる
   transform_.translate = pos;
-
-  // コライダーへの速度反映
   if (collider_) {
-    collider_->SetVelocity(velocity_);
+    collider_->SetVelocity(moved);
   }
 
-  // 弾の向き（回転）を進行方向（velocity_）に向ける
-  float lenSq = velocity_.x * velocity_.x + velocity_.y * velocity_.y +
-                velocity_.z * velocity_.z;
-  if (lenSq > 0.0001f) {
-    float yaw = std::atan2(velocity_.x, velocity_.z);
-    float xzLen =
-        std::sqrt(velocity_.x * velocity_.x + velocity_.z * velocity_.z);
-    float pitch = std::atan2(-velocity_.y, xzLen);
-    Vector3 rot = {pitch + (std::numbers::pi_v<float> * 0.5f), yaw, 0.0f};
-    object3d_->SetRotation(rot);
-    transform_.rotate = rot;
-  }
-
+  // 弾の向きは、前のフレームから今のフレームへの向き
+  FaceDirection(moved);
   object3d_->Update();
 
   // レーザートレイル履歴の記録（弾頭位置）
@@ -148,6 +132,61 @@ void HomingBullet::Update() {
   if (trailHistory_.size() > kMaxTrailPoints) {
     trailHistory_.pop_back();
   }
+
+  // s=1 で終わりの点に着く
+  if (arrived) {
+    Arrive();
+  }
+}
+
+Vector3 HomingBullet::CalcPosition(float s) const {
+  // P0・P1 は今の構図の上に置き直す
+  const RailCamera::Framing &frame = camera_->GetFraming();
+  const Vector3 p0 = FramingToWorld(frame, localStart_);
+  const Vector3 p1 = FramingToWorld(frame, localBulge_);
+
+  // 2 次ベジェ: (1-s)^2 P0 + 2(1-s)s P1 + s^2 P2
+  const float u = 1.0f - s;
+  return p0 * (u * u) + p1 * (2.0f * u * s) + endPoint_ * (s * s);
+}
+
+void HomingBullet::FaceDirection(const Vector3 &direction) {
+  float lenSq = direction.x * direction.x + direction.y * direction.y +
+                direction.z * direction.z;
+  if (lenSq <= 0.0001f) {
+    return;
+  }
+  float yaw = std::atan2(direction.x, direction.z);
+  float xzLen = std::sqrt(direction.x * direction.x + direction.z * direction.z);
+  float pitch = std::atan2(-direction.y, xzLen);
+  Vector3 rot = {pitch + (std::numbers::pi_v<float> * 0.5f), yaw, 0.0f};
+  object3d_->SetRotation(rot);
+  transform_.rotate = rot;
+}
+
+void HomingBullet::Arrive() {
+  isDead_ = true;
+
+  BaseActor *target = target_.Get();
+
+  // 射撃の弾の終わりを知らせるとその射撃の点が決まるので、先にダメージを与えて倒した数を射撃に足しておく
+  auto *hittable = dynamic_cast<ILockOnHittable *>(target);
+  if (hittable && !target->IsDead()) {
+    hittable->OnLockOnHit(damage_, volleyId_);
+    FinishVolley();
+
+    // ホーミング専用着弾演出（太く鋭い十字グリント＋高速プラズマリング）
+    EffectManager::GetInstance()->PlayEffect(
+        EffectType::HomingHit, object3d_->GetTranslation(), kHomingHitColor);
+
+    Logger::Log("Homing Bullet Hit Target!\n");
+    return;
+  }
+
+  // 狙った敵がいないときは、終わりの点で小さく散る
+  FinishVolley();
+  EffectManager::GetInstance()->PlayEffect(
+      EffectType::HitSpark, object3d_->GetTranslation(), kHomingHitColor);
 }
 
 void HomingBullet::OnCollision(Collider *other) {
@@ -158,14 +197,12 @@ void HomingBullet::OnCollision(Collider *other) {
   if (!owner)
     return;
 
-  // ロックオンターゲットが存在する場合、指定ターゲット以外はすべて貫通（すり抜け）する
-  if (target_) {
-    if (owner != target_) {
-      return;
-    }
+  // 狙った敵がいる間は、何にも当たらずにすり抜ける（狙った敵には s=1 で当てる）
+  if (target_.Get()) {
+    return;
   }
 
-  // ターゲットに到達（またはターゲット喪失後の直進弾）
+  // 狙った敵を失った弾は、途中でぶつかった敵・敵の弾に当たる
   if (other->GetAttribute() & kCollisionAttributeEnemy) {
     Enemy *enemy = dynamic_cast<Enemy *>(owner);
     if (enemy && !enemy->IsDead()) {
@@ -176,12 +213,9 @@ void HomingBullet::OnCollision(Collider *other) {
 
       // ホーミング専用着弾演出（太く鋭い十字グリント＋高速プラズマリング）
       EffectManager::GetInstance()->PlayEffect(
-          EffectType::HomingHit,
-          object3d_->GetTranslation(),
-          Vector4{0.6f, 2.5f, 4.0f, 1.0f}
-      );
+          EffectType::HomingHit, object3d_->GetTranslation(), kHomingHitColor);
 
-      Logger::Log("Homing Bullet Hit Target Enemy!\n");
+      Logger::Log("Homing Bullet Hit Enemy!\n");
     }
   } else if (other->GetAttribute() & kCollisionAttributeEnemyBullet) {
     isDead_ = true;
@@ -189,12 +223,9 @@ void HomingBullet::OnCollision(Collider *other) {
 
     // ホーミング専用着弾演出（迎撃時）
     EffectManager::GetInstance()->PlayEffect(
-        EffectType::HomingHit,
-        object3d_->GetTranslation(),
-        Vector4{0.6f, 2.5f, 4.0f, 1.0f}
-    );
+        EffectType::HomingHit, object3d_->GetTranslation(), kHomingHitColor);
 
-    Logger::Log("Homing Bullet Intercepted Target EnemyBullet!\n");
+    Logger::Log("Homing Bullet Intercepted EnemyBullet!\n");
   }
 }
 
@@ -214,37 +245,39 @@ void HomingBullet::Draw3D() {
 
 #ifdef USE_IMGUI
     // ==== デバッグ描画 ====
-    LineRenderer *lineRenderer = LineRenderer::GetInstance();
-    int segments = 16;
-    float angleStep = 2.0f * 3.14159265f / segments;
-    Vector4 color = {0.0f, 1.0f, 1.0f, 1.0f};
-    float radius = 0.5f;
-    Vector3 pos = object3d_->GetTranslation();
+    if (CollisionManager::GetInstance()->IsDebugDrawEnabled()) {
+      LineRenderer *lineRenderer = LineRenderer::GetInstance();
+      int segments = 16;
+      float angleStep = 2.0f * 3.14159265f / segments;
+      Vector4 color = {0.0f, 1.0f, 1.0f, 1.0f};
+      float radius = 0.5f;
+      Vector3 pos = object3d_->GetTranslation();
 
-    for (int i = 0; i < segments; ++i) {
-      float angle1 = i * angleStep;
-      float angle2 = (i + 1) * angleStep;
+      for (int i = 0; i < segments; ++i) {
+        float angle1 = i * angleStep;
+        float angle2 = (i + 1) * angleStep;
 
-      // XY plane
-      Vector3 p1_xy = {pos.x + std::cos(angle1) * radius,
-                       pos.y + std::sin(angle1) * radius, pos.z};
-      Vector3 p2_xy = {pos.x + std::cos(angle2) * radius,
-                       pos.y + std::sin(angle2) * radius, pos.z};
-      lineRenderer->DrawLine(p1_xy, p2_xy, color);
+        // XY plane
+        Vector3 p1_xy = {pos.x + std::cos(angle1) * radius,
+                         pos.y + std::sin(angle1) * radius, pos.z};
+        Vector3 p2_xy = {pos.x + std::cos(angle2) * radius,
+                         pos.y + std::sin(angle2) * radius, pos.z};
+        lineRenderer->DrawLine(p1_xy, p2_xy, color);
 
-      // XZ plane
-      Vector3 p1_xz = {pos.x + std::cos(angle1) * radius, pos.y,
-                       pos.z + std::sin(angle1) * radius};
-      Vector3 p2_xz = {pos.x + std::cos(angle2) * radius, pos.y,
-                       pos.z + std::sin(angle2) * radius};
-      lineRenderer->DrawLine(p1_xz, p2_xz, color);
+        // XZ plane
+        Vector3 p1_xz = {pos.x + std::cos(angle1) * radius, pos.y,
+                         pos.z + std::sin(angle1) * radius};
+        Vector3 p2_xz = {pos.x + std::cos(angle2) * radius, pos.y,
+                         pos.z + std::sin(angle2) * radius};
+        lineRenderer->DrawLine(p1_xz, p2_xz, color);
 
-      // YZ plane
-      Vector3 p1_yz = {pos.x, pos.y + std::cos(angle1) * radius,
-                       pos.z + std::sin(angle1) * radius};
-      Vector3 p2_yz = {pos.x, pos.y + std::cos(angle2) * radius,
-                       pos.z + std::sin(angle2) * radius};
-      lineRenderer->DrawLine(p1_yz, p2_yz, color);
+        // YZ plane
+        Vector3 p1_yz = {pos.x, pos.y + std::cos(angle1) * radius,
+                         pos.z + std::sin(angle1) * radius};
+        Vector3 p2_yz = {pos.x, pos.y + std::cos(angle2) * radius,
+                         pos.z + std::sin(angle2) * radius};
+        lineRenderer->DrawLine(p1_yz, p2_yz, color);
+      }
     }
 #endif
   }

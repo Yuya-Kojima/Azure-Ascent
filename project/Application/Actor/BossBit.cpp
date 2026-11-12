@@ -8,11 +8,8 @@ BossBit::~BossBit() {}
 void BossBit::Initialize() {
     Enemy::Initialize();
     
-    // 装甲なので硬めに設定。
+    // 装甲の HP
     hp_ = 30;
-    
-    // プレイヤーがロックオンできるようにタグを設定
-    SetTag(ActorTag::LockOnTarget);
     
     if (collider_) {
         collider_->SetRadius(1.2f); // 装甲板として少し大きめの当たり判定
@@ -25,14 +22,12 @@ void BossBit::SetOffset(const Vector3& offset) {
 }
 
 void BossBit::SpreadOut() {
-    isSpreadingOut_ = true;
-    SetTag(ActorTag::Enemy); // ロックオン不可にする
-    baseColor_ = {0.3f, 0.3f, 0.3f, 1.0f}; // 暗くして機能停止感を出す
+    isSpreadingOut_ = true; // ロックオン不可にする
+    baseColor_ = {0.3f, 0.3f, 0.3f, 1.0f}; // 退避中の色（暗い灰色）
 }
 
 void BossBit::ResetPosition() {
-    isSpreadingOut_ = false;
-    SetTag(ActorTag::LockOnTarget); // ロックオン可能に戻す
+    isSpreadingOut_ = false; // ロックオン可能に戻す
     baseColor_ = {1.0f, 1.0f, 1.0f, 1.0f}; // 元の色に戻す
 }
 

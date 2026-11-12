@@ -13,7 +13,7 @@ class SpriteRenderer;
 /// <summary>
 /// クリアしたあとのリザルト（右の暗い板）
 /// 板と空域名 → 内訳を上から 1 行ずつ数え上げ → スコアと文字 → 撃墜率と文字 → 総合ランク
-/// → ベスト更新 → ヒント → 選択肢「もう一度飛ぶ」「拠点へ戻る」の順に出す
+/// → ベスト更新 → ヒント → 選択肢「リトライ」「拠点へ戻る」の順に出す
 /// </summary>
 class ResultSequence {
 public:
@@ -22,7 +22,7 @@ public:
   /// </summary>
   enum class Choice {
     None,  // まだ選んでいない
-    Again, // もう一度飛ぶ
+    Again, // リトライ
     Base,  // 拠点へ戻る
   };
 
@@ -90,7 +90,7 @@ private:
   Choice pendingChoice_ = Choice::None;
   bool hasChosen_ = false; // 選び終わったか（そのあとは操作を受けない）
   Choice focused_ = Choice::Again;
-  float focusPos_ = 0.0f; // 下線の位置（0: もう一度飛ぶ 〜 1: 拠点へ戻る）
+  float focusPos_ = 0.0f; // 下線の位置（0: リトライ 〜 1: 拠点へ戻る）
 
   UiPlate plate_;
   std::unique_ptr<Sprite> title_;
