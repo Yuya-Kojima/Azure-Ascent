@@ -1,6 +1,5 @@
 #include "EnemyBullet.h"
 #include "Actor/HomingBullet.h"
-#include "Actor/NormalBullet.h"
 #include "Actor/Player.h"
 #include "Collision/CollisionConfig.h"
 #include "Collision/CollisionManager.h"
@@ -62,7 +61,6 @@ void EnemyBullet::Initialize(Object3dRenderer *renderer,
 
     colliderRadius = 2.2f;
     hp_ = 1;
-    SetTag(ActorTag::LockOnTarget); // ロックオン対象としてタグ付け
   } else {
     // 破壊不可弾（青紫）
     object3d_->SetModel("__builtin_sphere");
@@ -311,32 +309,33 @@ void EnemyBullet::OnCollision(Collider *other) {
 
   // 相手がプレイヤーの弾かチェック
   if (other->GetAttribute() & kCollisionAttributePlayerBullet) {
-    BaseActor *bulletOwner = other->GetOwner();
+    // 相手を狙って飛んでいるロックオン弾はすり抜ける（狙った相手には着いたときに OnLockOnHit で当たる）
+    auto *homing = dynamic_cast<HomingBullet *>(other->GetOwner());
+    if (homing && homing->GetTarget()) {
+      return;
+    }
 
-    // 相手が通常ショット（NormalBullet）の場合
-    if (dynamic_cast<NormalBullet *>(bulletOwner)) {
-      if (type_ == EnemyBulletType::NormalDestructible ||
-          type_ == EnemyBulletType::LockOnDestructible) {
-        hp_ -= 1; // 通常ショットで1ダメージ
-        Logger::Log("EnemyBullet: Hit by NormalBullet!\n");
-      }
-    }
-    // 相手がロックオンレーザー（HomingBullet）の場合
-    else if (auto *homing = dynamic_cast<HomingBullet *>(bulletOwner)) {
-      // そのホーミング弾が自分（this）を狙っている場合のみ被弾
-      if (homing->GetTarget() == this) {
-        if (type_ == EnemyBulletType::NormalDestructible ||
-            type_ == EnemyBulletType::LockOnDestructible) {
-          hp_ -= 3; // ロックオンレーザーで3ダメージ（誘導弾を一撃破壊）
-          Logger::Log("EnemyBullet: Hit by targeted HomingBullet!\n");
-        }
-      }
-    }
+    // 通常ショットと、狙う相手を失ったロックオン弾は 1 ダメージ
+    hp_ -= 1;
+    Logger::Log("EnemyBullet: Hit by player bullet!\n");
 
     if (hp_ <= 0) {
       Logger::Log("EnemyBullet: Intercepted!\n");
       Explode(); // エフェクトを発生させて自身を破棄
     }
+  }
+}
+
+void EnemyBullet::OnLockOnHit(int damage, int /*volleyId*/) {
+  if (isDead_ || type_ == EnemyBulletType::Indestructible)
+    return;
+
+  hp_ -= damage;
+  Logger::Log("EnemyBullet: Hit by targeted HomingBullet!\n");
+
+  if (hp_ <= 0) {
+    Logger::Log("EnemyBullet: Intercepted!\n");
+    Explode(); // エフェクトを発生させて自身を破棄
   }
 }
 

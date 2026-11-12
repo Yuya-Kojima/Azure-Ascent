@@ -1,4 +1,5 @@
 #pragma once
+#include "Actor/ILockOnHittable.h"
 #include "Framework/BaseActor.h"
 #include "Math/Vector3.h"
 #include <memory>
@@ -15,7 +16,7 @@ enum class EnemyBulletType {
   Indestructible      // 破壊不可
 };
 
-class EnemyBullet : public BaseActor {
+class EnemyBullet : public BaseActor, public ILockOnHittable {
 public:
   // 砲台・砦の砲座が自機を狙って撃つ弾の速さ（m/フレーム）
   static constexpr float kAimedShotSpeed_ = 1.3f;
@@ -29,6 +30,11 @@ public:
   void Draw3D() override;
   void Explode(); // 破壊エフェクトを伴って消滅する
   void OnCollision(class Collider* other) override;
+
+  // ロックオンできるのは、ロックオン可能弾（ボスのミサイルなど）だけ
+  bool CanBeLockedOn() const override { return type_ == EnemyBulletType::LockOnDestructible; }
+  // ロックオン弾が着いた: ダメージを受け、HP が尽きたら壊れる
+  void OnLockOnHit(int damage, int volleyId) override;
 
   EnemyBulletType GetBulletType() const { return type_; }
   void SetBulletType(EnemyBulletType type) { type_ = type; }

@@ -1,4 +1,5 @@
 #pragma once
+#include "Actor/ILockOnHittable.h"
 #include "Framework/BaseActor.h"
 #include "Math/Vector3.h"
 #include "Math/Vector4.h"
@@ -26,7 +27,7 @@ enum class MoveType {
   Turret
 };
 
-class Enemy : public BaseActor {
+class Enemy : public BaseActor, public ILockOnHittable {
 public:
   Enemy();
   ~Enemy() override;
@@ -37,12 +38,18 @@ public:
   void Draw3D() override;
   void OnCollision(class Collider *other) override;
 
-  // ロックオン対象になるかどうか
-  virtual bool IsLockOnTarget() const {
+  // ロックオンできるか（振る舞いがあれば振る舞いが決める）
+  bool CanBeLockedOn() const override {
     if (behavior_) {
-      return behavior_->IsLockOnTarget();
+      return behavior_->CanBeLockedOn();
     }
     return true;
+  }
+
+  // ロックオン弾が着いた: 射撃番号を覚えてからダメージを受ける
+  void OnLockOnHit(int damage, int volleyId) override {
+    SetLastHitVolley(volleyId);
+    TakeDamage(damage);
   }
 
   // ボスかどうかの判定（デスポーン除外等で使用）

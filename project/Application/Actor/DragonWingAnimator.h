@@ -6,6 +6,7 @@
 #include <array>
 #include <cstdint>
 #include <functional>
+#include <optional>
 #include <random>
 #include <vector>
 
@@ -273,6 +274,13 @@ public:
   bool IsDirect() const { return static_cast<bool>(directRoot_); }
 
   /// <summary>
+  /// 頭を向ける先の向き（ワールド空間）。空なら体の向きに沿って水平に戻す今までの向き
+  /// </summary>
+  void SetLookDirection(const std::optional<Vector3> &direction) {
+    lookDirection_ = direction;
+  }
+
+  /// <summary>
   /// 羽ばたきを進めて関節に書き込む。SkinnedObject::Update の前に呼ぶ
   /// </summary>
   /// <param name="worldMatrix">このフレームの、SkinnedObject のワールド行列（親を含む）</param>
@@ -406,6 +414,7 @@ private:
   State currentState_;
   float phase_ = 0.0f; // 周期の中の位置（0〜1）。0 で上げきり、そこから打ち下ろす
   DirectRootFunction directRoot_; // 直接モードの付け根の角度（空なら周期で打つ）
+  std::optional<Vector3> lookDirection_; // 頭を向ける先の向き（ワールド空間、空なら使わない）
 
   // 1回ごとの揺らぎ（-1 〜 1）。周期の始めに beatFrom_、終わりに beatTo_ になる
   std::mt19937 random_;

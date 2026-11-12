@@ -7,6 +7,7 @@
 #include <vector>
 #include <array>
 
+#include "Framework/ActorRef.h"
 #include "Framework/BaseActor.h"
 
 class SpriteRenderer;
@@ -76,7 +77,8 @@ public:
   /// </summary>
   void RemoveTrackingTarget(BaseActor* target);
 
-  const std::vector<BaseActor*>& GetTargets() const { return targets_; }
+  // 準備中（Locking）の敵のうち、まだ生きているもの
+  std::vector<BaseActor*> GetTargets() const;
 
   /// <summary>
   /// from から to への線分が、どれかの箱を通るか
@@ -84,8 +86,11 @@ public:
   bool IsHidden(const Vector3 &from, const Vector3 &to) const;
 
 private:
+  // 準備中（Locking）の枠の数
+  size_t GetLockingCount() const;
+
   struct TargetInfo {
-    BaseActor* actor = nullptr;
+    ActorRef<BaseActor> actor;
     float lockTime = 0.0f; // 経過時間（秒）
     TargetState state = TargetState::Locking;
   };
@@ -97,7 +102,6 @@ private:
   // n体目のロックオン音の高さ（基準音からの半音数）。ドレミファソラシド
   static constexpr std::array<int, kMaxLockOnPerVolley> kLockOnScaleSemitones = {0, 2, 4, 5, 7, 9, 11, 12};
   static constexpr float kSemitonesPerOctave = 12.0f; // 1オクターブ（周波数2倍）の半音数
-  std::vector<BaseActor *> targets_;            // 互換性・外部参照用の発射対象敵リスト
   std::vector<TargetInfo> targetInfos_;         // ロックオン・追尾演出用の詳細情報リスト
   int lockOnDelayTimer_ = 0;                    // ロックオン間隔を管理するタイマー
   const std::vector<Matrix4x4> *occluders_ = nullptr; // 敵を隠す箱（ワールド → 箱の中の座標）

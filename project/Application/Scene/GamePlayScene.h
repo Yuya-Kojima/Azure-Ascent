@@ -13,6 +13,7 @@ class SpriteRenderer;
 class Object3dRenderer;
 class DebugCamera;
 class InputKeyState;
+class Input;
 class ParticleEmitter;
 class PostProcess;
 class BillboardParticleEmitter;
@@ -26,11 +27,15 @@ class CloudSea;
 class CloudSeaEvents;
 class GameHud;
 class ResultSequence;
+class PauseMenu;
 class ScoreKeeper;
 class FloatingFortress;
+class InterceptCue;
+class SerpentCameraDirector;
 
 #include "Actor/Boss.h"
 #include "Actor/Enemy.h"
+#include "Actor/MechSerpent.h"
 #include "Actor/Player.h"
 #include "Camera/RailCamera.h"
 #include "Render/SkyBox/SkyBox.h"
@@ -48,6 +53,7 @@ struct SpawnEvent {
   bool hasSpawned = false;         // 実行管理用フラグ
   MoveType moveType = MoveType::Straight;
   Vector3 moveDirection = {0.0f, 0.0f, 1.0f}; // カメラ基準の移動方向ベクトル（デフォルトは前進）
+  SerpentSpec serpent;             // 大蛇（MechSerpent）の出番の決まり。ほかの出し方では使わない
 };
 
 enum class GameState { Intro, Play, Clear, GameOver };
@@ -89,6 +95,13 @@ private: // メンバ変数(ゲーム用)
   std::unique_ptr<ScoreKeeper> scoreKeeper_;
   std::unique_ptr<GameHud> hud_;
   std::unique_ptr<ResultSequence> resultSequence_;
+
+  // ポーズ画面（プレイ中に開き、開いている間は世界の時間を止める）
+  std::unique_ptr<PauseMenu> pauseMenu_;
+  static constexpr float kPauseBgmVolume_ = 0.35f; // ポーズ中の BGM の音量（0〜1）
+  // リトライ・拠点へ戻るときの白い雲の遷移
+  static constexpr float kCloudTransitionSec_ = 1.0f; // 秒
+  static constexpr Vector4 kCloudTransitionColor_ = {1.0f, 1.0f, 1.0f, 1.0f};
 
   // ステージ開始演出
   std::unique_ptr<StageIntro> stageIntro_;
@@ -133,6 +146,13 @@ private: // メンバ変数(ゲーム用)
   std::vector<std::unique_ptr<FloatingFortress>> fortresses_;
   static inline const std::string kFortressPrefabName_ = "FloatingFortress"; // 砦を出す出し方の名前
   static constexpr Vector4 kFortressPartColor_ = {1.0f, 0.2f, 0.2f, 1.0f};      // 砦の部品の色（ふだんの敵と同じ赤）
+  // 区間 3 の大蛇の出番（部品は runtimeEnemies_ に入る）
+  std::vector<std::unique_ptr<MechSerpent>> serpents_;
+  static inline const std::string kSerpentPrefabName_ = "MechSerpent"; // 大蛇を出す出し方の名前
+  // 迎撃の印（大蛇の光る節のまわりの放電と、自機へ走る電撃）
+  std::unique_ptr<InterceptCue> interceptCue_;
+  // 大蛇の出来事でカメラとレールを動かす
+  std::unique_ptr<SerpentCameraDirector> serpentCamera_;
   std::vector<Enemy *> enemyPtrs_;
 
   // ロード済みスプラインデータ (Blender JSON等から)
@@ -147,6 +167,7 @@ private: // メンバ変数(ゲーム用)
   // 配置オブジェクトのうち、敵を隠す箱（ワールド → 箱の中の座標の行列。毎フレーム作り直す）
   std::vector<Matrix4x4> lockOnOccluders_;
   static inline const std::string kOccluderModelPath_ = "__builtin_box"; // 敵を隠す箱のモデル（エンジン組み込みの一辺 1 の箱）
+  static inline const std::string kTowerPanelModelPath_ = "resources/models/tower/tower_panel.obj"; // 敵を隠す区間 3 の塔の面（一辺 1 の箱に格子を貼ったモデル）
 
   // ドラッグ中のプレビュー用オブジェクト
   std::unique_ptr<Object3d> previewObject_ = nullptr;
@@ -288,6 +309,23 @@ private:
   void UpdateClear();
 
   /// <summary>
+  /// ポーズ画面の更新（プレイ中に開き、選んだら再開・次のシーンへ）
+  /// </summary>
+  /// <param name="input">操作を受けるときの入力。nullptr なら操作を受けない</param>
+  /// <returns>このフレームの世界を止めるか（開いたフレームと閉じたフレームも止める）</returns>
+  bool UpdatePauseMenu(Input *input);
+
+  /// <summary>
+  /// 拠点へ降りずに、雲を抜けてもう一度ステージの開始演出から始める
+  /// </summary>
+  void RetryStage();
+
+  /// <summary>
+  /// 雲を抜けて降下し、ステージセレクト（雲の下の拠点）へ戻る
+  /// </summary>
+  void ReturnToBase();
+
+  /// <summary>
   /// ボスが出るレールの進み具合（ボスがいなければレールの終わり）
   /// </summary>
   float GetBossSpawnTime() const;
@@ -310,7 +348,12 @@ private:
   void SpawnFortress(const SpawnEvent &ev);
 
   /// <summary>
-  /// 出ている敵と砦をすべて消す
+  /// 大蛇の 1 回の出番と、その光る節を出す。光る節は撃破に数える敵として登録する
+  /// </summary>
+  void SpawnSerpent(const SpawnEvent &ev);
+
+  /// <summary>
+  /// 出ている敵と砦と大蛇をすべて消す
   /// </summary>
   void ClearRuntimeEnemies();
 

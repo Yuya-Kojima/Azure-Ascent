@@ -11,14 +11,16 @@ public:
   virtual ~IEnemyPartOwner() = default;
 
   /// <summary>
-  /// 持ち主の中の座標をワールド座標へ移す行列
+  /// 部品の付く所の中の座標をワールド座標へ移す行列
   /// </summary>
-  virtual const Matrix4x4 &GetPartFrame() const = 0;
+  /// <param name="index">部品の番号</param>
+  virtual const Matrix4x4 &GetPartFrame(int index) const = 0;
 
   /// <summary>
   /// 部品のモデルの向き（オイラー角）
   /// </summary>
-  virtual Vector3 GetPartRotation() const = 0;
+  /// <param name="index">部品の番号</param>
+  virtual Vector3 GetPartRotation(int index) const = 0;
 
   /// <summary>
   /// 撃つ役の部品が撃ってよいか
@@ -30,6 +32,15 @@ public:
   /// </summary>
   /// <param name="index">部品の番号</param>
   virtual void OnPartDestroyed(int index) = 0;
+
+  /// <summary>
+  /// 部品を今撃てるか（撃てない間はロックされず、弾も当たらない）
+  /// </summary>
+  /// <param name="index">部品の番号</param>
+  virtual bool IsPartActive(int index) const {
+    (void)index;
+    return true;
+  }
 };
 
 /// <summary>
@@ -42,7 +53,8 @@ public:
   enum class Role {
     Balloon,  // 気嚢
     Turret,   // 砲座（自機を撃つ）
-    Thruster  // 推進器
+    Thruster, // 推進器
+    Core      // 大蛇の光る節（溜めの間だけ撃てる）
   };
 
   EnemyPart();
@@ -56,6 +68,7 @@ public:
 
   void Update() override;
   void TakeDamage(int damage, bool isSelfDestruct = false) override;
+  bool CanBeLockedOn() const override { return IsActive(); }
   bool CanDespawnBehindCamera() const override { return false; }
 
   /// <summary>
@@ -63,10 +76,20 @@ public:
   /// </summary>
   void Vanish();
 
+  /// <summary>
+  /// 大きさを Setup で決めた大きさの k 倍にする
+  /// </summary>
+  void SetPulseScale(float k) { transform_.scale = baseScale_ * k; }
+
   Role GetRole() const { return role_; }
   const Vector3 &GetLocalPosition() const { return localPosition_; }
 
 private:
+  /// <summary>
+  /// 持ち主から見て今撃てるか
+  /// </summary>
+  bool IsActive() const { return !owner_ || owner_->IsPartActive(index_); }
+
   /// <summary>
   /// 砲座の役なら、撃ってよい間に自機の先回りの位置へ弾を撃つ
   /// </summary>
@@ -82,5 +105,6 @@ private:
   int index_ = 0;
   Role role_ = Role::Balloon;
   Vector3 localPosition_ = {0.0f, 0.0f, 0.0f};
+  Vector3 baseScale_ = {1.0f, 1.0f, 1.0f}; // Setup で決めた大きさ
   float fireTimer_ = 0.0f; // 撃ってよい間に進める時間（秒）
 };

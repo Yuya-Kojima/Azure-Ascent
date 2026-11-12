@@ -110,8 +110,7 @@ void DragonModel::UpdateGlow() {
 
 Matrix4x4 DragonModel::ComputeWorldMatrix() const {
   const Object3d *object = skinned_->GetObject3d();
-  Matrix4x4 world = MakeAffineMatrix(
-      object->GetScale(), object->GetRotation(), object->GetTranslation());
+  Matrix4x4 world = object->MakeTransformMatrix();
   if (const Object3d *parent = object->GetParent()) {
     world = Multiply(world, parent->GetWorldMatrix());
   }

@@ -20,6 +20,7 @@ void EnemyPart::Setup(IEnemyPartOwner *owner, int index, Role role,
   localPosition_ = localPosition;
   hp_ = 1;
   transform_.scale = halfSize * 2.0f;
+  baseScale_ = transform_.scale;
   fireTimer_ = kFireInterval_ - kFirstShotDelay_;
   if (collider_) {
     // 当たりの半径は自分の大きさ（transform_.scale）の最大の辺で掛けられるので、割っておいて一番短い半分の長さにする
@@ -28,22 +29,26 @@ void EnemyPart::Setup(IEnemyPartOwner *owner, int index, Role role,
     collider_->SetRadius(minHalf / maxScale);
   }
   if (owner_) {
-    transform_.translate = TransformPoint(localPosition_, owner_->GetPartFrame());
-    transform_.rotate = owner_->GetPartRotation();
+    transform_.translate = TransformPoint(localPosition_, owner_->GetPartFrame(index_));
+    transform_.rotate = owner_->GetPartRotation(index_);
   }
 }
 
 void EnemyPart::Update() {
   if (!IsDead() && owner_) {
-    transform_.translate = TransformPoint(localPosition_, owner_->GetPartFrame());
-    transform_.rotate = owner_->GetPartRotation();
+    transform_.translate = TransformPoint(localPosition_, owner_->GetPartFrame(index_));
+    transform_.rotate = owner_->GetPartRotation(index_);
     UpdateFire();
   }
   Enemy::Update();
+  // 撃てない間は、自機の弾が当たらない
+  if (!IsDead() && collider_) {
+    collider_->SetEnable(IsActive());
+  }
 }
 
 void EnemyPart::TakeDamage(int damage, bool isSelfDestruct) {
-  if (IsDead()) {
+  if (IsDead() || (!isSelfDestruct && !IsActive())) {
     return;
   }
   Enemy::TakeDamage(damage, isSelfDestruct);

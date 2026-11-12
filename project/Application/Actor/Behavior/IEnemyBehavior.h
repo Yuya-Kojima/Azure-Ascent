@@ -17,5 +17,5 @@ public:
   /// <summary>
   /// ロックオン可能かどうか（デフォルトは常に可能）
   /// </summary>
-  virtual bool IsLockOnTarget() const { return true; }
+  virtual bool CanBeLockedOn() const { return true; }
 };

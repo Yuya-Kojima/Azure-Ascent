@@ -169,6 +169,8 @@ copy "$(WindowsSdkDir)bin\$(TargetPlatformVersion)\x64\dxil.dll" "$(TargetDir)dx
     <ClCompile Include="Actor\BossWeakPoint.cpp" />
     <ClCompile Include="Actor\EnemyPart.cpp" />
     <ClCompile Include="Actor\FloatingFortress.cpp" />
+    <ClCompile Include="Actor\InterceptCue.cpp" />
+    <ClCompile Include="Actor\MechSerpent.cpp" />
     <ClCompile Include="Actor\BossCore.cpp" />
     <ClCompile Include="Actor\Enemy.cpp" />
     <ClCompile Include="Actor\EnemyLights.cpp" />
@@ -184,6 +186,7 @@ copy "$(WindowsSdkDir)bin\$(TargetPlatformVersion)\x64\dxil.dll" "$(TargetDir)dx
     <ClCompile Include="Actor\HomingBullet.cpp" />
     <ClCompile Include="Actor\LockOn.cpp" />
     <ClCompile Include="Actor\NormalBullet.cpp" />
+    <ClCompile Include="Camera\SerpentCameraDirector.cpp" />
     <ClCompile Include="Camera\RailCamera.cpp" />
     <ClCompile Include="Core\Game.cpp" />
     <ClCompile Include="Actor\Player.cpp" />
@@ -341,6 +344,9 @@ copy "$(WindowsSdkDir)bin\$(TargetPlatformVersion)\x64\dxil.dll" "$(TargetDir)dx
     <ClInclude Include="Actor\BossWeakPoint.h" />
     <ClInclude Include="Actor\EnemyPart.h" />
     <ClInclude Include="Actor\FloatingFortress.h" />
+    <ClInclude Include="Actor\ILockOnHittable.h" />
+    <ClInclude Include="Actor\InterceptCue.h" />
+    <ClInclude Include="Actor\MechSerpent.h" />
     <ClInclude Include="Actor\BossCore.h" />
     <ClInclude Include="Actor\Enemy.h" />
     <ClInclude Include="Actor\EnemyLights.h" />
@@ -356,6 +362,7 @@ copy "$(WindowsSdkDir)bin\$(TargetPlatformVersion)\x64\dxil.dll" "$(TargetDir)dx
     <ClInclude Include="Actor\HomingBullet.h" />
     <ClInclude Include="Actor\LockOn.h" />
     <ClInclude Include="Actor\NormalBullet.h" />
+    <ClInclude Include="Camera\SerpentCameraDirector.h" />
     <ClInclude Include="Camera\RailCamera.h" />
     <ClInclude Include="Core\Game.h" />
     <ClInclude Include="Core\GameTime.h" />

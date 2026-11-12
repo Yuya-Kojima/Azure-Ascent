@@ -77,8 +77,8 @@ public:
   bool IsFinished() const { return state_ == State::Finished; }
 
   // IEnemyPartOwner
-  const Matrix4x4 &GetPartFrame() const override { return frame_; }
-  Vector3 GetPartRotation() const override;
+  const Matrix4x4 &GetPartFrame(int) const override { return frame_; }
+  Vector3 GetPartRotation(int) const override;
   bool CanPartFire() const override;
   void OnPartDestroyed(int index) override;
 

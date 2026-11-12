@@ -251,7 +251,7 @@ void FloatingFortress::AppendOccluders(std::vector<Matrix4x4> &worldToBoxes) con
   }
 }
 
-Vector3 FloatingFortress::GetPartRotation() const {
+Vector3 FloatingFortress::GetPartRotation(int) const {
   return {pitch_, yaw_, roll_};
 }
 

@@ -16,13 +16,11 @@ void LockOn::Initialize(SpriteRenderer *spriteRenderer) {
     reticles_[i]->SetColor({0.3f, 1.2f, 1.8f, 1.0f});
   }
 
-  targets_.clear();
   targetInfos_.clear();
   lockOnDelayTimer_ = 0;
 }
 
 void LockOn::Clear() {
-  targets_.clear();
   targetInfos_.clear();
   lockOnDelayTimer_ = 0;
 }
@@ -34,7 +32,6 @@ void LockOn::ClearLocking() {
                        return info.state == TargetState::Locking;
                      }),
       targetInfos_.end());
-  targets_.clear();
   lockOnDelayTimer_ = 0;
 }
 
@@ -45,7 +42,6 @@ void LockOn::OnHomingFired() {
       info.state = TargetState::Tracking;
     }
   }
-  targets_.clear();
   lockOnDelayTimer_ = 0;
 }
 
@@ -55,11 +51,29 @@ void LockOn::RemoveTrackingTarget(BaseActor *target) {
 
   auto it = std::find_if(
       targetInfos_.begin(), targetInfos_.end(), [target](const TargetInfo &info) {
-        return info.actor == target && info.state == TargetState::Tracking;
+        return info.actor.Get() == target && info.state == TargetState::Tracking;
       });
   if (it != targetInfos_.end()) {
     targetInfos_.erase(it);
   }
+}
+
+std::vector<BaseActor *> LockOn::GetTargets() const {
+  std::vector<BaseActor *> targets;
+  targets.reserve(targetInfos_.size());
+  for (const auto &info : targetInfos_) {
+    BaseActor *actor = info.actor.Get();
+    if (info.state == TargetState::Locking && actor && !actor->IsDead()) {
+      targets.push_back(actor);
+    }
+  }
+  return targets;
+}
+
+size_t LockOn::GetLockingCount() const {
+  return std::count_if(
+      targetInfos_.begin(), targetInfos_.end(),
+      [](const TargetInfo &info) { return info.state == TargetState::Locking; });
 }
 
 void LockOn::Update(const std::vector<BaseActor *> &inputTargets,
@@ -72,7 +86,8 @@ void LockOn::Update(const std::vector<BaseActor *> &inputTargets,
 
   // 撃破などで消滅した敵をリストから除外
   for (auto it = targetInfos_.begin(); it != targetInfos_.end();) {
-    if (!it->actor || it->actor->IsDead()) {
+    BaseActor *actor = it->actor.Get();
+    if (!actor || actor->IsDead()) {
       it = targetInfos_.erase(it);
     } else {
       it->lockTime += 1.0f / 60.0f; // ロックオン・追尾経過時間を加算
@@ -89,9 +104,7 @@ void LockOn::Update(const std::vector<BaseActor *> &inputTargets,
   }
 
   // 現在準備中（Locking）の敵数を取得
-  size_t lockingCount = std::count_if(
-      targetInfos_.begin(), targetInfos_.end(),
-      [](const TargetInfo &info) { return info.state == TargetState::Locking; });
+  size_t lockingCount = GetLockingCount();
 
   // ロックオンモード（長押し中）かつ、1回の上限および総表示上限未満、ディレイ明けの場合のみ追加
   if (isLockOnMode && lockingCount < kMaxLockOnPerVolley &&
@@ -103,7 +116,7 @@ void LockOn::Update(const std::vector<BaseActor *> &inputTargets,
       // すでに捕捉中、または現在弾が追尾中の敵は除外（二重ロックオン・無駄撃ち防止）
       bool alreadyLocked = false;
       for (const auto &info : targetInfos_) {
-        if (info.actor == target) {
+        if (info.actor.Get() == target) {
           alreadyLocked = true;
           break;
         }
@@ -142,15 +155,6 @@ void LockOn::Update(const std::vector<BaseActor *> &inputTargets,
         lockOnDelayTimer_ = kLockOnInterval; // ディレイを開始
         break; // 1フレームに1体ずつロックオンする
       }
-    }
-  }
-
-  // 外部互換用ターゲット配列の同期（発射対象は Locking 状態の敵のみ）
-  targets_.clear();
-  targets_.reserve(lockingCount);
-  for (const auto &info : targetInfos_) {
-    if (info.state == TargetState::Locking) {
-      targets_.push_back(info.actor);
     }
   }
 }
@@ -199,7 +203,7 @@ void LockOn::Draw() {
   size_t drawCount = std::min(targetInfos_.size(), reticles_.size());
 
   for (size_t i = 0; i < drawCount; ++i) {
-    BaseActor *target = targetInfos_[i].actor;
+    BaseActor *target = targetInfos_[i].actor.Get();
     if (!target)
       continue;
 
