@@ -114,6 +114,8 @@ private:
       {0.0f, 0.0f, 0.0f},
       {0.0f, 0.0f, 0.0f},
   };
+  Quaternion rotationQuaternion_{0.0f, 0.0f, 0.0f, 1.0f};
+  bool useRotationQuaternion_ = false; // true の間は transform_.rotate の代わりに rotationQuaternion_ で回す
 
   Animation currentAnimation_;
   float animationTime_ = 0.0f;
@@ -135,6 +137,28 @@ public:
   Vector3 GetRotation() const { return transform_.rotate; }
 
   void SetRotation(const Vector3 &rotate) { transform_.rotate = rotate; }
+
+  /// <summary>
+  /// 回転をクォータニオンで渡す（ClearRotationQuaternion を呼ぶまで、角度の回転より優先する）
+  /// </summary>
+  void SetRotationQuaternion(const Quaternion &rotate) {
+    rotationQuaternion_ = rotate;
+    useRotationQuaternion_ = true;
+  }
+
+  /// <summary>
+  /// 角度の回転に戻す
+  /// </summary>
+  void ClearRotationQuaternion() { useRotationQuaternion_ = false; }
+
+  /// <summary>
+  /// 拡大・回転・位置の行列（親を掛ける前。クォータニオンを渡していればそれで回す）
+  /// </summary>
+  Matrix4x4 MakeTransformMatrix() const {
+    return useRotationQuaternion_
+               ? MakeAffineMatrix(transform_.scale, rotationQuaternion_, transform_.translate)
+               : MakeAffineMatrix(transform_.scale, transform_.rotate, transform_.translate);
+  }
 
   // translation
   Vector3 GetTranslation() const { return transform_.translate; }

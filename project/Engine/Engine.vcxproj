@@ -196,6 +196,7 @@
     <ClInclude Include="include\Collision\CollisionManager.h" />
     <ClInclude Include="include\Collision\SphereCollider.h" />
     <ClInclude Include="include\Framework\ActorManager.h" />
+    <ClInclude Include="include\Framework\ActorRef.h" />
     <ClInclude Include="include\Framework\BaseActor.h" />
     <ClInclude Include="include\Math\CollisionMath.h" />
     <ClInclude Include="include\Math\Geometry.h" />

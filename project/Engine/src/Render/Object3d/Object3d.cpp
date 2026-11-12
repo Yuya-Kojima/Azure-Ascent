@@ -72,8 +72,7 @@ void Object3d::Update() {
       localMatrix = MakeIdentity4x4();
   }
 
-  Matrix4x4 worldMatrix = MakeAffineMatrix(transform_.scale, transform_.rotate,
-                                           transform_.translate);
+  Matrix4x4 worldMatrix = MakeTransformMatrix();
 
   if (parent_) {
       worldMatrix = Multiply(worldMatrix, parent_->GetWorldMatrix());

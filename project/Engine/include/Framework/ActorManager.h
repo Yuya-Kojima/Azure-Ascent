@@ -45,6 +45,11 @@ public:
     /// </summary>
     std::vector<BaseActor*> FindActorsWithTag(ActorTag tag);
 
+    /// <summary>
+    /// 条件に一致する、生きているすべてのActorを取得する
+    /// </summary>
+    std::vector<BaseActor*> FindActorsIf(const std::function<bool(BaseActor*)>& condition);
+
 private:
     ActorManager() = default;
     ~ActorManager() = default;

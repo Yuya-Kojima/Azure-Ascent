@@ -61,6 +61,11 @@ public:
   void PlayBGM(const std::string &key);
   void StopBGM();
 
+  /// <summary>
+  /// BGM の音量（0〜1）。鳴っている BGM と、このあと鳴らす BGM に掛かる
+  /// </summary>
+  void SetBGMVolume(float volume);
+
   bool Exists(const std::string &key) const;
 
   SoundData SoundLoadFile(const std::string &filename);
@@ -108,6 +113,7 @@ private:
   // BGM（1本だけ）
   IXAudio2SourceVoice *bgmVoice_ = nullptr;
   std::string bgmKey_;
+  float bgmVolume_ = 1.0f;
 
   // SE（使い捨てvoice。Updateで回収）
   std::vector<IXAudio2SourceVoice *> seVoices_;

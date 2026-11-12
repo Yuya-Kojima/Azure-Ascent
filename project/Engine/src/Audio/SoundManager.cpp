@@ -461,6 +461,7 @@ void SoundManager::PlayBGM(const std::string &key) {
 
   hr = bgmVoice_->SubmitSourceBuffer(&buf);
   assert(SUCCEEDED(hr));
+  bgmVoice_->SetVolume(bgmVolume_);
   hr = bgmVoice_->Start();
   assert(SUCCEEDED(hr));
 
@@ -477,6 +478,13 @@ void SoundManager::StopBGM() {
   bgmVoice_->DestroyVoice();
   bgmVoice_ = nullptr;
   bgmKey_.clear();
+}
+
+void SoundManager::SetBGMVolume(float volume) {
+  bgmVolume_ = volume;
+  if (bgmVoice_) {
+    bgmVoice_->SetVolume(bgmVolume_);
+  }
 }
 
 bool SoundManager::Exists(const std::string &key) const {
