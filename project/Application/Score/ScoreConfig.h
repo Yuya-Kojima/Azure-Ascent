@@ -59,7 +59,7 @@ public:
   float maxLockMultiplier = 2.0f; // 最大ロック（8 体）の射撃に掛ける倍率
   int bossPoint = 10000;          // ボス撃破の点
   // スコアの基準（S, A, B の順）
-  std::array<int, kRankBorderCount> scoreBorders = {50000, 30000, 15000};
+  std::array<int, kRankBorderCount> scoreBorders = {57000, 38000, 22000};
   // 撃墜率の基準（0〜1。S, A, B の順）
   std::array<float, kRankBorderCount> killRateBorders = {0.9f, 0.75f, 0.5f};
 };
