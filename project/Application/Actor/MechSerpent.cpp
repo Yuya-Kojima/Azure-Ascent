@@ -44,7 +44,7 @@ Vector4 LerpColor(const Vector4 &a, const Vector4 &b, float k) {
 MechSerpent::MechSerpent() = default;
 MechSerpent::~MechSerpent() = default;
 
-void MechSerpent::Initialize(Object3dRenderer *renderer, RailCamera *railCamera, Player *player,
+void MechSerpent::Initialize(Object3dRenderer *renderer, const RailCamera *railCamera, Player *player,
                              InterceptCue *cue, const std::vector<Vector3> &path, float spawnT,
                              float pathSeconds, const SerpentSpec &spec) {
   path_ = path;
@@ -357,9 +357,7 @@ void MechSerpent::UpdateDying() {
     } else {
       SoundManager::GetInstance()->PlaySE("enemy_destroy");
     }
-    if (railCamera_) {
-      railCamera_->Shake(isHead ? kHeadExplosionShake_ : kExplosionShake_, kExplosionShakeSeconds_);
-    }
+    events_.push_back(isHead ? Event::HeadExploded : Event::SegmentExploded);
     explodedCount_++;
   }
 
@@ -379,12 +377,12 @@ void MechSerpent::UpdateWarn() {
   warnLamp_->SetColor({kWarnColor.x * brightness, kWarnColor.y * brightness,
                        kWarnColor.z * brightness, 1.0f});
 
-  // 出るまでの間、壁が揺れる（カメラを少しずつ揺らし続ける）
-  if (headSeconds_ < spec_.warnSeconds && railCamera_ && state_ == State::Approach) {
+  // 出るまでの間、決まった間隔で壁が揺れたと知らせる
+  if (headSeconds_ < spec_.warnSeconds && state_ == State::Approach) {
     warnShakeTimer_ -= kFrameTime_;
     if (warnShakeTimer_ <= 0.0f) {
       warnShakeTimer_ = kWarnShakeInterval_;
-      railCamera_->Shake(kWarnShakeIntensity_, kWarnShakeSeconds_);
+      events_.push_back(Event::WallRumbled);
     }
   }
 }

@@ -9,7 +9,7 @@
 #include "Render/Object3d/Object3d.h"
 class SphereCollider;
 class EnemyLights;
-class ICamera;
+class RailCamera;
 class IParticleEmitter;
 class ParticleEmitter;
 class Player;
@@ -94,8 +94,8 @@ public:
     behavior_ = std::move(behavior);
   }
 
-  void SetCamera(const ICamera *camera) { camera_ = camera; }
-  const ICamera *GetCamera() const { return camera_; }
+  void SetCamera(const RailCamera *camera) { camera_ = camera; }
+  const RailCamera *GetCamera() const { return camera_; }
 
   // ベースとなるカメラベクトル（RailCamera等の揺れを無視した純粋な空間軸）
   const Vector3 &GetBasePosition() const { return basePos_; }
@@ -148,7 +148,7 @@ protected:
       -1.0f}; // 進行方向ベクトル（デフォルトはワールドZマイナス方向）
   MoveType moveType_ = MoveType::Straight;
   std::unique_ptr<IEnemyBehavior> behavior_;
-  const ICamera *camera_ = nullptr;
+  const RailCamera *camera_ = nullptr;
   const Player *player_ = nullptr;
   static constexpr float kLeaveScreenMargin_ = 50.0f; // 画面の外とみなす余白（ピクセル）
   static constexpr float kLeaveScreenTime_ = 1.0f;    // 画面から去ったとみなす、画面の外に続けている時間（秒）

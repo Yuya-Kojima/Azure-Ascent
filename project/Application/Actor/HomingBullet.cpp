@@ -1,6 +1,6 @@
 #include "HomingBullet.h"
-#include "Actor/Enemy.h"
 #include "Actor/ILockOnHittable.h"
+#include "Collision/CollisionConfig.h"
 #include "Camera/RailCamera.h"
 #include "Collision/SphereCollider.h"
 #include "Debug/Logger.h"
@@ -32,7 +32,6 @@ const Vector4 kHomingHitColor = {0.6f, 2.5f, 4.0f, 1.0f};
 
 HomingBullet::HomingBullet() {}
 HomingBullet::~HomingBullet() {
-  FinishVolley();
   if (onDestroyCallback_) {
     onDestroyCallback_(originalTarget_.Get());
   }
@@ -100,10 +99,7 @@ void HomingBullet::Update() {
     target_.Reset();
     target = nullptr;
   }
-  // 狙う敵がいなければ、射撃の弾としては終わり
-  if (!target) {
-    FinishVolley();
-  } else {
+  if (target) {
     endPoint_ = target->GetTransform().translate;
   }
 
@@ -169,11 +165,11 @@ void HomingBullet::Arrive() {
 
   BaseActor *target = target_.Get();
 
-  // 射撃の弾の終わりを知らせるとその射撃の点が決まるので、先にダメージを与えて倒した数を射撃に足しておく
+  // 射撃の券を返すとその射撃の点が決まるので、先にダメージを与えて倒した数を射撃に足しておく
   auto *hittable = dynamic_cast<ILockOnHittable *>(target);
   if (hittable && !target->IsDead()) {
-    hittable->OnLockOnHit(damage_, volleyId_);
-    FinishVolley();
+    hittable->OnLockOnHit(damage_, volleyTicket_.GetVolleyId());
+    volleyTicket_.Finish();
 
     // ホーミング専用着弾演出（太く鋭い十字グリント＋高速プラズマリング）
     EffectManager::GetInstance()->PlayEffect(
@@ -184,7 +180,7 @@ void HomingBullet::Arrive() {
   }
 
   // 狙った敵がいないときは、終わりの点で小さく散る
-  FinishVolley();
+  volleyTicket_.Finish();
   EffectManager::GetInstance()->PlayEffect(
       EffectType::HitSpark, object3d_->GetTranslation(), kHomingHitColor);
 }
@@ -203,13 +199,13 @@ void HomingBullet::OnCollision(Collider *other) {
   }
 
   // 狙った敵を失った弾は、途中でぶつかった敵・敵の弾に当たる
+  // 当て方は狙った敵と同じ（射撃番号を覚えさせてからダメージ）
   if (other->GetAttribute() & kCollisionAttributeEnemy) {
-    Enemy *enemy = dynamic_cast<Enemy *>(owner);
-    if (enemy && !enemy->IsDead()) {
-      enemy->SetLastHitVolley(volleyId_);
-      enemy->TakeDamage(damage_);
+    auto *hittable = dynamic_cast<ILockOnHittable *>(owner);
+    if (hittable && !owner->IsDead()) {
+      hittable->OnLockOnHit(damage_, volleyTicket_.GetVolleyId());
       isDead_ = true;
-      FinishVolley();
+      volleyTicket_.Finish();
 
       // ホーミング専用着弾演出（太く鋭い十字グリント＋高速プラズマリング）
       EffectManager::GetInstance()->PlayEffect(
@@ -219,23 +215,13 @@ void HomingBullet::OnCollision(Collider *other) {
     }
   } else if (other->GetAttribute() & kCollisionAttributeEnemyBullet) {
     isDead_ = true;
-    FinishVolley();
+    volleyTicket_.Finish();
 
     // ホーミング専用着弾演出（迎撃時）
     EffectManager::GetInstance()->PlayEffect(
         EffectType::HomingHit, object3d_->GetTranslation(), kHomingHitColor);
 
     Logger::Log("Homing Bullet Intercepted EnemyBullet!\n");
-  }
-}
-
-void HomingBullet::FinishVolley() {
-  if (hasFinishedVolley_) {
-    return;
-  }
-  hasFinishedVolley_ = true;
-  if (onVolleyFinished_) {
-    onVolleyFinished_(volleyId_);
   }
 }
 

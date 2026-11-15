@@ -1,6 +1,6 @@
 #pragma once
 #include "Math/Vector3.h"
-#include "Score/VolleyId.h"
+#include "Score/VolleyTicket.h"
 #include <memory>
 #include <unordered_map>
 #include <vector>
@@ -9,7 +9,7 @@ class ScoreConfig;
 
 /// <summary>
 /// 1 回のプレイの点と撃墜率を数える
-/// ロックオンの一斉射撃に番号を振り、その射撃の弾が全部「当たった／狙った敵を失った」になった時点で、
+/// ロックオンの一斉射撃に番号を振って弾の数だけ券を渡し、券が全部返った時点で、
 /// 倒した数 n から点を確定する（n の二乗 × 1 体の点。最大ロックの 8 体はさらに倍率を掛ける）
 /// 出てきた敵には番号を振り、出たときのレールの進み具合を覚えて、逃した区間を数える
 /// </summary>
@@ -55,15 +55,11 @@ public:
   void Reset(const ScoreConfig *config, float bossSpawnTime);
 
   /// <summary>
-  /// 一斉射撃を始める。射撃の番号を返す
+  /// 一斉射撃を始め、弾 1 発に 1 枚の券を返す。券が全部返ると、その射撃の点が決まる
+  /// 券は、この数える係が先に消えていれば、返しても何もしない
   /// </summary>
   /// <param name="bulletCount">この射撃で出す弾の数</param>
-  int BeginVolley(int bulletCount);
-
-  /// <summary>
-  /// 一斉射撃の弾が 1 発、当たった・狙った敵を失った・出ずに捨てられた
-  /// </summary>
-  void FinishVolleyBullet(int volleyId);
+  std::vector<VolleyTicket> BeginVolley(int bulletCount);
 
   /// <summary>
   /// 敵が出てきた（ボスは除く）。敵の番号を返す
@@ -109,11 +105,6 @@ public:
   /// </summary>
   int GetWorstSection() const;
 
-  /// <summary>
-  /// 弾のコールバックがこの数える係を呼んでよいかを確かめる印（この係が消えると切れる）
-  /// </summary>
-  std::weak_ptr<bool> GetAliveToken() const { return aliveToken_; }
-
 private:
   // 一斉射撃
   struct Volley {
@@ -128,6 +119,9 @@ private:
     bool isKilled = false;
   };
 
+  // 一斉射撃の券が 1 枚返った。全部返ったら点を確定する
+  void FinishVolleyBullet(int volleyId);
+
   // 1 回の射撃で n 体倒したときの点を内訳に足し、出来事を残す
   void AddVolleyResult(int kills, const Vector3 &position);
 
@@ -138,5 +132,6 @@ private:
   std::vector<EnemyEntry> enemies_;
   Breakdown breakdown_;
   std::vector<ScoreEvent> events_;
+  // 券がこの係を呼んでよいかを確かめる印（この係が消えると切れる）
   std::shared_ptr<bool> aliveToken_;
 };

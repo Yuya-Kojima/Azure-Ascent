@@ -1,7 +1,7 @@
 #include "BehaviorMeteor.h"
 #include "Actor/Enemy.h"
 #include "Actor/Player.h"
-#include "Camera/ICamera.h"
+#include "Camera/RailCamera.h"
 #include <cmath>
 
 BehaviorMeteor::BehaviorMeteor() : stateTimer_(0.0f) {}

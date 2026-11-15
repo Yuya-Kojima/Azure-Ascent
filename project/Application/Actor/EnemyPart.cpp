@@ -71,7 +71,7 @@ void EnemyPart::UpdateFire() {
   if (role_ != Role::Turret || !owner_->CanPartFire() || !player_) {
     return;
   }
-  const RailCamera *rail = dynamic_cast<const RailCamera *>(camera_);
+  const RailCamera *rail = camera_;
   const Vector3 myPos = transform_.translate;
   const Vector3 playerPos = player_->GetTransform().translate;
 
@@ -101,7 +101,7 @@ void EnemyPart::UpdateFire() {
   auto bullet = std::make_unique<EnemyBullet>();
   bullet->Initialize(PrefabManager::GetInstance()->GetObject3dRenderer(), myPos,
                      aim * (EnemyBullet::kAimedShotSpeed_ / aimLength),
-                     const_cast<Player *>(player_),
+                     player_,
                      EnemyBulletType::NormalDestructible);
   ActorManager::GetInstance()->AddActor(std::move(bullet));
 }

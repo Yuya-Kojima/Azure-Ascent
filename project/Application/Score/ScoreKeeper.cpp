@@ -18,12 +18,23 @@ void ScoreKeeper::Reset(const ScoreConfig *config, float bossSpawnTime) {
   events_.clear();
 }
 
-int ScoreKeeper::BeginVolley(int bulletCount) {
+std::vector<VolleyTicket> ScoreKeeper::BeginVolley(int bulletCount) {
   const int id = nextVolleyId_++;
   Volley volley;
   volley.pendingBullets = bulletCount;
   volleys_[id] = volley;
-  return id;
+
+  std::vector<VolleyTicket> tickets;
+  tickets.reserve(bulletCount);
+  const std::weak_ptr<bool> alive = aliveToken_;
+  for (int i = 0; i < bulletCount; ++i) {
+    tickets.emplace_back(id, [this, alive](int volleyId) {
+      if (!alive.expired()) {
+        FinishVolleyBullet(volleyId);
+      }
+    });
+  }
+  return tickets;
 }
 
 void ScoreKeeper::FinishVolleyBullet(int volleyId) {

@@ -6,13 +6,13 @@
 #include <array>
 #include <functional>
 #include <memory>
+#include <utility>
 #include <vector>
 
 #include "Render/Object3d/Object3d.h"
 #include "Render/Sprite/Sprite.h"
 #include "Render/Texture/TextureManager.h"
 class SphereCollider;
-class ICamera;
 class Player;
 class SpriteRenderer;
 class BossWeakPoint;
@@ -71,10 +71,10 @@ public:
   void SetBaseColor(const Vector4 &color) { baseColor_ = color; }
   const Vector4 &GetBaseColor() const { return baseColor_; }
 
-  void SetCamera(const ICamera *camera) { camera_ = camera; }
   void SetPlayer(const Player *player) { player_ = player; }
 
   Transform &GetTransform() { return transform_; }
+  const Transform &GetTransform() const { return transform_; }
 
   // ステータスのゲッター/セッター
   int GetHP() const { return hp_; }
@@ -82,6 +82,21 @@ public:
   int GetMaxHP() const { return maxHp_; }
   void SetMaxHP(int hp) { maxHp_ = hp; }
   BossPhase GetPhase() const { return phase_; }
+
+  // カメラに関わる出来事（受け取ったシーンがカメラを動かす）
+  enum class CameraEvent {
+    CounterSucceeded,  // 突進中の弱点を全部壊された
+    BarrageFired,      // 弾をばらまいた
+    MissilesDeployed,  // ミサイルを出した
+    DashStarted,       // 突進を始めた
+    TransitionStarted, // 形態変化が始まった
+    TransitionEnded,   // 形態変化が終わった
+  };
+  // 前に受け取ってから積んだ出来事を、起きた順に返して空にする
+  std::vector<CameraEvent> TakeEvents() { return std::exchange(cameraEvents_, {}); }
+
+  // 形態変化の進み（0〜1）。形態変化中でなければ 0
+  float GetTransitionProgress() const;
 
   // ダメージを受ける処理
   void TakeDamage(int damage, bool isSelfDestruct = false) override;
@@ -96,6 +111,8 @@ private:
 
   int maxHp_ = 100;
   BossPhase phase_ = BossPhase::Phase1;
+  static constexpr float kTransitionSeconds_ = 3.5f; // 形態変化にかける秒数
+  std::vector<CameraEvent> cameraEvents_; // まだ受け取られていないカメラの出来事
 
   // ステートマシン管理
   enum class BossState {

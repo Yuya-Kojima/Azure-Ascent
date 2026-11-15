@@ -43,7 +43,7 @@ FloatingFortress::GetPartSpecs() {
 }
 
 void FloatingFortress::Initialize(Object3dRenderer *renderer,
-                                  RailCamera *railCamera,
+                                  const RailCamera *railCamera,
                                   const std::vector<Vector3> &path,
                                   float spawnT, float pathSeconds,
                                   std::optional<float> heading) {
@@ -293,9 +293,13 @@ void FloatingFortress::Explode() {
   }
   EffectManager::GetInstance()->PlayShockwave(position_);
   SoundManager::GetInstance()->PlaySE("boss_explosion");
-  if (railCamera_) {
-    railCamera_->Shake(kShakeIntensity_, kShakeSeconds_);
-  }
+  events_.push_back(Event::Destroyed);
+}
+
+std::vector<FloatingFortress::Event> FloatingFortress::TakeEvents() {
+  std::vector<Event> events;
+  events.swap(events_);
+  return events;
 }
 
 void FloatingFortress::EmitThrusterFlames() {

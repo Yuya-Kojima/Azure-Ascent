@@ -4,6 +4,7 @@
 #include "Math/Transform.h"
 #include "Math/Vector2.h"
 #include "Math/Vector3.h"
+#include <numbers>
 #include <vector>
 
 /// <summary>
@@ -80,7 +81,7 @@ public:
   bool IsLookHeld() const { return isLookHeld_; }
 
   /// <summary>
-  /// 注視・顔の向きの止め・速さの倍率を、何もしていない状態に戻す
+  /// 注視・画角・顔の向きの止め・速さの倍率を、何もしていない状態に戻す
   /// </summary>
   void ResetEventControls();
   const Vector3& GetRotate() const { return transform_.rotate; }
@@ -231,11 +232,18 @@ private:
 public:
   void SetPlayerWorldPosition(const Vector3& pos) { playerWorldPos_ = pos; }
   
-  // ボスなどの特定の対象を注視するための機能
-  void SetFocusTarget(const Vector3* target) { focusTarget_ = target; }
-  void SetFocusWeight(float weight) { focusWeight_ = weight; }
+  // 構図の注視点を point へ weight（0〜1）の割合で寄せる。注視する間は毎フレーム呼ぶ
+  void SetFocus(const Vector3& point, float weight) {
+    focusPoint_ = point;
+    focusWeight_ = weight;
+  }
+  // 注視をやめる
+  void ClearFocus() { focusWeight_ = 0.0f; }
+
+  // 画角の初期値（ラジアン）
+  static constexpr float kDefaultFov_ = 45.0f * (std::numbers::pi_v<float> / 180.0f);
 
 private:
-  const Vector3* focusTarget_ = nullptr;
+  Vector3 focusPoint_ = {0.0f, 0.0f, 0.0f};
   float focusWeight_ = 0.0f;
 };

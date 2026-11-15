@@ -42,9 +42,12 @@ public:
 
   // 外へ知らせる出来事
   enum class Event {
-    Appeared,      // 頭が壁の穴から出た
-    ChargeStarted, // 止まって溜め始めた
-    Ended          // 出番が終わった（最後の見せ場で倒されて爆発し終えた・電撃のあと去り始めた）
+    Appeared,        // 頭が壁の穴から出た
+    ChargeStarted,   // 止まって溜め始めた
+    Ended,           // 出番が終わった（最後の見せ場で倒されて爆発し終えた・電撃のあと去り始めた）
+    SegmentExploded, // 倒された体の節が 1 個爆発した
+    HeadExploded,    // 倒された頭が爆発した
+    WallRumbled      // 出る前の前触れで壁が揺れた（前触れの間、決まった間隔で出る）
   };
 
   // 部品 1 個の決まり（付く節・役・節の中の位置・半分の大きさ・色）。節の中の座標は x 右・y 外（カメラの側）・z 前
@@ -63,14 +66,14 @@ public:
   /// 初期化
   /// </summary>
   /// <param name="renderer">箱を描く描画係</param>
-  /// <param name="railCamera">進み具合 t を読み、前触れ・爆発で揺らすカメラ</param>
+  /// <param name="railCamera">進み具合 t とレールの位置を読むカメラ</param>
   /// <param name="player">電撃を当てる自機</param>
   /// <param name="cue">迎撃の印を描く係</param>
   /// <param name="path">頭のワールドの道筋の点（点と点の間は同じ秒数）</param>
   /// <param name="spawnT">出たときのレールの進み具合</param>
   /// <param name="pathSeconds">道筋を走り切る秒数（止まる間は入らない）</param>
   /// <param name="spec">この出番の決まり</param>
-  void Initialize(Object3dRenderer *renderer, RailCamera *railCamera, Player *player,
+  void Initialize(Object3dRenderer *renderer, const RailCamera *railCamera, Player *player,
                   InterceptCue *cue, const std::vector<Vector3> &path, float spawnT,
                   float pathSeconds, const SerpentSpec &spec);
 
@@ -215,24 +218,19 @@ private:
   static constexpr float kDyingSparkScale_ = 2.5f;         // 電気の火花の大きさの倍率
   static constexpr float kExplosionScale_ = 3.0f;          // 節 1 個の爆発の大きさの倍率
   static constexpr float kHeadExplosionScale_ = 5.0f;      // 頭の爆発の大きさの倍率
-  static constexpr float kExplosionShake_ = 0.35f;         // 節 1 個の爆発でカメラを揺らす強さ
-  static constexpr float kHeadExplosionShake_ = 0.8f;      // 頭の爆発でカメラを揺らす強さ
-  static constexpr float kExplosionShakeSeconds_ = 0.3f;   // 爆発でカメラを揺らす秒数
   static constexpr float kWarnLampHalfX_ = 7.0f;           // 前触れの灯りの横の半分の大きさ（m）
   static constexpr float kWarnLampHalfY_ = 7.0f;           // 前触れの灯りの縦の半分の大きさ（m）
   static constexpr float kWarnLampHalfZ_ = 0.8f;           // 前触れの灯りの厚みの半分（m）
   static constexpr float kWarnLampOut_ = 1.2f;             // 前触れの灯りを壁の穴の中心から外へ出す距離（m）
   static constexpr float kWarnPulseSpeed_ = 12.0f;         // 前触れの灯りが明滅する速さ（ラジアン/秒）
   static constexpr float kWarnLinger_ = 0.4f;              // 出てからも灯りを残す秒数
-  static constexpr float kWarnShakeInterval_ = 0.25f;      // 前触れの間にカメラを揺らす間隔（秒）
-  static constexpr float kWarnShakeIntensity_ = 0.2f;      // 前触れの揺れの強さ
-  static constexpr float kWarnShakeSeconds_ = 0.3f;        // 前触れの揺れ 1 回の秒数
+  static constexpr float kWarnShakeInterval_ = 0.25f;      // 前触れの間に壁が揺れる間隔（秒）
 
   std::vector<Vector3> path_;
   std::vector<float> arcIndex_;  // 長さの表の、道筋の点の番号
   std::vector<float> arcLength_; // 長さの表の、道筋の初めからの長さ（m）
   float pathSeconds_ = 1.0f;
-  RailCamera *railCamera_ = nullptr;
+  const RailCamera *railCamera_ = nullptr;
   Player *player_ = nullptr;
   InterceptCue *cue_ = nullptr;
   float headSeconds_ = 0.0f;   // 頭が道筋の初めから進んだ秒数（止まる間は進まない）

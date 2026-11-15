@@ -54,7 +54,7 @@ void BehaviorTurret::Update(Enemy* enemy) {
   shotTimer_ += 1.0f / 60.0f;
 
   // 2. 弾が届くころの自機の位置（レールに沿って先回りした位置）を求める
-  Vector3 futurePlayerPos = PredictPlayerPos(dynamic_cast<const RailCamera*>(camera), myPos, playerPos, config_.bulletSpeed);
+  Vector3 futurePlayerPos = PredictPlayerPos(camera, myPos, playerPos, config_.bulletSpeed);
 
   // 3. 照準（エイム）：自機が近すぎない限り未来位置を注視
   Vector3 aimDir = {futurePlayerPos.x - myPos.x, futurePlayerPos.y - myPos.y, futurePlayerPos.z - myPos.z};
@@ -87,7 +87,7 @@ void BehaviorTurret::Update(Enemy* enemy) {
           PrefabManager::GetInstance()->GetObject3dRenderer(),
           myPos,
           bulletVelocity,
-          const_cast<Player*>(player),
+          player,
           EnemyBulletType::NormalDestructible
       );
       ActorManager::GetInstance()->AddActor(std::move(bullet));
@@ -108,7 +108,7 @@ void BehaviorTurret::Update(Enemy* enemy) {
           PrefabManager::GetInstance()->GetObject3dRenderer(),
           myPos,
           bulletVelocity,
-          const_cast<Player*>(player),
+          player,
           EnemyBulletType::NormalDestructible
       );
       ActorManager::GetInstance()->AddActor(std::move(bullet));

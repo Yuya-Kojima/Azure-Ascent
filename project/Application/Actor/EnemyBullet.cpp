@@ -23,7 +23,7 @@ EnemyBullet::~EnemyBullet() {
 
 void EnemyBullet::Initialize(Object3dRenderer *renderer,
                              const Vector3 &startPos, const Vector3 &velocity,
-                             Player *player, EnemyBulletType type) {
+                             const Player *player, EnemyBulletType type) {
   renderer_ = renderer;
   object3d_ = std::make_unique<Object3d>();
   object3d_->Initialize(renderer);

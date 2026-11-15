@@ -18,6 +18,7 @@
 #include "Audio/SoundManager.h"
 #include "Camera/GameCamera.h"
 #include "Camera/SerpentCameraDirector.h"
+#include "Camera/BossCameraDirector.h"
 #include "Debug/DebugCamera.h"
 #include "Debug/ImGuiManager.h"
 #include "Debug/Logger.h"
@@ -322,6 +323,7 @@ void GamePlayScene::Initialize(EngineBase *engine) {
   interceptCue_->Initialize(engine_->GetSpriteRenderer());
   serpentCamera_ = std::make_unique<SerpentCameraDirector>();
   serpentCamera_->Initialize();
+  bossCamera_ = std::make_unique<BossCameraDirector>();
 
   // 評価
   scoreConfig_.Load();
@@ -344,7 +346,11 @@ void GamePlayScene::Initialize(EngineBase *engine) {
   player_->SetSpriteRenderer(engine_->GetSpriteRenderer());
   player_->SetObject3dRenderer(engine_->GetObject3dRenderer());
   player_->SetInput(engine_->GetInputManager());
-  player_->SetHitStopCallback([this](int frames) { RequestHitStop(frames); });
+  // 自機の被弾: ヒットストップをかけてカメラを揺らす
+  player_->SetOnDamagedCallback([this]() {
+    RequestHitStop(kPlayerDamagedHitStopFrames_);
+    railCamera_->Shake(kPlayerDamagedShakeIntensity_, kPlayerDamagedShakeSeconds_);
+  });
   player_->SetScoreKeeper(scoreKeeper_.get());
 
   // プレイヤーの初期化（照準やコライダーの生成など）
@@ -521,7 +527,7 @@ void GamePlayScene::Update() {
       // ボスが生きている場合はレールが終わってもクリアにしない
       bool isBossActive = false;
       for (const auto &enemy : runtimeEnemies_) {
-        if (dynamic_cast<Boss *>(enemy.get())) {
+        if (enemy->IsBoss()) {
           isBossActive = true;
           break;
         }
@@ -727,6 +733,7 @@ void GamePlayScene::Update() {
 
         if (ev.prefabName == "Boss") {
           if (auto boss = dynamic_cast<Boss *>(enemyPtr)) {
+            boss_ = ActorRef<Boss>(boss);
             boss->InitializeUI(engine_->GetSpriteRenderer());
             boss->SetCamera(railCamera_.get());
             boss->SetPlayer(player_.get());
@@ -765,15 +772,7 @@ void GamePlayScene::Update() {
             StartClear();
           });
         } else if (isPlayMode_) {
-          const int scoreId = scoreKeeper_->OnEnemySpawned(ev.spawnTime);
-          newEnemy->SetOnDestroyedCallback(
-              [this, scoreId, enemyPtr](bool isSelfDestruct) {
-                if (!isSelfDestruct) {
-                  scoreKeeper_->OnEnemyKilled(scoreId,
-                                              enemyPtr->GetLastHitVolley(),
-                                              enemyPtr->GetTransform().translate);
-                }
-              });
+          CountEnemyForScore(enemyPtr, ev.spawnTime);
         }
 
         // Playモード時のみ実際の敵を生成
@@ -795,6 +794,12 @@ void GamePlayScene::Update() {
     } else {
       fortress->UpdateTransform();
     }
+    // 砦が爆発したらカメラを揺らす
+    for (FloatingFortress::Event event : fortress->TakeEvents()) {
+      if (event == FloatingFortress::Event::Destroyed) {
+        railCamera_->Shake(kFortressDestroyedShakeIntensity_, kFortressDestroyedShakeSeconds_);
+      }
+    }
   }
   for (auto &serpent : serpents_) {
     if (shouldUpdateWorld) {
@@ -815,6 +820,16 @@ void GamePlayScene::Update() {
     } else {
       enemy->UpdateTransform();
     }
+  }
+  // ボスの出来事でカメラを動かす（世界が止まっている間は動かさない）
+  if (shouldUpdateWorld) {
+    Boss *boss = boss_.Get();
+    if (boss) {
+      for (Boss::CameraEvent event : boss->TakeEvents()) {
+        bossCamera_->OnEvent(event, *railCamera_);
+      }
+    }
+    bossCamera_->Update(boss, *railCamera_);
   }
   for (auto &obj : sceneObjects_) {
     obj->Update();
@@ -1708,8 +1723,8 @@ void GamePlayScene::DrawEditorUI() {
     ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.8f, 0.2f, 0.2f, 1.0f));
     if (ImGui::Button(" [ KILL BOSS ] ")) {
       for (auto &enemy : runtimeEnemies_) {
-        if (Boss *boss = dynamic_cast<Boss *>(enemy.get())) {
-          boss->TakeDamage(99999);
+        if (enemy->IsBoss()) {
+          enemy->TakeDamage(99999);
         }
       }
     }
@@ -2798,14 +2813,7 @@ void GamePlayScene::SpawnFortress(const SpawnEvent &ev) {
     fortress->SetPart(i, part.get());
 
     // ふだんの敵と同じに、出た敵として数え、自機の弾で倒したときだけ撃破に数える
-    EnemyPart *partPtr = part.get();
-    const int scoreId = scoreKeeper_->OnEnemySpawned(ev.spawnTime);
-    part->SetOnDestroyedCallback([this, scoreId, partPtr](bool isSelfDestruct) {
-      if (!isSelfDestruct) {
-        scoreKeeper_->OnEnemyKilled(scoreId, partPtr->GetLastHitVolley(),
-                                    partPtr->GetTransform().translate);
-      }
-    });
+    CountEnemyForScore(part.get(), ev.spawnTime);
     runtimeEnemies_.push_back(std::move(part));
   }
   fortresses_.push_back(std::move(fortress));
@@ -2840,17 +2848,20 @@ void GamePlayScene::SpawnSerpent(const SpawnEvent &ev) {
     serpent->SetPart(i, part.get());
 
     // ふだんの敵と同じに、出た敵として数え、自機の弾で倒したときだけ撃破に数える
-    EnemyPart *partPtr = part.get();
-    const int scoreId = scoreKeeper_->OnEnemySpawned(ev.spawnTime);
-    part->SetOnDestroyedCallback([this, scoreId, partPtr](bool isSelfDestruct) {
-      if (!isSelfDestruct) {
-        scoreKeeper_->OnEnemyKilled(scoreId, partPtr->GetLastHitVolley(),
-                                    partPtr->GetTransform().translate);
-      }
-    });
+    CountEnemyForScore(part.get(), ev.spawnTime);
     runtimeEnemies_.push_back(std::move(part));
   }
   serpents_.push_back(std::move(serpent));
+}
+
+void GamePlayScene::CountEnemyForScore(Enemy *enemy, float spawnTime) {
+  const int scoreId = scoreKeeper_->OnEnemySpawned(spawnTime);
+  enemy->SetOnDestroyedCallback([this, scoreId, enemy](bool isSelfDestruct) {
+    if (!isSelfDestruct) {
+      scoreKeeper_->OnEnemyKilled(scoreId, enemy->GetLastHitVolley(),
+                                  enemy->GetTransform().translate);
+    }
+  });
 }
 
 void GamePlayScene::ClearRuntimeEnemies() {
@@ -2859,6 +2870,10 @@ void GamePlayScene::ClearRuntimeEnemies() {
   serpents_.clear();
   if (interceptCue_) {
     interceptCue_->Clear();
+  }
+  boss_.Reset();
+  if (bossCamera_) {
+    bossCamera_->Reset();
   }
   if (railCamera_) {
     railCamera_->ResetEventControls();

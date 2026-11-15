@@ -38,6 +38,15 @@ void SerpentCameraDirector::OnEvent(MechSerpent::Event event, const MechSerpent 
       railCamera.ReleaseLook(climaxLookReleaseSeconds_);
     }
     break;
+  case MechSerpent::Event::SegmentExploded:
+    railCamera.Shake(kSegmentExplosionShake_, kExplosionShakeSeconds_);
+    break;
+  case MechSerpent::Event::HeadExploded:
+    railCamera.Shake(kHeadExplosionShake_, kExplosionShakeSeconds_);
+    break;
+  case MechSerpent::Event::WallRumbled:
+    railCamera.Shake(kWallRumbleShakeIntensity_, kWallRumbleShakeSeconds_);
+    break;
   }
 }
 

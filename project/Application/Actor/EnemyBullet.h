@@ -24,7 +24,7 @@ public:
   EnemyBullet();
   ~EnemyBullet() override;
 
-  void Initialize(Object3dRenderer* renderer, const Vector3& startPos, const Vector3& velocity, Player* player, EnemyBulletType type = EnemyBulletType::NormalDestructible);
+  void Initialize(Object3dRenderer* renderer, const Vector3& startPos, const Vector3& velocity, const Player* player, EnemyBulletType type = EnemyBulletType::NormalDestructible);
   
   void Update() override;
   void Draw3D() override;
@@ -49,7 +49,7 @@ private:
   int lifeTimer_ = 0;
   int hp_ = 1;
   Object3dRenderer* renderer_ = nullptr;
-  Player* player_ = nullptr;
+  const Player* player_ = nullptr;
   EnemyBulletType type_ = EnemyBulletType::NormalDestructible;
 
   // 誘導弾用パラメータ

@@ -29,7 +29,7 @@ RailCamera::RailCamera() {
   transform_.rotate = {0.0f, 0.0f, 0.0f};
   transform_.translate = {0.0f, 0.0f, 0.0f};
 
-  fov_ = 45.0f * (std::numbers::pi_v<float> / 180.0f);
+  fov_ = kDefaultFov_;
   aspectRatio_ = 1280.0f / 720.0f;
   nearClip_ = 0.1f;
   farClip_ = 1000.0f;
@@ -96,11 +96,11 @@ void RailCamera::Update() {
   Vector3 frameTarget = framePos + tangentNow * kLookDistance_ + Vector3{0.0f, -kLookDown_, 0.0f};
   Vector3 frameUp = upApprox;
 
-  // フォーカス対象が設定されている場合は注視点をそちらに向ける
-  if (focusTarget_ && focusWeight_ > 0.0f) {
-    frameTarget.x = Lerp(frameTarget.x, focusTarget_->x, focusWeight_);
-    frameTarget.y = Lerp(frameTarget.y, focusTarget_->y, focusWeight_);
-    frameTarget.z = Lerp(frameTarget.z, focusTarget_->z, focusWeight_);
+  // 注視の重みがあるときは注視点をそちらへ寄せる
+  if (focusWeight_ > 0.0f) {
+    frameTarget.x = Lerp(frameTarget.x, focusPoint_.x, focusWeight_);
+    frameTarget.y = Lerp(frameTarget.y, focusPoint_.y, focusWeight_);
+    frameTarget.z = Lerp(frameTarget.z, focusPoint_.z, focusWeight_);
   }
 
   // 顔の向きのキー（位置をレールの右へずらし、見る向きを振って傾ける）
@@ -369,4 +369,6 @@ void RailCamera::ResetEventControls() {
   isLookHeld_ = false;
   lookReleaseTimer_ = 0.0f;
   lookReleaseSeconds_ = 0.0f;
+  focusWeight_ = 0.0f;
+  fov_ = kDefaultFov_;
 }
