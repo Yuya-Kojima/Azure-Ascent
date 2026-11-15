@@ -446,20 +446,18 @@ void Player::FireHomingShot() {
   if (targets.empty())
     return;
 
-  // 前の射撃でまだ出ていない弾は捨てるので、その射撃の弾としては終わりにする
-  for (const HomingQueueItem &item : homingQueue_) {
-    FinishVolleyBullet(item.volleyId);
-  }
-
-  // 射撃に番号を振り、発射キューにロックオン対象をすべて登録
-  const int volleyId =
-      scoreKeeper_ ? scoreKeeper_->BeginVolley(static_cast<int>(targets.size()))
-                   : kNoVolleyId;
+  // 前の射撃でまだ出ていない弾は捨てる（捨てた弾の券はここで返る）
   homingQueue_.clear();
+
+  // 射撃を始めて弾の数だけ券を受け取り、発射キューにロックオン対象と券を 1 つずつ登録
+  const int bulletCount = static_cast<int>(targets.size());
+  std::vector<VolleyTicket> tickets =
+      scoreKeeper_ ? scoreKeeper_->BeginVolley(bulletCount)
+                   : std::vector<VolleyTicket>(targets.size());
   homingQueue_.reserve(targets.size());
   for (size_t i = 0; i < targets.size(); ++i) {
-    homingQueue_.push_back({targets[i], static_cast<int>(i),
-                            static_cast<int>(targets.size()), volleyId});
+    homingQueue_.push_back({targets[i], static_cast<int>(i), bulletCount,
+                            std::move(tickets[i])});
   }
 
   // 捕捉中の敵をすべて追尾中（Tracking）マーカーへ昇格（targets_がクリアされる）
@@ -480,7 +478,7 @@ void Player::UpdateHomingQueue() {
   }
 
   // キューの先頭を取り出して発射
-  HomingQueueItem item = homingQueue_.front();
+  HomingQueueItem item = std::move(homingQueue_.front());
   homingQueue_.erase(homingQueue_.begin());
   homingFireTimer_ = kHomingFireInterval; // 次の弾まで数フレーム待機
 
@@ -490,13 +488,8 @@ void Player::UpdateHomingQueue() {
     validTarget = nullptr;
   }
 
-  SpawnHomingBullet(validTarget, item.index, item.totalCount, item.volleyId);
-}
-
-void Player::FinishVolleyBullet(int volleyId) {
-  if (scoreKeeper_ && volleyId != kNoVolleyId) {
-    scoreKeeper_->FinishVolleyBullet(volleyId);
-  }
+  SpawnHomingBullet(validTarget, item.index, item.totalCount,
+                    std::move(item.ticket));
 }
 
 int Player::GetLockingCount() const {
@@ -509,10 +502,9 @@ Vector2 Player::GetReticlePosition() const {
 }
 
 void Player::SpawnHomingBullet(BaseActor *target, int index, int totalCount,
-                               int volleyId) {
-  // 弾を出せないときは、射撃の弾としては終わりにする
+                               VolleyTicket ticket) {
+  // 弾を出せないときは、券がここで消えて返る
   if (!object3dRenderer_ || !GetBodyObject() || !camera_) {
-    FinishVolleyBullet(volleyId);
     return;
   }
 
@@ -579,16 +571,8 @@ void Player::SpawnHomingBullet(BaseActor *target, int index, int totalCount,
     }
   });
 
-  // 射撃の弾が終わったら数える係へ知らせる（係が先に消えていれば何もしない）
-  if (scoreKeeper_ && volleyId != kNoVolleyId) {
-    ScoreKeeper *keeper = scoreKeeper_;
-    std::weak_ptr<bool> keeperAlive = scoreKeeper_->GetAliveToken();
-    bullet->SetVolley(volleyId, [keeper, keeperAlive](int id) {
-      if (!keeperAlive.expired()) {
-        keeper->FinishVolleyBullet(id);
-      }
-    });
-  }
+  // 射撃の券は弾に持たせる（弾が当たる・着く・消えると返る）
+  bullet->SetVolleyTicket(std::move(ticket));
 
   ActorManager::GetInstance()->AddActor(std::move(bullet));
 
@@ -746,16 +730,8 @@ void Player::TakeDamage(int damage) {
     flashColor_ = {1.0f, 0.0f, 0.0f}; // 被弾フラッシュ用カラー（赤）
     flashIntensity_ = 0.6f;           // フラッシュ強度設定
 
-    // 被弾時のカメラシェイク（強さ0.5, 時間0.2秒）
-    auto railCamera =
-        const_cast<RailCamera *>(dynamic_cast<const RailCamera *>(camera_));
-    if (railCamera) {
-      railCamera->Shake(0.5f, 0.2f);
-    }
-
-    // ヒットストップを要求
-    if (hitStopCallback_) {
-      hitStopCallback_(5);
+    if (onDamagedCallback_) {
+      onDamagedCallback_();
     }
 
     if (hp_ <= 0) {

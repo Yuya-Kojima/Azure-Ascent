@@ -5,7 +5,7 @@
 #include <functional>
 #include <memory>
 #include <vector>
-#include "Score/VolleyId.h"
+#include "Score/VolleyTicket.h"
 
 class Object3d;
 class Object3dRenderer;
@@ -37,11 +37,8 @@ public:
     onDestroyCallback_ = callback;
   }
 
-  // この弾の射撃番号と、弾が当たった・狙った敵を失った・消えたときに一度だけ呼ぶコールバック
-  void SetVolley(int volleyId, std::function<void(int)> onFinished) {
-    volleyId_ = volleyId;
-    onVolleyFinished_ = onFinished;
-  }
+  // この弾の射撃の券（当たった・着いた・迎撃した・消えたときに返る）
+  void SetVolleyTicket(VolleyTicket ticket) { volleyTicket_ = std::move(ticket); }
 
   void Update() override;
   void Draw3D() override;
@@ -75,13 +72,8 @@ private:
   // 消滅時コールバック
   std::function<void(BaseActor*)> onDestroyCallback_;
 
-  // 射撃番号と、射撃の弾が終わったことを知らせるコールバック
-  int volleyId_ = kNoVolleyId;
-  std::function<void(int)> onVolleyFinished_;
-  bool hasFinishedVolley_ = false;
-
-  // 射撃の弾が終わったことを一度だけ知らせる
-  void FinishVolley();
+  // 射撃の券。返さないまま弾が消えたときは、メンバの破棄で返る
+  VolleyTicket volleyTicket_;
 
   // ベジェの s（0〜1）の所のワールド位置
   Vector3 CalcPosition(float s) const;

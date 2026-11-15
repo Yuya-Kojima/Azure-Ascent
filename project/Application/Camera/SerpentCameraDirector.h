@@ -9,6 +9,7 @@ class RailCamera;
 /// 区間 3 の大蛇の出来事に合わせて、カメラとレールの速さを動かす
 /// 溜め始めたら画角を狭めて保って戻す合図を出し、最後の見せ場の溜めが始まったらレールを遅くし、最後の見せ場が終わったら速さと顔の向きを戻す
 /// 最後の見せ場の大蛇が出てから終わるまでは、顔の向きのキーを決めた t の所で止める
+/// 前触れで壁が揺れたとき・倒された節や頭が爆発したときはカメラを揺らす
 /// </summary>
 class SerpentCameraDirector {
 public:
@@ -51,4 +52,11 @@ private:
   // 最後の見せ場の間の顔の向き
   float climaxLookHoldT_ = 17.8f;      // 最後の見せ場の大蛇が出てから終わるまで、顔の向きのキーを止める t
   float climaxLookReleaseSeconds_ = 2.0f; // 最後の見せ場が終わってから顔の向きを今の t の値へ戻す秒数
+
+  // 揺れ
+  static constexpr float kSegmentExplosionShake_ = 0.35f;   // 体の節 1 個の爆発で揺らす強さ
+  static constexpr float kHeadExplosionShake_ = 0.8f;       // 頭の爆発で揺らす強さ
+  static constexpr float kExplosionShakeSeconds_ = 0.3f;    // 爆発で揺らす秒数
+  static constexpr float kWallRumbleShakeIntensity_ = 0.2f; // 前触れで壁が揺れたときに揺らす強さ
+  static constexpr float kWallRumbleShakeSeconds_ = 0.3f;   // 前触れで壁が揺れたときに揺らす秒数
 };

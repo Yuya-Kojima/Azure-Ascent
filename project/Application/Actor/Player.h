@@ -7,7 +7,7 @@
 #include "Math/Vector3.h"
 #include "Math/Vector4.h"
 #include "ReticleTunnel.h"
-#include "Score/VolleyId.h"
+#include "Score/VolleyTicket.h"
 #include <cassert>
 #include <functional>
 #include <memory>
@@ -122,8 +122,9 @@ public:
   /// 顔の向き（度。DragonWingAnimator::GetFaceAngle の値）。ドラゴンのモデルがなければ 0
   /// </summary>
   float GetFaceAngle() const;
-  void SetHitStopCallback(std::function<void(int)> callback) {
-    hitStopCallback_ = callback;
+  // 被弾して体力が減ったときに呼ぶ関数を渡す
+  void SetOnDamagedCallback(std::function<void()> callback) {
+    onDamagedCallback_ = callback;
   }
 
   // ロックオン可能な対象リストを外部から受け取る
@@ -256,8 +257,7 @@ private:
 
   int invincibleTimer_ = 0; // 無敵時間のタイマー
 
-  std::function<void(int)> hitStopCallback_ =
-      nullptr; // ヒットストップ要求コールバック
+  std::function<void()> onDamagedCallback_ = nullptr; // 被弾して体力が減ったときに呼ぶ関数
 
 
 
@@ -310,7 +310,7 @@ private:
     ActorRef<BaseActor> target;
     int index = 0;
     int totalCount = 0;
-    int volleyId = kNoVolleyId; // 射撃番号
+    VolleyTicket ticket; // この弾の射撃の券（列から捨てると返る）
   };
   std::vector<HomingQueueItem> homingQueue_;
   int homingFireTimer_ = 0;
@@ -323,7 +323,5 @@ private:
 
   void UpdateHomingQueue();
   void SpawnHomingBullet(BaseActor *target, int index, int totalCount,
-                         int volleyId);
-  // 射撃の弾が 1 発終わったことを数える係へ知らせる
-  void FinishVolleyBullet(int volleyId);
+                         VolleyTicket ticket);
 };

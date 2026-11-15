@@ -21,6 +21,11 @@ class FloatingFortress : public IEnemyPartOwner {
 public:
   static constexpr int kPartCount = 8;
 
+  // 外へ知らせる出来事
+  enum class Event {
+    Destroyed // 雲海に沈む所で爆発した
+  };
+
   // 部品 1 個の決まり（役・砦の中の位置・半分の大きさ m）。砦の中の座標は x 右・y 上・z 前
   struct PartSpec {
     EnemyPart::Role role;
@@ -35,12 +40,12 @@ public:
   /// 初期化
   /// </summary>
   /// <param name="renderer">箱を描く描画係</param>
-  /// <param name="railCamera">進み具合 t を読み、爆発で揺らすカメラ</param>
+  /// <param name="railCamera">進み具合 t とレールの位置を読むカメラ</param>
   /// <param name="path">ワールドの道筋の点（点と点の間は同じ秒数）</param>
   /// <param name="spawnT">出たときのレールの進み具合</param>
   /// <param name="pathSeconds">道筋を走り切る秒数</param>
   /// <param name="heading">向き（y 回転のラジアン）。なければ進む向きを向く</param>
-  void Initialize(Object3dRenderer *renderer, RailCamera *railCamera,
+  void Initialize(Object3dRenderer *renderer, const RailCamera *railCamera,
                   const std::vector<Vector3> &path, float spawnT,
                   float pathSeconds, std::optional<float> heading);
 
@@ -65,6 +70,11 @@ public:
   void UpdateTransform();
 
   void Draw();
+
+  /// <summary>
+  /// 前の呼び出しから起きた出来事を取り出す
+  /// </summary>
+  std::vector<Event> TakeEvents();
 
   /// <summary>
   /// ロックの陰にする箱を足す（ワールド → 箱の中の座標で箱が -1〜1 になる行列）
@@ -136,8 +146,6 @@ private:
   static constexpr int kExplosionCount_ = 6;                // 爆発の数
   static constexpr float kExplosionSpread_ = 18.0f;         // 爆発を散らす範囲（m）
   static constexpr float kExplosionScale_ = 5.0f;           // 爆発 1 個の大きさの倍率
-  static constexpr float kShakeIntensity_ = 0.8f;           // 爆発でカメラを揺らす強さ
-  static constexpr float kShakeSeconds_ = 0.5f;             // 爆発でカメラを揺らす秒数
   static constexpr float kPassOverDistance_ = 10.0f;        // レールの前の向きでこの距離より近づいたら、カメラの頭上に来たとみなす（m）
   static constexpr float kThrustSpeed_ = 60.0f;            // これより速く動く間、推進器が火を噴く（m/秒）
   static constexpr int kFlameInterval_ = 3;                 // 推進器の火を出す間隔（フレーム）
@@ -145,7 +153,8 @@ private:
   static constexpr float kFlameScale_ = 1.5f;               // 火の大きさの倍率
 
   std::vector<Vector3> path_;
-  RailCamera *railCamera_ = nullptr;
+  const RailCamera *railCamera_ = nullptr;
+  std::vector<Event> events_; // まだ取り出されていない出来事
   float spawnT_ = 0.0f;
   float pathSpanT_ = 1.0f;             // 道筋を走り切るまでのレールの t
   std::optional<float> heading_;

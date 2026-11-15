@@ -32,12 +32,14 @@ class ScoreKeeper;
 class FloatingFortress;
 class InterceptCue;
 class SerpentCameraDirector;
+class BossCameraDirector;
 
 #include "Actor/Boss.h"
 #include "Actor/Enemy.h"
 #include "Actor/MechSerpent.h"
 #include "Actor/Player.h"
 #include "Camera/RailCamera.h"
+#include "Framework/ActorRef.h"
 #include "Render/SkyBox/SkyBox.h"
 #include "Score/ScoreConfig.h"
 
@@ -139,6 +141,10 @@ private: // メンバ変数(ゲーム用)
   int hitStopBossPartFrames_ = 6;      // ボス部位破壊・死亡演出時のヒットストップ（デフォルト6フレーム）
   int hitStopCooldown_ = 4;           // 連続着弾による多重停止を防ぐクールダウン
   int hitStopCooldownTimer_ = 0;
+  // 自機の被弾
+  static constexpr int kPlayerDamagedHitStopFrames_ = 5;        // ヒットストップのフレーム数
+  static constexpr float kPlayerDamagedShakeIntensity_ = 0.5f;  // カメラの揺れの強さ
+  static constexpr float kPlayerDamagedShakeSeconds_ = 0.2f;    // カメラの揺れの秒数
 
   // ダミー敵管理
   std::vector<std::unique_ptr<Enemy>> runtimeEnemies_;
@@ -146,6 +152,8 @@ private: // メンバ変数(ゲーム用)
   std::vector<std::unique_ptr<FloatingFortress>> fortresses_;
   static inline const std::string kFortressPrefabName_ = "FloatingFortress"; // 砦を出す出し方の名前
   static constexpr Vector4 kFortressPartColor_ = {1.0f, 0.2f, 0.2f, 1.0f};      // 砦の部品の色（ふだんの敵と同じ赤）
+  static constexpr float kFortressDestroyedShakeIntensity_ = 0.8f;              // 砦の爆発でカメラを揺らす強さ
+  static constexpr float kFortressDestroyedShakeSeconds_ = 0.5f;                // 砦の爆発でカメラを揺らす秒数
   // 区間 3 の大蛇の出番（部品は runtimeEnemies_ に入る）
   std::vector<std::unique_ptr<MechSerpent>> serpents_;
   static inline const std::string kSerpentPrefabName_ = "MechSerpent"; // 大蛇を出す出し方の名前
@@ -153,6 +161,10 @@ private: // メンバ変数(ゲーム用)
   std::unique_ptr<InterceptCue> interceptCue_;
   // 大蛇の出来事でカメラとレールを動かす
   std::unique_ptr<SerpentCameraDirector> serpentCamera_;
+  // 出ているボス（いなければ Get() が nullptr）
+  ActorRef<Boss> boss_;
+  // ボスの出来事でカメラを動かす
+  std::unique_ptr<BossCameraDirector> bossCamera_;
   std::vector<Enemy *> enemyPtrs_;
 
   // ロード済みスプラインデータ (Blender JSON等から)
@@ -351,6 +363,13 @@ private:
   /// 大蛇の 1 回の出番と、その光る節を出す。光る節は撃破に数える敵として登録する
   /// </summary>
   void SpawnSerpent(const SpawnEvent &ev);
+
+  /// <summary>
+  /// 出た敵として数え、自機の弾で倒されたら、最後に当たった弾の射撃番号つきで撃破を数える
+  /// </summary>
+  /// <param name="enemy">数える敵（自爆で消えたときは撃破に数えない）</param>
+  /// <param name="spawnTime">出たときのレールの進み具合</param>
+  void CountEnemyForScore(Enemy *enemy, float spawnTime);
 
   /// <summary>
   /// 出ている敵と砦と大蛇をすべて消す

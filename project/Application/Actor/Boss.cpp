@@ -140,13 +140,7 @@ void Boss::OnWeakPointDestroyed(BossWeakPoint *wp) {
           bit->ResetPosition();
       }
       
-      // ヒットストップ・画面揺れなどの派手な演出
-      if (camera_) {
-          if (auto railCam = dynamic_cast<const RailCamera *>(camera_)) {
-              auto mutableRailCam = static_cast<RailCamera *>(const_cast<ICamera *>(camera_));
-              mutableRailCam->Shake(1.5f, 0.5f); // 激しい揺れ
-          }
-      }
+      cameraEvents_.push_back(CameraEvent::CounterSucceeded);
       EffectManager::GetInstance()->PlayBossBurstEffect(transform_.translate);
   }
 }
@@ -226,16 +220,10 @@ void Boss::UpdatePhase1() {
   case BossState::Enter:
     // カメラの前方（基準位置）に配置
     if (camera_) {
-      Vector3 cPos = camera_->GetTranslate();
-      Vector3 cRight = camera_->GetRight();
-      Vector3 cUp = camera_->GetUp();
-      Vector3 cForward = camera_->GetForward();
-      if (auto railCam = dynamic_cast<const RailCamera *>(camera_)) {
-        cPos = railCam->GetRailPosition();
-        cRight = railCam->GetRailRight();
-        cUp = railCam->GetRailUp();
-        cForward = railCam->GetRailForward();
-      }
+      Vector3 cPos = camera_->GetRailPosition();
+      Vector3 cRight = camera_->GetRailRight();
+      Vector3 cUp = camera_->GetRailUp();
+      Vector3 cForward = camera_->GetRailForward();
       Vector3 center = cPos + cRight * spawnOffset_.x + cUp * spawnOffset_.y +
                        cForward * spawnOffset_.z;
       transform_.translate = center;
@@ -325,7 +313,7 @@ void Boss::UpdatePhase1() {
           auto bullet = std::make_unique<EnemyBullet>();
           bullet->Initialize(
               PrefabManager::GetInstance()->GetObject3dRenderer(), myPos, vel,
-              const_cast<Player *>(player_), type);
+              player_, type);
           if (type == EnemyBulletType::LockOnDestructible) {
             bullet->SetSwarmWait(waitFrames);
           }
@@ -377,12 +365,7 @@ void Boss::UpdatePhase1() {
           }
         }
 
-        if (camera_) {
-          if (auto railCam = dynamic_cast<const RailCamera *>(camera_)) {
-            static_cast<RailCamera *>(const_cast<ICamera *>(camera_))
-                ->Shake(0.3f, 0.1f);
-          }
-        }
+        cameraEvents_.push_back(CameraEvent::BarrageFired);
       }
     }
 
@@ -418,16 +401,10 @@ void Boss::UpdatePhase1() {
       }
 
       if (camera_) {
-        Vector3 cPos = camera_->GetTranslate();
-        Vector3 cRight = camera_->GetRight();
-        Vector3 cUp = camera_->GetUp();
-        Vector3 cForward = camera_->GetForward();
-        if (auto railCam = dynamic_cast<const RailCamera *>(camera_)) {
-          cPos = railCam->GetRailPosition();
-          cRight = railCam->GetRailRight();
-          cUp = railCam->GetRailUp();
-          cForward = railCam->GetRailForward();
-        }
+        Vector3 cPos = camera_->GetRailPosition();
+        Vector3 cRight = camera_->GetRailRight();
+        Vector3 cUp = camera_->GetRailUp();
+        Vector3 cForward = camera_->GetRailForward();
 
         // 1. 攻撃パターンに基づく目標座標（着地地点）の決定 = 予兆（Telegraph）
         if (attackPattern_ == 1) {
@@ -477,7 +454,7 @@ void Boss::UpdatePhase1() {
 
 void Boss::UpdatePhaseTransition() {
   stateTimer_ += 1.0f / 60.0f;
-  float duration = 3.5f;
+  const float duration = kTransitionSeconds_;
 
   // 1. ボスの退避移動 
   float moveDuration = duration - 0.5f; // 最後の0.5秒はバースト用
@@ -504,36 +481,12 @@ void Boss::UpdatePhaseTransition() {
       model_->SetColor(flashColor);
   }
 
-  // 3. カメラのズームとシェイク
-  if (camera_) {
-      if (auto railCam = const_cast<RailCamera*>(dynamic_cast<const RailCamera *>(camera_))) {
-          float defaultFov = 45.0f * (3.14159265f / 180.0f);
-          float zoomFov = 25.0f * (3.14159265f / 180.0f); // 寄る
-          
-          float fovT = std::min(stateTimer_ / 1.0f, 1.0f); // 最初の1秒でズームしてそのまま維持
-          float easeFovT = fovT * fovT * (3.0f - 2.0f * fovT);
-          float currentFov = std::lerp(defaultFov, zoomFov, easeFovT);
-          railCam->SetFov(currentFov);
-          
-          // ボスへの注視設定
-          railCam->SetFocusTarget(&transform_.translate);
-          railCam->SetFocusWeight(easeFovT); // FOVと同じ緩急で注視を強める
-          
-          railCam->Shake(0.5f * (stateTimer_ / duration), 0.1f);
-      }
-  }
-
-  // 4. 移行完了でPhase2へ
+  // 3. 移行完了でPhase2へ
   if (stateTimer_ >= duration) {
       if (model_) {
           model_->SetColor(baseColor_);
       }
-      if (camera_) {
-          if (auto railCam = const_cast<RailCamera*>(dynamic_cast<const RailCamera *>(camera_))) {
-              // ここではFOVもフォーカスも戻さない（Phase2側で引き戻す）
-              railCam->Shake(3.0f, 0.5f);
-          }
-      }
+      cameraEvents_.push_back(CameraEvent::TransitionEnded);
       EffectManager::GetInstance()->PlayBossBurstEffect(transform_.translate);
       ChangePhase(BossPhase::Phase2);
   }
@@ -541,35 +494,6 @@ void Boss::UpdatePhaseTransition() {
 
 void Boss::UpdatePhase2() {
   stateTimer_ += 1.0f / 60.0f;
-
-  // 形態変化直後のカメラ引き戻し演出
-  if (attackStep_ == -1 && currentState_ == BossState::Cooldown && camera_) {
-      if (auto railCam = const_cast<RailCamera*>(dynamic_cast<const RailCamera *>(camera_))) {
-          float defaultFov = 45.0f * (3.14159265f / 180.0f);
-          float zoomFov = 25.0f * (3.14159265f / 180.0f);
-          
-          // 最初の1.0秒間はズームを維持（爆発の余韻と変化後の姿を見せる）
-          // その後の1.0秒間（stateTimer_ が 1.0 ～ 2.0）でズームを元に戻す
-          float pullBackT = 0.0f;
-          if (stateTimer_ > 1.0f) {
-              pullBackT = std::min((stateTimer_ - 1.0f) / 1.0f, 1.0f);
-          }
-          float easePullBack = 1.0f - std::pow(1.0f - pullBackT, 3.0f); // イーズアウト
-          
-          float currentFov = std::lerp(zoomFov, defaultFov, easePullBack);
-          railCam->SetFov(currentFov);
-          
-          // 注視（フォーカス）も、カメラ引き戻しと同じタイミングでスッと解除する
-          railCam->SetFocusTarget(&transform_.translate);
-          railCam->SetFocusWeight(1.0f - easePullBack); 
-          
-          // 引き戻しが完了したら完全に注視を解除
-          if (stateTimer_ >= 2.0f) {
-              railCam->SetFocusTarget(nullptr);
-              railCam->SetFocusWeight(0.0f);
-          }
-      }
-  }
 
   switch (currentState_) {
   case BossState::Enter:
@@ -646,7 +570,7 @@ void Boss::UpdatePhase2() {
           auto bullet = std::make_unique<EnemyBullet>();
           bullet->Initialize(
               PrefabManager::GetInstance()->GetObject3dRenderer(), myPos, vel,
-              const_cast<Player *>(player_), type);
+              player_, type);
           bullet->SetSwarmWait(
               waitFrames); // ランダムではなく指定された待機時間をセット
           ActorManager::GetInstance()->AddActor(std::move(bullet));
@@ -690,13 +614,7 @@ void Boss::UpdatePhase2() {
           spawnBullet(vel, EnemyBulletType::LockOnDestructible, waitFrames);
         }
 
-        if (camera_) {
-          if (auto railCam = dynamic_cast<const RailCamera *>(camera_)) {
-            auto mutableRailCam =
-                static_cast<RailCamera *>(const_cast<ICamera *>(camera_));
-            mutableRailCam->Shake(0.5f, 0.15f);
-          }
-        }
+        cameraEvents_.push_back(CameraEvent::MissilesDeployed);
       }
     }
     currentState_ = BossState::Cooldown;
@@ -725,16 +643,10 @@ void Boss::UpdatePhase2() {
       
       startPos_ = targetPos_;
       if (camera_) {
-        Vector3 cPos = camera_->GetTranslate();
-        Vector3 cRight = camera_->GetRight();
-        Vector3 cUp = camera_->GetUp();
-        Vector3 cForward = camera_->GetForward();
-        if (auto railCam = dynamic_cast<const RailCamera *>(camera_)) {
-          cPos = railCam->GetRailPosition();
-          cRight = railCam->GetRailRight();
-          cUp = railCam->GetRailUp();
-          cForward = railCam->GetRailForward();
-        }
+        Vector3 cPos = camera_->GetRailPosition();
+        Vector3 cRight = camera_->GetRailRight();
+        Vector3 cUp = camera_->GetRailUp();
+        Vector3 cForward = camera_->GetRailForward();
         // 次の攻撃パターンに応じて目標位置を変える
         if (attackPattern_ == 1) {
           // 次はミサイル攻撃：画面奥深く（突進と同じ距離200）へ移動
@@ -938,6 +850,13 @@ void Boss::TakeDamage(int damage, bool isSelfDestruct) {
   }
 }
 
+float Boss::GetTransitionProgress() const {
+  if (phase_ != BossPhase::PhaseTransition) {
+    return 0.0f;
+  }
+  return (std::min)(stateTimer_ / kTransitionSeconds_, 1.0f);
+}
+
 void Boss::ChangePhase(BossPhase nextPhase) {
   phase_ = nextPhase;
   if (phase_ == BossPhase::PhaseTransition) {
@@ -949,16 +868,12 @@ void Boss::ChangePhase(BossPhase nextPhase) {
     });
     
     stateTimer_ = 0.0f;
+    cameraEvents_.push_back(CameraEvent::TransitionStarted);
     startPos_ = transform_.translate;
     if (camera_) {
-      Vector3 cPos = camera_->GetTranslate();
-      Vector3 cUp = camera_->GetUp();
-      Vector3 cForward = camera_->GetForward();
-      if (auto railCam = dynamic_cast<const RailCamera *>(camera_)) {
-        cPos = railCam->GetRailPosition();
-        cUp = railCam->GetRailUp();
-        cForward = railCam->GetRailForward();
-      }
+      Vector3 cPos = camera_->GetRailPosition();
+      Vector3 cUp = camera_->GetRailUp();
+      Vector3 cForward = camera_->GetRailForward();
       // 画面奥深くへ退避
       targetPos_ = cPos + cForward * 200.0f;
     } else {
@@ -1045,12 +960,8 @@ void Boss::UpdateDashSequence() {
         // Z奥へ下がるための目標位置を設定
         startPos_ = transform_.translate;
         if (camera_) {
-            Vector3 cPos = camera_->GetTranslate();
-            Vector3 cForward = camera_->GetForward();
-            if (auto railCam = dynamic_cast<const RailCamera *>(camera_)) {
-                cPos = railCam->GetRailPosition();
-                cForward = railCam->GetRailForward();
-            }
+            Vector3 cPos = camera_->GetRailPosition();
+            Vector3 cForward = camera_->GetRailForward();
             targetPos_ = cPos + cForward * 200.0f; // かなり奥へ
         }
     }
@@ -1083,29 +994,17 @@ void Boss::UpdateDashSequence() {
       // 突進の目標座標を「プレイヤーの現在の位置のさらに後方」へ設定
       if (player_ && camera_) {
           Vector3 pPos = player_->GetTransform().translate;
-          Vector3 cForward = camera_->GetForward();
-          if (auto railCam = dynamic_cast<const RailCamera *>(camera_)) {
-              cForward = railCam->GetRailForward();
-          }
+          Vector3 cForward = camera_->GetRailForward();
           targetPos_ = pPos - cForward * 50.0f; // 自機の背面へ通り抜ける
       } else if (camera_) {
-          Vector3 cPos = camera_->GetTranslate();
-          Vector3 cForward = camera_->GetForward();
-          if (auto railCam = dynamic_cast<const RailCamera *>(camera_)) {
-              cPos = railCam->GetRailPosition();
-              cForward = railCam->GetRailForward();
-          }
+          Vector3 cPos = camera_->GetRailPosition();
+          Vector3 cForward = camera_->GetRailForward();
           targetPos_ = cPos - cForward * 50.0f; // カメラの背面へ通り抜ける
       } else {
           targetPos_.z -= 200.0f;
       }
 
-      if (camera_) {
-        if (auto railCam = dynamic_cast<const RailCamera *>(camera_)) {
-          auto mutableRailCam = static_cast<RailCamera *>(const_cast<ICamera *>(camera_));
-          mutableRailCam->Shake(0.8f, 0.3f); // 突進開始時の大きな揺れ
-        }
-      }
+      cameraEvents_.push_back(CameraEvent::DashStarted);
 
       currentState_ = BossState::Dash;
       stateTimer_ = 0.0f;
@@ -1150,10 +1049,7 @@ void Boss::UpdateDashSequence() {
       if (stateTimer_ <= 0.02f) {
           startPos_ = transform_.translate;
           if (camera_) {
-              Vector3 cForward = camera_->GetForward();
-              if (auto railCam = dynamic_cast<const RailCamera *>(camera_)) {
-                  cForward = railCam->GetRailForward();
-              }
+              Vector3 cForward = camera_->GetRailForward();
               // 奥へ吹っ飛ぶ目標 + 少し下に落ちる
               targetPos_ = startPos_ + cForward * 100.0f;
               targetPos_.y -= 25.0f;

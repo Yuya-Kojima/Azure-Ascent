@@ -187,6 +187,7 @@ copy "$(WindowsSdkDir)bin\$(TargetPlatformVersion)\x64\dxil.dll" "$(TargetDir)dx
     <ClCompile Include="Actor\LockOn.cpp" />
     <ClCompile Include="Actor\NormalBullet.cpp" />
     <ClCompile Include="Camera\SerpentCameraDirector.cpp" />
+    <ClCompile Include="Camera\BossCameraDirector.cpp" />
     <ClCompile Include="Camera\RailCamera.cpp" />
     <ClCompile Include="Core\Game.cpp" />
     <ClCompile Include="Actor\Player.cpp" />
@@ -363,6 +364,7 @@ copy "$(WindowsSdkDir)bin\$(TargetPlatformVersion)\x64\dxil.dll" "$(TargetDir)dx
     <ClInclude Include="Actor\LockOn.h" />
     <ClInclude Include="Actor\NormalBullet.h" />
     <ClInclude Include="Camera\SerpentCameraDirector.h" />
+    <ClInclude Include="Camera\BossCameraDirector.h" />
     <ClInclude Include="Camera\RailCamera.h" />
     <ClInclude Include="Core\Game.h" />
     <ClInclude Include="Core\GameTime.h" />
@@ -393,6 +395,7 @@ copy "$(WindowsSdkDir)bin\$(TargetPlatformVersion)\x64\dxil.dll" "$(TargetDir)dx
     <ClInclude Include="Scene\ResultSequence.h" />
     <ClInclude Include="Scene\PauseMenu.h" />
     <ClInclude Include="Score\VolleyId.h" />
+    <ClInclude Include="Score\VolleyTicket.h" />
     <ClInclude Include="Scene\DarkCloudTransition.h" />
     <ClInclude Include="Scene\StageSelectLightning.h" />
     <ClInclude Include="Scene\StageSelectReturnSky.h" />

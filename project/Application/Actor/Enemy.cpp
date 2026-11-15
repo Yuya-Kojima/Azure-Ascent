@@ -3,7 +3,6 @@
 #include "Actor/Player.h"
 #include "Audio/SoundManager.h"
 #include "Behavior/IEnemyBehavior.h"
-#include "Camera/ICamera.h"
 #include "Camera/RailCamera.h"
 #include "Collision/CollisionManager.h"
 #include "Collision/SphereCollider.h"
@@ -54,17 +53,10 @@ void Enemy::Update() {
 
   // --- カメラ基準値の毎フレーム更新 ---
   if (camera_) {
-    if (auto railCam = dynamic_cast<const RailCamera *>(camera_)) {
-      basePos_ = railCam->GetRailPosition();
-      baseForward_ = railCam->GetRailForward();
-      baseRight_ = railCam->GetRailRight();
-      baseUp_ = railCam->GetRailUp();
-    } else {
-      basePos_ = camera_->GetTranslate();
-      baseForward_ = camera_->GetForward();
-      baseRight_ = camera_->GetRight();
-      baseUp_ = camera_->GetUp();
-    }
+    basePos_ = camera_->GetRailPosition();
+    baseForward_ = camera_->GetRailForward();
+    baseRight_ = camera_->GetRailRight();
+    baseUp_ = camera_->GetRailUp();
   }
 
   // 完全に画面外に出て、かつカメラ後方に取り残された場合のみ自動消滅（ボスは除く）

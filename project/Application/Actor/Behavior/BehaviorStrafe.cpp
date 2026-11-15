@@ -1,7 +1,7 @@
 #include "BehaviorStrafe.h"
 #include "Actor/Enemy.h"
 #include "Actor/Player.h"
-#include "Camera/ICamera.h"
+#include "Camera/RailCamera.h"
 #include "Actor/EnemyBullet.h"
 #include "Framework/ActorManager.h"
 #include "Framework/PrefabManager.h"
@@ -54,7 +54,7 @@ void BehaviorStrafe::Update(Enemy* enemy) {
     };
 
     auto bullet = std::make_unique<EnemyBullet>();
-    bullet->Initialize(PrefabManager::GetInstance()->GetObject3dRenderer(), enemy->GetTransform().translate, bulletVelocity, const_cast<Player*>(player));
+    bullet->Initialize(PrefabManager::GetInstance()->GetObject3dRenderer(), enemy->GetTransform().translate, bulletVelocity, player);
     ActorManager::GetInstance()->AddActor(std::move(bullet));
   }
 }
