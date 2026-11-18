@@ -4,8 +4,8 @@
 #include <utility>
 
 /// <summary>
-/// ロックオンの一斉射撃の、弾 1 発ぶんの券
-/// 持ち主を移すことはできるが、コピーはできない。Finish を呼ぶか券が消えるかの早い方で、射撃番号を 1 回だけ返す
+/// ロックオンの一斉射撃の、弾1発ぶんの券
+/// 持ち主を移すことはできるが、コピーはできない。Finishを呼ぶか券が消えるかの早い方で、射撃番号を1回だけ返す
 /// </summary>
 class VolleyTicket {
 public:
@@ -38,19 +38,19 @@ public:
   }
 
   /// <summary>
-  /// 券を返す（2 回目からは何もしない）
+  /// 券を返す（2回目からは何もしない）
   /// </summary>
   void Finish() {
     if (!onFinish_) {
       return;
     }
-    // 関数を券から外してから呼ぶので、呼んだ先から Finish が呼ばれても 2 回は返らない
+    // 関数を券から外してから呼ぶので、呼んだ先からFinishが呼ばれても2回は返らない
     std::function<void(int)> onFinish = std::exchange(onFinish_, nullptr);
     onFinish(volleyId_);
   }
 
   /// <summary>
-  /// この券の射撃番号（空の券なら kNoVolleyId。返したあとも変わらない）
+  /// この券の射撃番号（空の券ならkNoVolleyId。返したあとも変わらない）
   /// </summary>
   int GetVolleyId() const { return volleyId_; }
 

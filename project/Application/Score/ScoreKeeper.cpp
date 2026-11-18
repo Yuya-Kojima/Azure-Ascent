@@ -19,6 +19,7 @@ void ScoreKeeper::Reset(const ScoreConfig *config, float bossSpawnTime) {
 }
 
 std::vector<VolleyTicket> ScoreKeeper::BeginVolley(int bulletCount) {
+  // 射撃の番号を振る
   const int id = nextVolleyId_++;
   Volley volley;
   volley.pendingBullets = bulletCount;
@@ -69,7 +70,8 @@ void ScoreKeeper::OnEnemyKilled(int enemyId, int volleyId,
   breakdown_.kills++;
   breakdown_.killPoints += config_->pointPerKill;
 
-  // 弾が飛んでいる射撃で倒したなら、その射撃の数に足す。確定済みの射撃や通常弾なら 1 体の射撃として確定する
+  // 弾が飛んでいる射撃で倒したなら、その射撃の数に足す。確定済みの射撃や通常弾なら
+  // 1 体の射撃として確定する
   auto it = volleys_.find(volleyId);
   if (it != volleys_.end()) {
     it->second.kills++;
@@ -119,9 +121,10 @@ int ScoreKeeper::GetWorstSection() const {
         bossSpawnTime_ > 0.0f
             ? std::clamp(enemy.spawnTime / bossSpawnTime_, 0.0f, 1.0f)
             : 0.0f;
-    const int section = (std::min)(
-        static_cast<int>(progress * static_cast<float>(kSectionCount)),
-        kSectionCount - 1);
+    const int section =
+        (std::min)(static_cast<int>(progress *
+                                    static_cast<float>(kSectionCount)),
+                   kSectionCount - 1);
     missed[section]++;
   }
   int worst = -1;
@@ -139,8 +142,8 @@ void ScoreKeeper::AddVolleyResult(int kills, const Vector3 &position) {
   const int base = kills * config_->pointPerKill;
   int points = kills * kills * config_->pointPerKill;
   if (kills >= kMaxLockKills) {
-    points = static_cast<int>(std::lround(static_cast<float>(points) *
-                                          config_->maxLockMultiplier));
+    points = static_cast<int>(
+        std::lround(static_cast<float>(points) * config_->maxLockMultiplier));
     breakdown_.maxLockCount++;
     breakdown_.maxLockPoints += points - base;
   } else {
