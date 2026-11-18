@@ -1,14 +1,17 @@
 #include "StageLighting.h"
 #include "../../externals/nlohmann/json.hpp"
 #include "Math/MathUtil.h"
+#include "Render/CloudSea/CloudSea.h"
 #include "Render/Renderer/Fog.h"
 #include "Render/Renderer/Object3dRenderer.h"
 #include "Render/Renderer/PostProcess.h"
 #include "Render/SkyBox/SkyBox.h"
+#include <algorithm>
 #include <filesystem>
 #include <fstream>
 #include <iomanip>
 #include <iterator>
+#include <numbers>
 
 #ifdef USE_IMGUI
 #include <imgui.h>
@@ -111,24 +114,209 @@ const Section kSections[] = {
      std::size(kPostBool)},
 };
 
+// 晴れた空の値のキー（JSON の中で、この名前の物の中に同じキーで並べる）
+const char *const kClearKey = "clear";
+// 晴れの円の境目の値のキー
+const char *const kClearEdgeKey = "clearEdge";
+
 Vector4 ToVector4(const Vector3 &v, float w) { return {v.x, v.y, v.z, w}; }
+
+// 度をラジアンにする
+float ToRadians(float degrees) {
+  return degrees * std::numbers::pi_v<float> / 180.0f;
+}
+
+/// <summary>
+/// 晴れた空の初めの値（青空・高い白い太陽・薄い白い雲・明るい光）
+/// </summary>
+StageLighting::Config MakeDefaultClearConfig() {
+  StageLighting::Config c;
+  c.skyZenith = {0.10f, 0.28f, 0.75f};
+  c.skyHorizon = {0.55f, 0.72f, 0.95f};
+  c.sunDir = {0.1f, 0.6f, 1.0f};
+  c.sunColor = {1.0f, 0.92f, 0.8f};
+  c.sunIntensity = 1.0f;
+  c.horizonGlow = 0.5f;
+  c.cloudAmount = 0.35f;
+  c.cloudColor = {0.85f, 0.88f, 0.95f};
+  c.cloudOpacity = 0.8f;
+  c.cloudRim = 0.3f;
+  c.lightColor = {1.0f, 0.97f, 0.9f};
+  c.lightIntensity = 1.2f;
+  c.skyAmbient = {0.55f, 0.65f, 0.85f};
+  c.groundAmbient = {0.35f, 0.38f, 0.42f};
+  c.fogNear = 200.0f;
+  c.fogFar = 1200.0f;
+  c.exposure = 1.0f;
+  return c;
+}
+
+/// <summary>
+/// 2 組の値を割合 t で混ぜる（オンオフの値は t が半分を超えたら b）
+/// </summary>
+StageLighting::Config LerpConfig(const StageLighting::Config &a,
+                                 const StageLighting::Config &b, float t) {
+  StageLighting::Config result = a;
+  for (const Section &section : kSections) {
+    for (size_t i = 0; i < section.vec3Count; ++i) {
+      const Vec3Item &item = section.vec3Items[i];
+      result.*item.member = Lerp(a.*item.member, b.*item.member, t);
+    }
+    for (size_t i = 0; i < section.floatCount; ++i) {
+      const FloatItem &item = section.floatItems[i];
+      result.*item.member = Lerp(a.*item.member, b.*item.member, t);
+    }
+    for (size_t i = 0; i < section.boolCount; ++i) {
+      const BoolItem &item = section.boolItems[i];
+      result.*item.member = t > 0.5f ? b.*item.member : a.*item.member;
+    }
+  }
+  return result;
+}
+
+/// <summary>
+/// JSON の物から値を読む（ないキーは今の値のまま）
+/// </summary>
+void ReadConfig(const nlohmann::json &root, StageLighting::Config &config) {
+  for (const Section &section : kSections) {
+    for (size_t i = 0; i < section.vec3Count; ++i) {
+      const Vec3Item &item = section.vec3Items[i];
+      const auto it = root.find(item.key);
+      if (it != root.end() && it->is_array() && it->size() == 3) {
+        config.*item.member = {(*it)[0].get<float>(), (*it)[1].get<float>(),
+                               (*it)[2].get<float>()};
+      }
+    }
+    for (size_t i = 0; i < section.floatCount; ++i) {
+      const FloatItem &item = section.floatItems[i];
+      const auto it = root.find(item.key);
+      if (it != root.end() && it->is_number()) {
+        config.*item.member = it->get<float>();
+      }
+    }
+    for (size_t i = 0; i < section.boolCount; ++i) {
+      const BoolItem &item = section.boolItems[i];
+      const auto it = root.find(item.key);
+      if (it != root.end() && it->is_boolean()) {
+        config.*item.member = it->get<bool>();
+      }
+    }
+  }
+}
+
+/// <summary>
+/// 値を JSON の物へ書く
+/// </summary>
+void WriteConfig(nlohmann::json &root, const StageLighting::Config &config) {
+  for (const Section &section : kSections) {
+    for (size_t i = 0; i < section.vec3Count; ++i) {
+      const Vec3Item &item = section.vec3Items[i];
+      const Vector3 &v = config.*item.member;
+      root[item.key] = {v.x, v.y, v.z};
+    }
+    for (size_t i = 0; i < section.floatCount; ++i) {
+      const FloatItem &item = section.floatItems[i];
+      root[item.key] = config.*item.member;
+    }
+    for (size_t i = 0; i < section.boolCount; ++i) {
+      const BoolItem &item = section.boolItems[i];
+      root[item.key] = config.*item.member;
+    }
+  }
+}
+
+#ifdef USE_IMGUI
+/// <summary>
+/// 1 組の値の ImGui（見出しごとに畳む）
+/// </summary>
+void DrawConfigImGui(StageLighting::Config &config) {
+  for (const Section &section : kSections) {
+    if (!ImGui::TreeNode(section.title)) {
+      continue;
+    }
+    for (size_t i = 0; i < section.boolCount; ++i) {
+      const BoolItem &item = section.boolItems[i];
+      ImGui::Checkbox(item.key, &(config.*item.member));
+    }
+    for (size_t i = 0; i < section.vec3Count; ++i) {
+      const Vec3Item &item = section.vec3Items[i];
+      Vector3 &v = config.*item.member;
+      if (item.kind == Vec3Kind::Color) {
+        // 1 を超える色（HDR）も入れられるようにする
+        ImGui::ColorEdit3(item.key, &v.x, ImGuiColorEditFlags_HDR |
+                                              ImGuiColorEditFlags_Float);
+      } else {
+        ImGui::DragFloat3(item.key, &v.x, 0.01f, -1.0f, 1.0f);
+      }
+    }
+    for (size_t i = 0; i < section.floatCount; ++i) {
+      const FloatItem &item = section.floatItems[i];
+      ImGui::SliderFloat(item.key, &(config.*item.member), item.min,
+                         item.max);
+    }
+    ImGui::TreePop();
+  }
+}
+#endif // USE_IMGUI
 } // namespace
 
-void StageLighting::Initialize() { LoadConfig(); }
+void StageLighting::Initialize() {
+  clearConfig_ = MakeDefaultClearConfig();
+  LoadConfig();
+}
+
+float StageLighting::GetClearAmount() const {
+  return (std::max)(clearState_.amount, clearPreview_);
+}
+
+void StageLighting::FillCloudSeaClearing(CloudSeaClearing &out,
+                                         float skyTime) const {
+  // 円の外側の霧は空の淀んだ空の地平線の色、内側は晴れた空の地平線の色
+  const Config dark = LerpConfig(config_, clearConfig_, clearPreview_);
+  out.center = Normalize(clearState_.center);
+  out.radius = clearState_.radius;
+  out.softness = ToRadians(clearEdge_.softnessDeg);
+  out.darkWidth = ToRadians(clearEdge_.darkWidthDeg);
+  out.darkStrength = clearEdge_.darkStrength * clearState_.edgeDarkScale;
+  out.noiseWidth = ToRadians(clearEdge_.noiseDeg);
+  out.skyTime = skyTime;
+  out.darkFogColor = dark.skyHorizon;
+  out.clearFogColor = clearConfig_.skyHorizon;
+}
 
 void StageLighting::Apply(Skybox *skybox, Object3dRenderer *renderer,
                           PostProcess *postProcess, float skyTime) const {
-  const Config &c = config_;
+  // 光・霧・ポストエフェクトは、晴れの割合で 2 組の値を混ぜる
+  const Config c = LerpConfig(config_, clearConfig_, GetClearAmount());
 
   // 空：空の色・太陽・雲・地平線の光
+  // 淀んだ空を晴れの円の外側に、晴れた空を内側に描く（淀んだ空は、確かめるための混ぜ具合だけ晴れへ寄せる）
   if (skybox) {
+    const Config dark = LerpConfig(config_, clearConfig_, clearPreview_);
+    const Config &clear = clearConfig_;
     skybox->SetColor({1.0f, 1.0f, 1.0f, 1.0f});
-    skybox->SetSkyColors(c.skyZenith, c.skyHorizon);
-    skybox->SetSun(Normalize(c.sunDir), c.sunColor, c.sunIntensity,
-                   c.cloudAmount);
-    skybox->SetCloudColor(c.cloudColor, c.cloudOpacity, c.cloudRim);
-    skybox->SetHorizonGlow(c.horizonGlow, c.horizonGlowHeight,
-                           c.horizonGlowAzimuth);
+    skybox->SetSkyColors(dark.skyZenith, dark.skyHorizon);
+    skybox->SetSun(Normalize(dark.sunDir), dark.sunColor, dark.sunIntensity,
+                   dark.cloudAmount);
+    skybox->SetCloudColor(dark.cloudColor, dark.cloudOpacity, dark.cloudRim);
+    skybox->SetHorizonGlow(dark.horizonGlow, dark.horizonGlowHeight,
+                           dark.horizonGlowAzimuth);
+    skybox->SetClearSkyColors(clear.skyZenith, clear.skyHorizon);
+    const Vector3 clearSunDir = clearState_.hasSunDirection
+                                    ? clearState_.sunDirection
+                                    : clear.sunDir;
+    skybox->SetClearSun(Normalize(clearSunDir), clear.sunColor,
+                        clear.sunIntensity * clearState_.sunIntensityScale,
+                        clear.cloudAmount);
+    skybox->SetClearCloudColor(clear.cloudColor, clear.cloudOpacity,
+                               clear.cloudRim);
+    skybox->SetClearHorizonGlow(clear.horizonGlow, clear.horizonGlowHeight,
+                                clear.horizonGlowAzimuth);
+    skybox->SetClearCircle(Normalize(clearState_.center), clearState_.radius);
+    skybox->SetClearEdge(ToRadians(clearEdge_.softnessDeg),
+                         ToRadians(clearEdge_.darkWidthDeg),
+                         clearEdge_.darkStrength * clearState_.edgeDarkScale,
+                         ToRadians(clearEdge_.noiseDeg));
     skybox->SetSkyTime(skyTime);
   }
 
@@ -137,21 +325,42 @@ void StageLighting::Apply(Skybox *skybox, Object3dRenderer *renderer,
     if (auto *dl = renderer->GetDirectionalLightData()) {
       dl->color = ToVector4(c.lightColor, 1.0f);
       // シェーダーは「光が進む向き」を使うので、光が来る方向の逆にする
-      dl->direction = Normalize(c.lightFrom) * -1.0f;
+      // 晴れた空に太陽が見えているときは、光が来る方向を晴れの割合だけ太陽へ寄せる
+      Vector3 lightFrom = Normalize(c.lightFrom);
+      Vector3 backRimFrom = Normalize(c.backRimFrom);
+      if (clearState_.hasSunDirection) {
+        const Vector3 sun = Normalize(clearState_.sunDirection);
+        lightFrom = Normalize(Lerp(lightFrom, sun, clearState_.amount));
+        backRimFrom = Normalize(Lerp(backRimFrom, sun, clearState_.amount));
+      }
+      dl->direction = lightFrom * -1.0f;
       dl->intensity = c.lightIntensity;
       dl->skyAmbient = ToVector4(c.skyAmbient, 0.0f);
       dl->groundAmbient = ToVector4(c.groundAmbient, 0.0f);
       dl->backRimColor = ToVector4(c.backRimColor, c.backRimIntensity);
       dl->backRimPower = c.backRimPower;
-      dl->backRimDirection = Normalize(c.backRimFrom) * -1.0f;
+      dl->backRimDirection = backRimFrom * -1.0f;
     }
 
     // 霧：遠くを地平線の色に溶かす
+    // 晴れの円があるときは、空と同じ円の外側を淀んだ空、内側を晴れた空の地平線の色にする
     FogData fog;
     fog.color = ToVector4(c.skyHorizon, 1.0f);
     fog.nearDist = c.fogNear;
     fog.farDist = c.fogFar;
     fog.enabled = 1.0f;
+    if (clearState_.radius > 0.0f) {
+      const Config dark = LerpConfig(config_, clearConfig_, clearPreview_);
+      fog.color = ToVector4(dark.skyHorizon, 1.0f);
+      fog.clearColor = ToVector4(clearConfig_.skyHorizon, 1.0f);
+      const Vector3 center = Normalize(clearState_.center);
+      fog.clearCircle = {center.x, center.y, center.z, clearState_.radius};
+      fog.clearEdge = {ToRadians(clearEdge_.softnessDeg),
+                       ToRadians(clearEdge_.darkWidthDeg),
+                       clearEdge_.darkStrength * clearState_.edgeDarkScale,
+                       ToRadians(clearEdge_.noiseDeg)};
+      fog.skyTime = skyTime;
+    }
     renderer->SetFog(fog);
   }
 
@@ -189,49 +398,33 @@ void StageLighting::LoadConfig() {
   } catch (const nlohmann::json::exception &) {
     return;
   }
-  for (const Section &section : kSections) {
-    for (size_t i = 0; i < section.vec3Count; ++i) {
-      const Vec3Item &item = section.vec3Items[i];
-      const auto it = root.find(item.key);
-      if (it != root.end() && it->is_array() && it->size() == 3) {
-        config_.*item.member = {(*it)[0].get<float>(), (*it)[1].get<float>(),
-                                (*it)[2].get<float>()};
-      }
-    }
-    for (size_t i = 0; i < section.floatCount; ++i) {
-      const FloatItem &item = section.floatItems[i];
-      const auto it = root.find(item.key);
-      if (it != root.end() && it->is_number()) {
-        config_.*item.member = it->get<float>();
-      }
-    }
-    for (size_t i = 0; i < section.boolCount; ++i) {
-      const BoolItem &item = section.boolItems[i];
-      const auto it = root.find(item.key);
-      if (it != root.end() && it->is_boolean()) {
-        config_.*item.member = it->get<bool>();
-      }
-    }
+  ReadConfig(root, config_);
+  const auto clearIt = root.find(kClearKey);
+  if (clearIt != root.end() && clearIt->is_object()) {
+    ReadConfig(*clearIt, clearConfig_);
+  }
+  const auto edgeIt = root.find(kClearEdgeKey);
+  if (edgeIt != root.end() && edgeIt->is_object()) {
+    const nlohmann::json &edge = *edgeIt;
+    clearEdge_.softnessDeg = edge.value("softnessDeg", clearEdge_.softnessDeg);
+    clearEdge_.darkWidthDeg =
+        edge.value("darkWidthDeg", clearEdge_.darkWidthDeg);
+    clearEdge_.darkStrength =
+        edge.value("darkStrength", clearEdge_.darkStrength);
+    clearEdge_.noiseDeg = edge.value("noiseDeg", clearEdge_.noiseDeg);
   }
 }
 
 void StageLighting::SaveConfig() const {
   nlohmann::json root;
-  for (const Section &section : kSections) {
-    for (size_t i = 0; i < section.vec3Count; ++i) {
-      const Vec3Item &item = section.vec3Items[i];
-      const Vector3 &v = config_.*item.member;
-      root[item.key] = {v.x, v.y, v.z};
-    }
-    for (size_t i = 0; i < section.floatCount; ++i) {
-      const FloatItem &item = section.floatItems[i];
-      root[item.key] = config_.*item.member;
-    }
-    for (size_t i = 0; i < section.boolCount; ++i) {
-      const BoolItem &item = section.boolItems[i];
-      root[item.key] = config_.*item.member;
-    }
-  }
+  WriteConfig(root, config_);
+  nlohmann::json clear;
+  WriteConfig(clear, clearConfig_);
+  root[kClearKey] = clear;
+  root[kClearEdgeKey] = {{"softnessDeg", clearEdge_.softnessDeg},
+                         {"darkWidthDeg", clearEdge_.darkWidthDeg},
+                         {"darkStrength", clearEdge_.darkStrength},
+                         {"noiseDeg", clearEdge_.noiseDeg}};
   if (!std::filesystem::exists(kConfigDirectory)) {
     std::filesystem::create_directories(kConfigDirectory);
   }
@@ -243,30 +436,19 @@ void StageLighting::SaveConfig() const {
 
 void StageLighting::DrawImGui() {
 #ifdef USE_IMGUI
-  for (const Section &section : kSections) {
-    if (!ImGui::TreeNode(section.title)) {
-      continue;
-    }
-    for (size_t i = 0; i < section.boolCount; ++i) {
-      const BoolItem &item = section.boolItems[i];
-      ImGui::Checkbox(item.key, &(config_.*item.member));
-    }
-    for (size_t i = 0; i < section.vec3Count; ++i) {
-      const Vec3Item &item = section.vec3Items[i];
-      Vector3 &v = config_.*item.member;
-      if (item.kind == Vec3Kind::Color) {
-        // 1 を超える色（HDR）も入れられるようにする
-        ImGui::ColorEdit3(item.key, &v.x, ImGuiColorEditFlags_HDR |
-                                              ImGuiColorEditFlags_Float);
-      } else {
-        ImGui::DragFloat3(item.key, &v.x, 0.01f, -1.0f, 1.0f);
-      }
-    }
-    for (size_t i = 0; i < section.floatCount; ++i) {
-      const FloatItem &item = section.floatItems[i];
-      ImGui::SliderFloat(item.key, &(config_.*item.member), item.min,
-                         item.max);
-    }
+  DrawConfigImGui(config_);
+  // 晴れた空の値（クリア演出で、晴れの円の内側と、晴れたあとの光・霧・ポストエフェクトに使う）
+  if (ImGui::TreeNode("Clear Sky")) {
+    ImGui::PushID(kClearKey);
+    // 晴れた空を全体に混ぜて見る（保存しない）
+    ImGui::SliderFloat("Preview", &clearPreview_, 0.0f, 1.0f);
+    DrawConfigImGui(clearConfig_);
+    ImGui::SeparatorText("Clear Edge");
+    ImGui::SliderFloat("Softness Deg", &clearEdge_.softnessDeg, 0.1f, 60.0f);
+    ImGui::SliderFloat("Dark Width Deg", &clearEdge_.darkWidthDeg, 0.1f, 90.0f);
+    ImGui::SliderFloat("Dark Strength", &clearEdge_.darkStrength, 0.0f, 1.0f);
+    ImGui::SliderFloat("Noise Deg", &clearEdge_.noiseDeg, 0.0f, 30.0f);
+    ImGui::PopID();
     ImGui::TreePop();
   }
   if (ImGui::Button("Save Lighting Config")) {

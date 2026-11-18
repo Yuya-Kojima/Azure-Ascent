@@ -58,6 +58,14 @@ struct CloudSeaParams {
 	CloudSeaShape shapes[kMaxShapes];
 	CloudSeaGlow glows[kMaxGlows];
 	int glowCount;
+	// 晴れの円（空と同じ円）。視線の向きごとに、円の内側では晴れた空の値を使う
+	float4 clearCircle;        // xyz: 円の中心の向き, w: 半径（ラジアン。0 以下で晴れなし）
+	float4 clearEdge;          // x: 境目のぼかしの幅, y: 外側で闇が濃くなる帯の幅, z: 濃くなる強さ, w: 境目をノイズで揺らす幅（ラジアン）
+	float4 darkFogColor;       // rgb: 円の外側の霧の色
+	float4 clearFogColor;      // rgb: 円の内側の霧の色
+	float4 clearColor;         // rgb: 円の内側の雲の色, a: 円の内側の雲が返す光の強さの倍率
+	float clearValleyDarkness; // 円の内側の、低い所の環境光を暗くする強さ
+	float skyTime;             // 空の時刻（秒。境目を空と同じノイズで揺らす）
 };
 
 ConstantBuffer<CloudSeaParams> gCloudSea : register(b0);

@@ -7,8 +7,9 @@ class Sprite;
 class SpriteRenderer;
 
 /// <summary>
-/// 文字カード（ステージ開始演出の目標・ゲームオーバー）
+/// 文字カード（ステージ開始演出の目標・ゲームオーバー・クリア）
 /// 横線が中央から伸び、線の上と下に文字の画像が線へ寄りながら出て、線が縮みながら消える
+/// 光で現れる出し方では、横線の両端に光の粒を置き、文字は横線と一緒に中央から左右へ現れる
 /// 文字は tools/IntroText/make_intro_text.py で書き出した画像
 /// </summary>
 class CaptionCard {
@@ -32,6 +33,11 @@ public:
     float upperY = 72.0f;       // 線の上の文字の中心の高さ（px）
     float lowerY = 150.0f;      // 線の下の文字の中心の高さ（px）
     Vector4 lineColor = {0.94f, 0.84f, 0.59f, 1.0f}; // 横線の色（淡い金色）
+    bool revealByLight = false; // 光で現れる出し方にするか
+    std::string sparkPath;      // 横線の両端の光の粒の画像（光で現れる出し方だけ）
+    float sparkSize = 28.0f;    // 光の粒の大きさ（px）
+    float sparkFadeSec = 0.3f;  // 横線が伸びきってから光の粒が消えるまで
+    Vector4 sparkColor = {1.0f, 0.96f, 0.85f, 1.0f}; // 光の粒の色
   };
 
   CaptionCard();
@@ -74,6 +80,11 @@ public:
   void DrawImGui();
 
   /// <summary>
+  /// 出す文字と時刻・置き場所（演出の側の調整値で書き換える）
+  /// </summary>
+  Settings &GetSettings() { return settings_; }
+
+  /// <summary>
   /// 消えきる時刻（開始してからの秒）
   /// </summary>
   float GetEndTime() const {
@@ -87,6 +98,11 @@ private:
   std::unique_ptr<Sprite> line_;  // 横線
   std::unique_ptr<Sprite> upper_; // 線の上の文字
   std::unique_ptr<Sprite> lower_; // 線の下の文字
+  std::unique_ptr<Sprite> sparkLeft_;  // 横線の左端の光の粒
+  std::unique_ptr<Sprite> sparkRight_; // 横線の右端の光の粒
+  Vector2 upperSize_{}; // 線の上の文字の画像の大きさ（px）
+  Vector2 lowerSize_{}; // 線の下の文字の画像の大きさ（px）
+  float sparkAlpha_ = 0.0f;
 
   Settings settings_;
 

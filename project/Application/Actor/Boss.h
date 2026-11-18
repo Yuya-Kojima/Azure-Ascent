@@ -1,6 +1,7 @@
 #pragma once
 #include "Actor/Enemy.h"
 #include "Framework/BaseActor.h"
+#include "Math/Quaternion.h"
 #include "Math/Vector3.h"
 #include "Math/Vector4.h"
 #include <array>
@@ -56,16 +57,6 @@ public:
   // 表示用の3Dモデルを外から渡してセットする（overrideで確実にこちらが呼ばれる）
   void SetModel(std::unique_ptr<Object3d> model) override {
     model_ = std::move(model);
-    // モデルが渡された後にディゾルブ用の設定を行う
-    if (model_) {
-      TextureManager::GetInstance()->LoadTexture("resources/noise0.png");
-      model_->SetMaskTexturePath("resources/noise0.png");
-      model_->SetEnableDissolve(false);
-      model_->SetDissolveThreshold(0.0f);
-      model_->SetDissolveEdgeRange(0.1f); // DebugSceneのSuzanneと同じ値
-      model_->SetDissolveEdgeColor(
-          {0.0f, 5.0f, 5.0f, 1.0f}); // 強いネオンシアン
-    }
   }
   Object3d *GetModel() const { return model_.get(); }
   void SetBaseColor(const Vector4 &color) { baseColor_ = color; }
@@ -101,12 +92,33 @@ public:
   // ダメージを受ける処理
   void TakeDamage(int damage, bool isSelfDestruct = false) override;
 
+  // 装甲・形態変化・HP のルールを通さずに倒す（デバッグ用。装甲と突進の的も消す）
+  void ForceDefeat();
+
+  // 撃破の見た目を外から進めるか。true の間は Defeated へ自分で移らない（FinishDying で移る）
+  void SetDyingControlled(bool isControlled) { isDyingControlled_ = isControlled; }
+  // 撃破の間の体の向き（ワールドの回転）。SetDyingControlled(true) の間に使う
+  void SetDyingOrientation(const Quaternion &orientation);
+  // 撃破の間に体を赤く光らせる（元の色から color へ amount の割合で寄せる。0 で元の色）
+  void SetDyingFlash(const Vector4 &color, float amount);
+  // 撃破を終える（Defeated へ移り、消える）
+  void FinishDying();
+
+  /// <summary>
+  /// 撃破のときに爆発する、体の表面の点の表（モデルの座標。大きさ 1 のときの位置）。並びは爆発する順
+  /// </summary>
+  static const std::vector<Vector3> &GetBlastPoints();
+
 private:
   void ChangePhase(BossPhase nextPhase);
   void UpdatePhase1();
   void UpdatePhaseTransition();
   void UpdatePhase2();
   void UpdateDying();
+  // 撃破の間の体の色（元の色から赤く光らせる色へ、光らせる割合で寄せる）
+  Vector4 GetDyingColor() const;
+  // 残っている装甲と突進の的を消す
+  void DestroyParts();
   void UpdateDashSequence(); // 突進の一連の処理（予兆・突進本体・スタン・終了後クールダウン）
 
   int maxHp_ = 100;
@@ -145,13 +157,12 @@ private:
   // --- 動的移動用のスプライン制御点 ---
   std::array<Vector3, 4> hoverWaypoints_;
 
-  // --- ディゾルブ制御 ---
-  bool dissolveEnabled_ = false;
-
-  float dyingTimer_ = 0.0f;    // 消滅演出の経過時間
-  float dyingDuration_ = 3.0f; // 演出の総時間(秒)
+  // --- 撃破の見た目 ---
+  bool isDyingControlled_ = false;              // 撃破の見た目を外から進めているか
+  Vector4 dyingFlashColor_ = {1.0f, 0.0f, 0.0f, 1.0f}; // 赤く光らせる色
+  float dyingFlashAmount_ = 0.0f;               // 赤く光らせる割合（0〜1）
   std::function<void(const Vector3 &)>
-      onDyingUpdateCallback_; // Dyingフェーズの毎フレームコールバック
+      onDyingStartedCallback_; // Dyingフェーズに入った瞬間のコールバック
 
   // --- 部位（装甲）管理 ---
   std::vector<class BossBit *> activeBits_;
@@ -160,8 +171,9 @@ private:
   std::vector<BossWeakPoint*> activeWeakPoints_;
 
 public:
-  void SetOnDyingUpdateCallback(std::function<void(const Vector3 &)> cb) {
-    onDyingUpdateCallback_ = cb;
+  // 最後の一撃（Dying に入った瞬間）に、ボスの位置を渡して呼ぶ
+  void SetOnDyingStartedCallback(std::function<void(const Vector3 &)> cb) {
+    onDyingStartedCallback_ = cb;
   }
 
   // ビットが死んだときにリストから削除するコールバック関数

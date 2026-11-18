@@ -38,6 +38,10 @@ public:
   /// </summary>
   void UseExternalTransform();
   /// <summary>
+  /// 位置は transform_ のまま、見た目の向きを orientation にする（演出が向きをクォータニオンで決めるとき。UseExternalTransform の代わりに呼ぶ）
+  /// </summary>
+  void UseExternalOrientation(const Quaternion &orientation);
+  /// <summary>
   /// 見た目の向きを、角度 rotate の向きから飛ぶ向きへ ratio（0〜1）だけ混ぜた向きにする（このフレームだけ）
   /// </summary>
   void BlendOrientationFrom(const Vector3 &rotate, float ratio);
@@ -156,6 +160,11 @@ public:
 
   // 照準の不透明度（0〜1）
   void SetReticleAlpha(float alpha);
+
+  /// <summary>
+  /// 体の逆光の縁の強さ（マテリアルの backRimScale。0 で消す）
+  /// </summary>
+  void SetBackRimScale(float scale);
   int GetInvincibleTimer() const { return invincibleTimer_; }
 
   // --- アクション・軌道調整用パラメータ ---

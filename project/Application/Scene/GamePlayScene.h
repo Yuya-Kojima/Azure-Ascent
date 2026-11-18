@@ -20,6 +20,7 @@ class BillboardParticleEmitter;
 class MeshParticleEmitter;
 class StageIntro;
 class GameOverSequence;
+class ClearSequence;
 class SkipHold;
 class StageLighting;
 class RoarDistortion;
@@ -83,6 +84,24 @@ private: // メンバ変数(ゲーム用)
   // デバッグカメラスイッチ
   bool useDebugCamera_ = false;
 
+  // 描く物ごとの表示の切り替え（ImGui から、どの物が画面に映っているかを確かめる）
+  struct DrawToggles {
+    bool sky = true;          // 空
+    bool sceneObjects = true; // レベルに置いた物
+    bool enemies = true;      // 敵・砦・大蛇
+    bool clearLight = true;   // クリア演出の光の粒・光の玉・柱・天辺の玉
+    bool player = true;       // 自機
+    bool actors = true;       // 弾など
+    bool cloudSea = true;     // 雲海
+    bool particles = true;    // パーティクル・エフェクト
+    bool trails = true;       // リボントレイル
+    bool ui = true;           // 2D の表示
+    bool railLine = true;     // レールの道筋と今の位置の印
+    bool flightPath = false;  // クリア後のドラゴンの通った跡・行き先・リザルトの画面の枠
+    int skyDebugView = 0;     // 空の確認用の表示（0: ふつう, 1: 向き, 2: 雲のノイズ, 3: 晴れの割合）
+  };
+  DrawToggles drawToggles_;
+
   // プレイ/ストップモードフラグ
   bool previousGlobalPlayMode_ = false;
   bool isPaused_ = false;
@@ -116,9 +135,14 @@ private: // メンバ変数(ゲーム用)
 
   // ゲームオーバーの空中の演出
   std::unique_ptr<GameOverSequence> gameOverSequence_;
-  // 開始演出とゲームオーバー演出を飛ばす長押し
+  // クリア演出（ボスへの最後の一撃からリザルトの直前まで）
+  std::unique_ptr<ClearSequence> clearSequence_;
+  // デバッグでボスなしにクリア演出を始めるときの、仮のボスの位置（レールカメラの前への距離）と大きさ
+  static constexpr float kDebugBossDistance_ = 60.0f;
+  static constexpr float kDebugBossSize_ = 10.0f;
+  // 開始演出・ゲームオーバー演出・クリア演出を飛ばす長押し
   std::unique_ptr<SkipHold> skipHold_;
-  // ゲームオーバーの間、世界の時間の速さを足していき、1 を超えたフレームだけ世界を進める
+  // ゲームオーバーとクリア演出の間、世界の時間の速さを足していき、1 を超えたフレームだけ世界を進める
   float worldTimeCarry_ = 0.0f;
 
   // 開始演出のあと、HUD と照準が現れるまでの時間（秒）
@@ -186,14 +210,6 @@ private: // メンバ変数(ゲーム用)
   std::string previewModelPath_ = "";
   bool isPreviewHovering_ = false;
 
-
-  // ボス専用エミッター
-  std::unique_ptr<BillboardParticleEmitter> bossExplosionParticleGroup_;
-  std::unique_ptr<BillboardParticleEmitter> bossDustParticleGroup_;
-  std::unique_ptr<ParticleEmitter> bossExplosionEmitter_;
-  std::unique_ptr<ParticleEmitter> bossDustEmitter_;
-
-  bool hasBossStartedDying_ = false;
 
   // ポストエフェクト
   bool isGrayscale_ = false;
@@ -311,9 +327,33 @@ private:
   void UpdateGameOver();
 
   /// <summary>
-  /// クリアしてリザルトを出し始める（点を確定し、記録を書く）
+  /// ボスなしでレールが終わったとき、すぐにリザルトを出し始める（点を確定し、記録を書く）
   /// </summary>
   void StartClear();
+
+  /// <summary>
+  /// ボスへの最後の一撃で、クリア演出を始める（点を確定し、記録を書き、レール・BGM を止める）
+  /// </summary>
+  /// <param name="bossPos">ボスの位置</param>
+  /// <param name="bossSize">ボスの大きさ</param>
+  /// <param name="bossRotation">ボスの向き（オイラー角）</param>
+  void StartClearSequence(const Vector3 &bossPos, float bossSize,
+                          const Vector3 &bossRotation);
+
+  /// <summary>
+  /// クリア演出の大爆発で、ボスの体を割った破片を飛び散らせる
+  /// </summary>
+  void SpawnBossDebris(const Boss &boss);
+
+  /// <summary>
+  /// 点を確定し、記録を書き、リザルトに出す結果を渡しておく
+  /// </summary>
+  void FinishStageResult();
+
+  /// <summary>
+  /// クリア演出の更新（ボス・自機・HUD を演出に合わせ、出来事で音・ボス・リザルトを動かす）
+  /// </summary>
+  void UpdateClearSequence();
 
   /// <summary>
   /// リザルトの更新（選んだら次のシーンへ）

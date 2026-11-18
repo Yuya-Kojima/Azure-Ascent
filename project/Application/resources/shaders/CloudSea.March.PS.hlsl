@@ -1,6 +1,7 @@
 #include "CloudSea.hlsli"
 #include "Fullscreen.hlsli"
 #include "Lighting.hlsli"
+#include "SkyClearing.hlsli"
 
 // 不透明な物を描いたあとの元の大きさの深度（物の手前で視線を止める）
 Texture2D<float> gDepth : register(t0);
@@ -47,6 +48,13 @@ static const float kRimLightFirstStep = 0.5;
 // 前へ散る光の偏り（Henyey-Greenstein の g）
 static const float kForwardScatterG = 0.6;
 
+// 雲の色の値（視線の向きごとに、晴れの円の内外で変わる）
+struct CloudTint {
+	float3 color;         // 雲の色（光を受けて返す割合）
+	float brightness;     // 雲が返す光の強さの倍率
+	float valleyDarkness; // 低い所の環境光を暗くする強さ
+};
+
 // Henyey-Greenstein の位相関数を、全方向へ同じに散るときを 1 として表した値
 float HenyeyGreenstein(float cosTheta, float g) {
 	float g2 = g * g;
@@ -82,7 +90,7 @@ float LightOpticalDepth(float3 p, float3 toLight, float maxTop, int steps, float
 }
 
 // 雲の 1 点が目の向きへ返す光
-float3 InScatteredLight(float3 p, float sampleDensity, float top, float3 rayDir, float maxTop) {
+float3 InScatteredLight(float3 p, float sampleDensity, float top, float3 rayDir, float maxTop, CloudTint tint) {
 	// 太陽の光（平行光源）：雲の中を通る間の弱まり（Beer の法則）と粉の暗さ（Beer-Powder）
 	float3 toLight = normalize(-gDirectionalLight.direction);
 	float lightDepth = LightOpticalDepth(p, toLight, maxTop, kLightSteps, kLightFirstStep);
@@ -99,7 +107,7 @@ float3 InScatteredLight(float3 p, float sampleDensity, float top, float3 rayDir,
 	float amplitude = max(gCloudSea.amplitude, 1e-3);
 	float heightRatio = saturate((p.y - (gCloudSea.height - amplitude)) / (2.0 * amplitude));
 	float3 ambient = lerp(gDirectionalLight.groundAmbient.rgb, gDirectionalLight.skyAmbient.rgb, 0.5 + 0.5 * heightRatio);
-	ambient *= 1.0 - gCloudSea.valleyDarkness * (1.0 - heightRatio);
+	ambient *= 1.0 - tint.valleyDarkness * (1.0 - heightRatio);
 
 	if (gCloudSea.debugView == 1) {
 		ambient = 0.0;
@@ -109,7 +117,7 @@ float3 InScatteredLight(float3 p, float sampleDensity, float top, float3 rayDir,
 		return float3(1.0, 1.0, 1.0);
 	}
 
-	float3 light = gCloudSea.color.rgb * gCloudSea.brightness * (sun + ambient);
+	float3 light = tint.color * tint.brightness * (sun + ambient);
 
 	// 雲の中の点から照らす光（雷など）：点からの距離 radius で 1/e になるなめらかな弱まり
 	if (gCloudSea.debugView == 0) {
@@ -142,6 +150,24 @@ PixelShaderOutput main(VertexShaderOutput input) {
 	float2 ndc = float2(uv.x * 2.0 - 1.0, 1.0 - uv.y * 2.0);
 	float3 cameraPosition = gCloudSea.cameraPosition;
 	float3 rayDir = normalize(ReconstructWorldPosition(ndc, 1.0) - cameraPosition);
+
+	// 霧の色と雲の色：晴れの円があるときは、この視線の向きが空の円の内側か外側かで決める
+	// （外側は淀んだ空の値で、境目のすぐ外側の帯では空と同じだけ暗く、内側は晴れた空の値）
+	float3 fogColor = gFog.color.rgb;
+	CloudTint tint;
+	tint.color = gCloudSea.color.rgb;
+	tint.brightness = gCloudSea.brightness;
+	tint.valleyDarkness = gCloudSea.valleyDarkness;
+	if (gCloudSea.clearCircle.w > 0.0) {
+		float n = SkyCloudNoise(rayDir, gCloudSea.skyTime);
+		float outside = ClearCircleOutside(rayDir, gCloudSea.clearCircle, gCloudSea.clearEdge.w, n);
+		float clearRatio = ClearCircleRatio(outside, gCloudSea.clearEdge.x);
+		float darken = 1.0 - gCloudSea.clearEdge.z * ClearCirclePush(outside, gCloudSea.clearEdge.y);
+		fogColor = lerp(gCloudSea.darkFogColor.rgb * darken, gCloudSea.clearFogColor.rgb, clearRatio);
+		tint.color = lerp(tint.color, gCloudSea.clearColor.rgb, clearRatio);
+		tint.brightness = lerp(tint.brightness * darken, gCloudSea.clearColor.a, clearRatio);
+		tint.valleyDarkness = lerp(tint.valleyDarkness, gCloudSea.clearValleyDarkness, clearRatio);
+	}
 
 	// 物があればその手前まで（空は深度 1 のまま）
 	float depth = gDepth.Load(int3(fullPixel, 0));
@@ -187,11 +213,11 @@ PixelShaderOutput main(VertexShaderOutput input) {
 		step = min(step, tEnd - t);
 		float sampleDensity = CloudSeaDensity(p, top, true);
 		if (sampleDensity > 0.0) {
-			float3 light = InScatteredLight(p, sampleDensity, top, rayDir, maxTop);
+			float3 light = InScatteredLight(p, sampleDensity, top, rayDir, maxTop, tint);
 			// 霧（ほかの物と同じ直線の霧）
 			if (gFog.enabled != 0.0) {
 				float fogFactor = saturate((t - gFog.nearDist) / (gFog.farDist - gFog.nearDist));
-				light = lerp(light, gFog.color.rgb, fogFactor);
+				light = lerp(light, fogColor, fogFactor);
 			}
 			// 歩幅で光の量が変わらない積分：この区間で弱まった分だけ、雲の光に置き換わる
 			float stepTransmittance = exp(-sampleDensity * gCloudSea.density * step);
@@ -206,7 +232,7 @@ PixelShaderOutput main(VertexShaderOutput input) {
 
 	// 下向きの視線で後ろが空のとき（霧の距離より遠くの雲・層の底より下）は、霧の色にする
 	if (!hitObject && rayDir.y < 0.0) {
-		scattered += transmittance * gFog.color.rgb;
+		scattered += transmittance * fogColor;
 		transmittance = 0.0;
 	}
 

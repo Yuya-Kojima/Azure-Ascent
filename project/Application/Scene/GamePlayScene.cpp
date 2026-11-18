@@ -23,6 +23,7 @@
 #include "Debug/ImGuiManager.h"
 #include "Debug/Logger.h"
 #include "Effect/FractureCache.h"
+#include "Effect/FractureDebris.h"
 #include "Effect/RoarDistortion.h"
 #include "Framework/MenuInput.h"
 #include "Framework/UIManager.h"
@@ -45,6 +46,7 @@
 #include "Sprite/Sprite.h"
 #include "StageIntro.h"
 #include "GameOverSequence.h"
+#include "ClearSequence.h"
 #include "GameHud.h"
 #include "PauseMenu.h"
 #include "ResultSequence.h"
@@ -161,7 +163,7 @@ void GamePlayScene::PreloadResources(EngineBase *engine) {
   // ロード時に事前にモデルを割る
   // 撃破時に割ると、その瞬間に計算とGPUバッファの作成が集中してカクつくため
   for (const char *prefabName :
-       {"ZakoEnemy", "FastEnemy", "TankEnemy", "ZakoEye", "ZakoArrow"}) {
+       {"ZakoEnemy", "FastEnemy", "TankEnemy", "ZakoEye", "ZakoArrow", "Boss"}) {
     // 光る部品のモデルも読み込んでおく（光る部品は割らない）
     PrefabManager::GetInstance()->PreloadLightModels(prefabName);
     // プレハブからモデルのパスを読む
@@ -233,8 +235,6 @@ void GamePlayScene::Initialize(EngineBase *engine) {
 
   EffectManager::GetInstance()->Initialize();
 
-  hasBossStartedDying_ = false;
-
   //===========================
   // スプライト関係の初期化
   //===========================
@@ -242,29 +242,6 @@ void GamePlayScene::Initialize(EngineBase *engine) {
   //===========================
   // 3Dオブジェクト関係の初期化
   //===========================
-
-  // ===== ボス専用パーティクル初期化 =====
-  bossExplosionParticleGroup_ = std::make_unique<BillboardParticleEmitter>();
-  bossExplosionParticleGroup_->Initialize("resources/circle.png");
-  bossExplosionEmitter_ = std::make_unique<ParticleEmitter>(
-      bossExplosionParticleGroup_.get(), Vector3{0, 0, 0},
-      Vector3{4.0f, 4.0f, 4.0f}, 100, 0.0f, Vector3{0.0f, 0.0f, 0.0f},
-      Vector3{40.0f, 40.0f, 40.0f}, 0.6f, 1.2f);
-  bossExplosionEmitter_->SetBaseScale({8.0f, 8.0f, 8.0f});
-  bossExplosionEmitter_->SetScaleRandom({3.0f, 3.0f, 3.0f});
-  bossExplosionEmitter_->SetScaleVelocity({-5.0f, -5.0f, -5.0f});
-  bossExplosionEmitter_->SetColor({0.5f, 2.0f, 2.5f, 1.0f});
-
-  bossDustParticleGroup_ = std::make_unique<BillboardParticleEmitter>();
-  bossDustParticleGroup_->Initialize("resources/circle.png");
-  bossDustEmitter_ = std::make_unique<ParticleEmitter>(
-      bossDustParticleGroup_.get(), Vector3{0, 0, 0}, Vector3{8.0f, 8.0f, 8.0f},
-      6, 0.05f, Vector3{0.0f, 0.6f, 0.0f}, Vector3{6.0f, 6.0f, 6.0f}, 1.0f,
-      2.5f);
-  bossDustEmitter_->SetBaseScale({0.8f, 0.8f, 0.8f});
-  bossDustEmitter_->SetScaleRandom({0.4f, 0.4f, 0.4f});
-  bossDustEmitter_->SetScaleVelocity({-0.1f, -0.1f, -0.1f});
-  bossDustEmitter_->SetColor({0.2f, 1.5f, 2.0f, 0.8f});
 
   // デバッグカメラの初期化（開発用の自由カメラ）真っ直ぐ奥へ進むだけの自然なレールに変更）
   waypoints_ = {{0.0f, 4.0f, -10.0f}, {0.0f, 4.0f, 40.0f},
@@ -317,6 +294,9 @@ void GamePlayScene::Initialize(EngineBase *engine) {
   stageIntro_->Initialize(engine_->GetSpriteRenderer(), cloudSeaEvents_.get());
   gameOverSequence_ = std::make_unique<GameOverSequence>();
   gameOverSequence_->Initialize(engine_->GetSpriteRenderer());
+  clearSequence_ = std::make_unique<ClearSequence>();
+  clearSequence_->Initialize(engine_->GetSpriteRenderer(),
+                             engine_->GetObject3dRenderer());
 
   // 迎撃の印と、大蛇の出来事で動かすカメラ
   interceptCue_ = std::make_unique<InterceptCue>();
@@ -431,6 +411,8 @@ void GamePlayScene::Update() {
     SoundManager::GetInstance()->SetBGMVolume(1.0f);
     stageIntro_->Stop();
     gameOverSequence_->Stop();
+    clearSequence_->Stop();
+    resultSequence_->Stop();
     railCamera_->SetSpeedScale(1.0f);
     player_->SetExternalWingState(std::nullopt);
     player_->SetWingGesture({});
@@ -442,14 +424,12 @@ void GamePlayScene::Update() {
     ActorManager::GetInstance()->Clear();
     CollisionManager::GetInstance()->Clear(); // コライダー残留バグ対策
 
-    // ボス関連フラグのリセット（これがないと2回目のPlayでEmitが呼ばれない）
-    hasBossStartedDying_ = false;
-
     // プレイヤーのステータスを初期化
     if (player_) {
       player_->SetLoadConfigOnInitialize(false);
       player_->Initialize();
       player_->SetReticleAlpha(1.0f);
+      player_->SetBackRimScale(0.0f);
     }
     hudFadeTimer_ = hudFadeSec_;
 
@@ -553,9 +533,14 @@ void GamePlayScene::Update() {
       ((isPlayMode_ && !isWorldPaused && hitStopTimer_ <= 0) || doStep_) &&
       gameState_ != GameState::Intro;
 
-  // ゲームオーバーの間は、世界の時間の速さに合わせて、進めるフレームを間引く
-  if (shouldUpdateWorld && gameState_ == GameState::GameOver) {
-    worldTimeCarry_ += gameOverSequence_->GetTimeScale();
+  // ゲームオーバーとクリア演出の間は、世界の時間の速さに合わせて、進めるフレームを間引く
+  const bool isWorldTimeScaled =
+      gameState_ == GameState::GameOver ||
+      (gameState_ == GameState::Clear && clearSequence_->IsActive());
+  if (shouldUpdateWorld && isWorldTimeScaled) {
+    worldTimeCarry_ += gameState_ == GameState::GameOver
+                           ? gameOverSequence_->GetTimeScale()
+                           : clearSequence_->GetTimeScale();
     if (worldTimeCarry_ >= 1.0f) {
       worldTimeCarry_ -= 1.0f;
     } else {
@@ -619,6 +604,16 @@ void GamePlayScene::Update() {
     }
     if (!useDebugCamera_) {
       activeCamera = gameOverSequence_->GetCamera();
+    }
+  }
+
+  // クリア演出：ボス・自機を演出に合わせて動かし、演出カメラで映す（リザルト中も最後の構図で映す）
+  if (gameState_ == GameState::Clear && clearSequence_->IsActive()) {
+    if (isPlayMode_ && !isPaused_) {
+      UpdateClearSequence();
+    }
+    if (!useDebugCamera_) {
+      activeCamera = clearSequence_->GetCamera();
     }
   }
 
@@ -739,17 +734,14 @@ void GamePlayScene::Update() {
             boss->SetPlayer(player_.get());
             boss->GetTransform().scale = {10.0f, 10.0f, 10.0f}; // さらに巨大化
 
-            boss->SetOnDyingUpdateCallback([this](const Vector3 &pos) {
-              if (!hasBossStartedDying_) {
-                hasBossStartedDying_ = true;
-                bossExplosionEmitter_->SetCenter(pos);
-                bossExplosionEmitter_->Emit();
-                SoundManager::GetInstance()->PlaySE("boss_explosion");
-                if (railCamera_)
-                  railCamera_->Shake(1.5f, 0.4f);
-              }
-              bossDustEmitter_->SetCenter(pos);
-              bossDustEmitter_->Update();
+            // 最後の一撃でクリア演出を始める
+            boss->SetOnDyingStartedCallback([this](const Vector3 &pos) {
+              const Boss *dyingBoss = boss_.Get();
+              const float size =
+                  dyingBoss ? dyingBoss->GetTransform().scale.x : kDebugBossSize_;
+              const Vector3 rotation =
+                  dyingBoss ? dyingBoss->GetTransform().rotate : Vector3{};
+              StartClearSequence(pos, size, rotation);
             });
 
             // ボス戦開始: レールカメラを低速化し、ボスBGMへ切り替え
@@ -765,13 +757,8 @@ void GamePlayScene::Update() {
         newEnemy->SetPlayer(player_.get());
         newEnemy->SetSpawnOffset(ev.spawnOffset);
 
-        // 撃破を数える。ボスを倒したらクリア、それ以外は自機の弾で倒したときだけ撃破に数える
-        if (ev.prefabName == "Boss") {
-          newEnemy->SetOnDestroyedCallback([this](bool) {
-            scoreKeeper_->OnBossKilled();
-            StartClear();
-          });
-        } else if (isPlayMode_) {
+        // 撃破を数える。ボスは最後の一撃で数え（StartClearSequence）、それ以外は自機の弾で倒したときだけ撃破に数える
+        if (ev.prefabName != "Boss" && isPlayMode_) {
           CountEnemyForScore(enemyPtr, ev.spawnTime);
         }
 
@@ -908,6 +895,7 @@ void GamePlayScene::Update() {
     }
     ApplySkyAndLighting();
     skybox_->SetCamera(activeCamera);
+    skybox_->SetDebugView(drawToggles_.skyDebugView);
     skybox_->Update();
     cloudSea_->SetTime(skyTimer_);
     cloudSea_->SetCamera(activeCamera);
@@ -968,6 +956,8 @@ void GamePlayScene::Update() {
     float hudAlpha = hudFadeSec_ > 0.0f ? hudFadeTimer_ / hudFadeSec_ : 1.0f;
     if (gameState_ == GameState::GameOver) {
       hudAlpha = gameOverSequence_->GetHudAlpha();
+    } else if (gameState_ == GameState::Clear) {
+      hudAlpha = clearSequence_->GetHudAlpha();
     }
     hud_->Update(*player_, *scoreKeeper_, FindBoss(),
                  railCamera_->GetViewProjectionMatrix(), hudAlpha);
@@ -1534,6 +1524,36 @@ void GamePlayScene::Update() {
   ImGui::Begin("Timeline & Sequencer");
 
   ImGui::Checkbox("Debug Camera [P]", &useDebugCamera_);
+  if (ImGui::TreeNode("Draw Toggles")) {
+    ImGui::Checkbox("Sky", &drawToggles_.sky);
+    ImGui::Checkbox("Scene Objects", &drawToggles_.sceneObjects);
+    ImGui::Checkbox("Enemies", &drawToggles_.enemies);
+    ImGui::Checkbox("Clear Light", &drawToggles_.clearLight);
+    ImGui::Checkbox("Player", &drawToggles_.player);
+    ImGui::Checkbox("Actors", &drawToggles_.actors);
+    ImGui::Checkbox("Cloud Sea", &drawToggles_.cloudSea);
+    ImGui::Checkbox("Particles", &drawToggles_.particles);
+    ImGui::Checkbox("Trails", &drawToggles_.trails);
+    ImGui::Checkbox("UI", &drawToggles_.ui);
+    ImGui::Checkbox("Rail Line", &drawToggles_.railLine);
+    ImGui::Checkbox("Flight Path", &drawToggles_.flightPath);
+    // クリア後のドラゴンが飛ぶ所を、デバッグカメラで真上から見下ろす
+    if (ImGui::Button("Flight Top View")) {
+      Vector3 translate;
+      Vector3 rotate;
+      if (clearSequence_->GetTopView(translate, rotate)) {
+        debugCamera_->SetTranslate(translate);
+        debugCamera_->SetRotate(rotate);
+        useDebugCamera_ = true;
+        drawToggles_.flightPath = true;
+      }
+    }
+    const char *const kSkyViews[] = {"Normal", "Direction", "Cloud Noise",
+                                     "Clear Ratio"};
+    ImGui::Combo("Sky View", &drawToggles_.skyDebugView, kSkyViews,
+                 IM_ARRAYSIZE(kSkyViews));
+    ImGui::TreePop();
+  }
 
   float currentT = railCamera_->GetT();
   float maxT = static_cast<float>(railCamera_->GetWaypoints().size() - 1);
@@ -1627,9 +1647,14 @@ void GamePlayScene::Update() {
 
   ImGui::End();
 
+  // クリア後のドラゴンの通った跡・行き先・リザルトの画面の枠
+  if (drawToggles_.flightPath) {
+    clearSequence_->DrawDebugLines(*engine_->GetLineRenderer());
+  }
+
   // レールのデバッグ描画（スプライン曲線をサンプリングして描画）
   const auto &waypoints = railCamera_->GetWaypoints();
-  if (waypoints.size() > 1) {
+  if (drawToggles_.railLine && waypoints.size() > 1) {
     float maxPathT = static_cast<float>(waypoints.size() - 1);
     const float step = 0.05f; // サンプリング間隔
     Vector3 prevPos = railCamera_->CalcPosition(0.0f);
@@ -1722,10 +1747,9 @@ void GamePlayScene::DrawEditorUI() {
     ImGui::SameLine();
     ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.8f, 0.2f, 0.2f, 1.0f));
     if (ImGui::Button(" [ KILL BOSS ] ")) {
-      for (auto &enemy : runtimeEnemies_) {
-        if (enemy->IsBoss()) {
-          enemy->TakeDamage(99999);
-        }
+      // 装甲・形態変化・HP のルールを通さずに倒す
+      if (Boss *boss = boss_.Get()) {
+        boss->ForceDefeat();
       }
     }
     ImGui::PopStyleColor();
@@ -1809,6 +1833,33 @@ void GamePlayScene::DrawEditorUI() {
   if (player_ && ImGui::CollapsingHeader("Dragon Wing Config")) {
     player_->DrawWingConfigImGui();
   }
+  ImGui::End();
+
+  //=========================
+  // クリア演出の調整（Play 中も出す）
+  //=========================
+  ImGui::Begin("Clear");
+  if (isPlayMode_ && gameState_ == GameState::Play) {
+    // ボスがいれば、ルールを通さずに倒して最後の一撃から始める
+    if (Boss *boss = boss_.Get()) {
+      if (!boss->IsDyingOrDefeated() && ImGui::Button("Defeat Boss")) {
+        boss->ForceDefeat();
+      }
+    }
+    // ボス戦をせずに、レールカメラの前に仮のボスがいるとして始める
+    if (ImGui::Button("Play Clear (No Boss)")) {
+      const Vector3 railForward = railCamera_->GetRailForward();
+      const Vector3 bossPos =
+          railCamera_->GetRailPosition() + railForward * kDebugBossDistance_;
+      // ボス戦と同じく、モデルの後ろ（-Z）をカメラへ向ける
+      const Vector3 rotation = {
+          0.0f,
+          std::atan2(-railForward.x, -railForward.z) + std::numbers::pi_v<float>,
+          0.0f};
+      StartClearSequence(bossPos, kDebugBossSize_, rotation);
+    }
+  }
+  clearSequence_->DrawImGui();
   ImGui::End();
 
   if (!isPlayMode_) {
@@ -1988,7 +2039,7 @@ void GamePlayScene::Draw() { Draw3D(); }
 void GamePlayScene::Draw3D() {
   engine_->Begin3D();
 
-  if (skybox_) {
+  if (skybox_ && drawToggles_.sky) {
     engine_->GetSkyboxRenderer()->Begin();
     skybox_->Draw();
 
@@ -1997,19 +2048,28 @@ void GamePlayScene::Draw3D() {
   }
 
   // 敵の描画
-  for (auto &enemy : runtimeEnemies_) {
-    if (!enemy->IsDead()) {
-      enemy->Draw3D();
+  if (drawToggles_.enemies) {
+    for (auto &enemy : runtimeEnemies_) {
+      if (!enemy->IsDead()) {
+        enemy->Draw3D();
+      }
+    }
+    for (auto &fortress : fortresses_) {
+      fortress->Draw();
+    }
+    for (auto &serpent : serpents_) {
+      serpent->Draw();
     }
   }
-  for (auto &fortress : fortresses_) {
-    fortress->Draw();
+  if (drawToggles_.sceneObjects) {
+    for (auto &obj : sceneObjects_) {
+      obj->Draw();
+    }
   }
-  for (auto &serpent : serpents_) {
-    serpent->Draw();
-  }
-  for (auto &obj : sceneObjects_) {
-    obj->Draw();
+
+  // クリア演出の光の粒・光の玉・柱・天辺の玉
+  if (drawToggles_.clearLight) {
+    clearSequence_->Draw3D();
   }
 
   // プレビューオブジェクトの描画
@@ -2017,15 +2077,17 @@ void GamePlayScene::Draw3D() {
     previewObject_->Draw();
   }
 
-  if (player_) {
+  if (player_ && drawToggles_.player) {
     player_->Draw3D();
   }
 
   // アクター群（弾など）の描画
-  ActorManager::GetInstance()->Draw3D();
+  if (drawToggles_.actors) {
+    ActorManager::GetInstance()->Draw3D();
+  }
 
   // 雲海は不透明な物のあと、パーティクルなど半透明の物の前に描く（深度を読んで物の手前まで重ねる）
-  if (skybox_) {
+  if (skybox_ && drawToggles_.cloudSea) {
     cloudSea_->Draw();
     engine_->GetObject3dRenderer()->Begin();
   }
@@ -2110,23 +2172,18 @@ void GamePlayScene::Draw3D() {
   // パーティクルの更新と発生（ルートシグネチャが変わるため、3Dモデル描画後に）
   ParticleManager::GetInstance()->Update();
   if (activeCamera) {
-    bossExplosionParticleGroup_->Update(activeCamera->GetViewMatrix(),
-                                        activeCamera->GetProjectionMatrix());
-    bossDustParticleGroup_->Update(activeCamera->GetViewMatrix(),
-                                   activeCamera->GetProjectionMatrix());
     stageIntro_->UpdateParticles(activeCamera->GetViewMatrix(),
                                  activeCamera->GetProjectionMatrix());
   }
   ParticleManager::GetInstance()->Emit();
 
-  EffectManager::GetInstance()->Draw();
-
-  bossExplosionParticleGroup_->Draw();
-  bossDustParticleGroup_->Draw();
-  stageIntro_->DrawParticles();
+  if (drawToggles_.particles) {
+    EffectManager::GetInstance()->Draw();
+    stageIntro_->DrawParticles();
+  }
 
   // リボントレイル（弾やミサイルの光の軌跡）の一括描画
-  if (activeCamera) {
+  if (activeCamera && drawToggles_.trails) {
     auto srvHandle = TextureManager::GetInstance()->GetSrvHandleGPU(
         "resources/gradationLine.png");
     TrailRenderer::GetInstance()->Render(
@@ -2137,6 +2194,9 @@ void GamePlayScene::Draw3D() {
 }
 
 void GamePlayScene::Draw2D() {
+  if (!drawToggles_.ui) {
+    return;
+  }
   if (player_) {
     // リザルト画面中はレティクルを消す
     if (gameState_ == GameState::Play) {
@@ -2162,12 +2222,16 @@ void GamePlayScene::Draw2D() {
   if (gameState_ != GameState::Intro) {
     UIManager::GetInstance()->Draw();
   }
-  if (gameState_ == GameState::Play || gameState_ == GameState::GameOver) {
+  // クリア演出の間は、最後の一撃から消えていく HUD を出す
+  if (gameState_ == GameState::Play || gameState_ == GameState::GameOver ||
+      (gameState_ == GameState::Clear && !resultSequence_->IsActive())) {
     hud_->Draw();
   }
   if (gameState_ == GameState::Clear) {
     resultSequence_->Draw();
   }
+  // クリア演出の上下の黒い帯と文字のカード
+  clearSequence_->Draw2D();
 
   // 目標カードは HUD より手前に出す
   stageIntro_->DrawCaption();
@@ -2333,7 +2397,119 @@ void GamePlayScene::StartClear() {
   if (railCamera_) {
     railCamera_->SetAutoMove(false);
   }
+  FinishStageResult();
+  resultSequence_->Start();
+}
 
+void GamePlayScene::StartClearSequence(const Vector3 &bossPos, float bossSize,
+                                       const Vector3 &bossRotation) {
+  // 操作中の最後の一撃だけ（開始演出・ゲームオーバー・クリアのあとは始めない）
+  if (gameState_ != GameState::Play) {
+    return;
+  }
+  gameState_ = GameState::Clear;
+  SoundManager::GetInstance()->StopBGM();
+  if (railCamera_) {
+    railCamera_->SetAutoMove(false);
+  }
+  worldTimeCarry_ = 0.0f;
+  skipHold_->Start();
+
+  // 点はこの一撃で確定し、記録を書く。リザルトは演出の終わりに出す
+  resultSequence_->Stop();
+  scoreKeeper_->OnBossKilled();
+  FinishStageResult();
+
+  // ボスの撃破の見た目は演出が進める
+  if (Boss *boss = boss_.Get()) {
+    boss->SetDyingControlled(true);
+  }
+  clearSequence_->Start(*railCamera_, bossPos, bossSize, bossRotation,
+                        Boss::GetBlastPoints());
+}
+
+void GamePlayScene::UpdateClearSequence() {
+  const bool isSkipPressed = skipHold_->Update(engine_->GetInputManager(),
+                                               clearSequence_->CanSkip());
+  clearSequence_->Update(isSkipPressed);
+
+  // ボス：爆発のたびに向きが崩れ、赤く光る（場所は動かさない）
+  Boss *boss = boss_.Get();
+  if (boss && !boss->IsDead()) {
+    boss->SetDyingOrientation(clearSequence_->GetBossOrientation());
+    boss->SetDyingFlash(clearSequence_->GetBossFlashColor(),
+                        clearSequence_->GetBossFlash());
+  }
+
+  for (ClearSequence::Cue cue : clearSequence_->TakeCues()) {
+    switch (cue) {
+    case ClearSequence::Cue::BossBlast:
+      // 大爆発：体を割った破片にして飛び散らせ、ボスを消す
+      if (boss && !boss->IsDead()) {
+        if (clearSequence_->IsBlastVisible()) {
+          SpawnBossDebris(*boss);
+          SoundManager::GetInstance()->PlaySE("boss_explosion");
+        }
+        boss->FinishDying();
+      }
+      break;
+    case ClearSequence::Cue::Burst:
+      SoundManager::GetInstance()->PlaySE("victory_jingle");
+      break;
+    case ClearSequence::Cue::Result:
+      resultSequence_->Start();
+      break;
+    }
+  }
+
+  // 自機：余韻の場面から、演出の経路で晴れた空を飛ぶ
+  if (clearSequence_->IsDragonFlying()) {
+    Transform &playerTransform = player_->GetTransform();
+    playerTransform.translate = clearSequence_->GetDragonPosition();
+    playerTransform.rotate = clearSequence_->GetDragonRotation();
+    player_->UseExternalOrientation(clearSequence_->GetDragonOrientation());
+    player_->SetExternalWingState(clearSequence_->GetWingState());
+    // 太陽を背にしたときの縁の光
+    player_->SetBackRimScale(clearSequence_->GetDragonBackRimScale());
+  }
+
+  // HUD と照準は最後の一撃から消していく
+  const float hudAlpha = clearSequence_->GetHudAlpha();
+  UIManager::GetInstance()->SetGlobalAlpha(hudAlpha);
+  player_->SetReticleAlpha(hudAlpha);
+}
+
+void GamePlayScene::SpawnBossDebris(const Boss &boss) {
+  Object3d *model = boss.GetModel();
+  Object3dRenderer *renderer = PrefabManager::GetInstance()->GetObject3dRenderer();
+  if (!model || !renderer) {
+    return;
+  }
+  const FracturePieceSet *pieceSet =
+      FractureCache::GetInstance()->Find(model->GetModel());
+  if (!pieceSet) {
+    return;
+  }
+  // 破片は爆発の瞬間のボスの位置・向き・大きさで置く（向きは崩れたあとのモデルの回転）
+  const Transform &transform = boss.GetTransform();
+  // 崩れたあとの向きを、MakeRotateMatrix（X → Y → Z の順に回す）のオイラー角に直す
+  const Vector3 kUnitScale = {1.0f, 1.0f, 1.0f};
+  const Vector3 kNoTranslate = {0.0f, 0.0f, 0.0f};
+  const Matrix4x4 rotateMatrix = MakeAffineMatrix(
+      kUnitScale, clearSequence_->GetBossOrientation(), kNoTranslate);
+  const Vector3 rotation = {
+      std::atan2(rotateMatrix.m[1][2], rotateMatrix.m[2][2]),
+      std::asin(std::clamp(-rotateMatrix.m[0][2], -1.0f, 1.0f)),
+      std::atan2(rotateMatrix.m[0][1], rotateMatrix.m[0][0])};
+  const Vector3 kNoInheritedVelocity = {0.0f, 0.0f, 0.0f};
+  auto debris = std::make_unique<FractureDebris>(
+      renderer, *pieceSet, transform.translate, rotation, transform.scale,
+      clearSequence_->GetDebrisLook(boss.GetBaseColor()), kNoInheritedVelocity,
+      clearSequence_->GetDebrisParams());
+  ActorManager::GetInstance()->AddActor(std::move(debris));
+}
+
+void GamePlayScene::FinishStageResult() {
   // まだ弾が飛んでいる射撃を確定し、ランクを決める
   scoreKeeper_->FinishAllVolleys();
   ResultSequence::Result result;
@@ -2363,10 +2539,14 @@ void GamePlayScene::StartClear() {
   StageRecord::Save(stageName, record);
   result.bestScore = record.bestScore;
 
-  resultSequence_->Start(result);
+  resultSequence_->Prepare(result);
 }
 
 void GamePlayScene::UpdateClear() {
+  // リザルトはクリア演出の終わりに出る
+  if (!resultSequence_->IsActive()) {
+    return;
+  }
   Input *input = GameManager::GetInstance()->IsGlobalPlayMode()
                      ? engine_->GetInputManager()
                      : nullptr;
@@ -2456,9 +2636,17 @@ const Boss *GamePlayScene::FindBoss() const {
 }
 
 void GamePlayScene::ApplySkyAndLighting() {
+  // クリア演出の晴れの進み具合を、空・光・霧と雲海へ渡す
+  if (clearSequence_) {
+    stageLighting_->SetClearState(clearSequence_->GetClearState());
+  }
   stageLighting_->Apply(skybox_.get(), engine_->GetObject3dRenderer(),
                         postProcess_.get(), skyTimer_);
-  cloudSeaEvents_->Apply(cloudSea_.get());
+  // 雲海は空と同じ晴れの円で、視線の向きごとに晴れた色へ変わる
+  CloudSeaClearing clearing;
+  stageLighting_->FillCloudSeaClearing(clearing, skyTimer_);
+  cloudSeaEvents_->SetClearAmount(stageLighting_->GetClearPreview());
+  cloudSeaEvents_->Apply(cloudSea_.get(), clearing);
 }
 
 void GamePlayScene::SaveLevel(const std::string &filename) {

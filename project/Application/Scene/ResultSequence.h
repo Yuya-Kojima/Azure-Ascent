@@ -53,6 +53,21 @@ public:
   void Start(const Result &result);
 
   /// <summary>
+  /// 出す結果を先に渡しておく（まだ出さない）
+  /// </summary>
+  void Prepare(const Result &result) { result_ = result; }
+
+  /// <summary>
+  /// Prepare で渡しておいた結果で、リザルトを出し始める
+  /// </summary>
+  void Start() { Start(result_); }
+
+  /// <summary>
+  /// リザルトを引っ込める（出ていない状態に戻す）
+  /// </summary>
+  void Stop() { isActive_ = false; }
+
+  /// <summary>
   /// 更新
   /// </summary>
   /// <param name="input">操作を受けるときの入力。nullptr なら操作を受けない</param>
