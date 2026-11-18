@@ -206,6 +206,8 @@ copy "$(WindowsSdkDir)bin\$(TargetPlatformVersion)\x64\dxil.dll" "$(TargetDir)dx
     <ClCompile Include="Scene\CaptionCard.cpp" />
     <ClCompile Include="Scene\SkipHold.cpp" />
     <ClCompile Include="Scene\GameOverSequence.cpp" />
+    <ClCompile Include="Scene\ClearSequence.cpp" />
+    <ClCompile Include="Scene\ClearFlight.cpp" />
     <ClCompile Include="Scene\StageSelectReturn.cpp" />
     <ClCompile Include="Scene\StageBriefing.cpp" />
     <ClCompile Include="Score\ScoreConfig.cpp" />
@@ -384,6 +386,8 @@ copy "$(WindowsSdkDir)bin\$(TargetPlatformVersion)\x64\dxil.dll" "$(TargetDir)dx
     <ClInclude Include="Scene\CaptionCard.h" />
     <ClInclude Include="Scene\SkipHold.h" />
     <ClInclude Include="Scene\GameOverSequence.h" />
+    <ClInclude Include="Scene\ClearSequence.h" />
+    <ClInclude Include="Scene\ClearFlight.h" />
     <ClInclude Include="Scene\StageSelectReturn.h" />
     <ClInclude Include="Scene\StageBriefing.h" />
     <ClInclude Include="Score\ScoreConfig.h" />
@@ -407,6 +411,11 @@ copy "$(WindowsSdkDir)bin\$(TargetPlatformVersion)\x64\dxil.dll" "$(TargetDir)dx
   <ItemGroup>
     <None Include="cpp.hint" />
     <None Include="resources\shaders\CloudSea.hlsli">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Development|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
+    </None>
+    <None Include="resources\shaders\SkyClearing.hlsli">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Development|x64'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>

@@ -44,9 +44,8 @@ void Boss::Initialize() {
   targetPos_ = {0.0f, 0.0f, 0.0f};
 
   aliveTime_ = 0.0f;
-  dyingTimer_ = 0.0f;
-
-  dissolveEnabled_ = false;
+  isDyingControlled_ = false;
+  dyingFlashAmount_ = 0.0f;
 
   // --- コアと装甲の生成 ---
   float bitOffsetRadius = 0.6f;
@@ -184,6 +183,8 @@ void Boss::Update() {
         model_->SetColor({1.0f, 0.5f, 0.0f, 1.0f}); // 予兆時はオレンジ
       } else if (currentState_ == BossState::DashTelegraph) {
         model_->SetColor({1.0f, 0.0f, 0.0f, 1.0f}); // 突進予兆時は赤
+      } else if (phase_ == BossPhase::Dying) {
+        model_->SetColor(GetDyingColor());
       } else {
         model_->SetColor(baseColor_);
       }
@@ -675,29 +676,73 @@ void Boss::UpdatePhase2() {
 }
 
 void Boss::UpdateDying() {
-  dyingTimer_ += 1.0f / 60.0f;
-
-  // ディゾルブ進行
-  if (model_) {
-    if (!dissolveEnabled_ && dyingTimer_ > 0.0f) {
-      model_->SetEnableDissolve(true);
-      dissolveEnabled_ = true;
-    }
-    float progress = dyingTimer_ / dyingDuration_;
-    progress = std::min(progress, 1.0f);
-    model_->SetDissolveThreshold(progress);
-  }
-
-  // 塵パーティクルの位置更新
-  float progressForDust = dyingTimer_ / dyingDuration_;
-  if (onDyingUpdateCallback_ && progressForDust < 0.6f) {
-    onDyingUpdateCallback_(transform_.translate);
-  }
-
-  // 演出終了 → 完全消滅
-  if (dyingTimer_ >= dyingDuration_) {
+  // 撃破の見た目を外から進めていなければ（クリア演出の外で倒れたとき）、その場で爆発して消える
+  if (!isDyingControlled_) {
+    EffectManager::GetInstance()->PlayEnemyDeathEffect(transform_.translate);
     ChangePhase(BossPhase::Defeated);
   }
+}
+
+Vector4 Boss::GetDyingColor() const {
+  const float t = std::clamp(dyingFlashAmount_, 0.0f, 1.0f);
+  return {baseColor_.x + (dyingFlashColor_.x - baseColor_.x) * t,
+          baseColor_.y + (dyingFlashColor_.y - baseColor_.y) * t,
+          baseColor_.z + (dyingFlashColor_.z - baseColor_.z) * t,
+          baseColor_.w};
+}
+
+void Boss::SetDyingOrientation(const Quaternion &orientation) {
+  // 世界が止まっていて Update が呼ばれない間も、見た目へすぐ渡す
+  if (model_) {
+    model_->SetRotationQuaternion(orientation);
+    model_->Update();
+  }
+}
+
+void Boss::SetDyingFlash(const Vector4 &color, float amount) {
+  dyingFlashColor_ = color;
+  dyingFlashAmount_ = amount;
+  if (model_ && hitFlashTimer_ <= 0) {
+    model_->SetColor(GetDyingColor());
+  }
+}
+
+const std::vector<Vector3> &Boss::GetBlastPoints() {
+  // クリスタル（半径 0.5 の六角の胴、前後の尖端が z = ±1）の面の上の点。前後・上下・左右へ交互に散らす
+  static const std::vector<Vector3> kPoints = {
+      {0.000f, 0.281f, 0.350f},   {-0.035f, -0.303f, -0.300f},
+      {0.180f, -0.078f, 0.550f},  {-0.181f, 0.119f, -0.500f},
+      {0.290f, 0.191f, -0.200f},  {-0.281f, -0.162f, 0.250f},
+      {-0.030f, -0.173f, 0.600f}, {-0.027f, 0.238f, -0.450f},
+  };
+  return kPoints;
+}
+
+void Boss::FinishDying() {
+  if (phase_ == BossPhase::Dying) {
+    ChangePhase(BossPhase::Defeated);
+  }
+}
+
+void Boss::ForceDefeat() {
+  if (isDead_ || IsDyingOrDefeated()) {
+    return;
+  }
+  hp_ = 0;
+  ChangePhase(BossPhase::Dying);
+}
+
+void Boss::DestroyParts() {
+  for (BossBit *bit : activeBits_) {
+    bit->SetOnDestroyedCallback(nullptr);
+    bit->Destroy();
+  }
+  activeBits_.clear();
+  for (BossWeakPoint *wp : activeWeakPoints_) {
+    wp->SetOnDestroyedCallback(nullptr);
+    wp->Destroy();
+  }
+  activeWeakPoints_.clear();
 }
 
 void Boss::Draw3D() {
@@ -904,16 +949,23 @@ void Boss::ChangePhase(BossPhase nextPhase) {
         return false;
     });
 
+    // 残った装甲と突進の的を消す（ボスより長く残って、消えたボスを指さないようにする）
+    DestroyParts();
+
     // コライダーを無効化（メモリは破棄しない）
     if (collider_) {
       collider_->SetEnable(false);
     }
-    dyingTimer_ = 0.0f;
+    dyingFlashAmount_ = 0.0f;
+    // 突進の途中でも、突進の処理をやめて撃破の処理へ移す
+    currentState_ = BossState::Hover;
     // HPバーを非表示にする
     isUIInitialized_ = false;
+    if (onDyingStartedCallback_) {
+      onDyingStartedCallback_(transform_.translate);
+    }
   } else if (phase_ == BossPhase::Defeated) {
     Logger::Log("Boss Defeated!\n");
-    onDyingUpdateCallback_ = nullptr; // 塵の放出を止める
 
     if (onDestroyedCallback_) {
       onDestroyedCallback_(false);

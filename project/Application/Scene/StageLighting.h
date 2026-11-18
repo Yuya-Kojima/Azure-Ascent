@@ -4,6 +4,7 @@
 class Skybox;
 class Object3dRenderer;
 class PostProcess;
+struct CloudSeaClearing;
 
 /// <summary>
 /// ステージの空・光・霧・ポストエフェクトの値を持ち、毎フレーム描画側へ設定する。
@@ -53,10 +54,49 @@ public:
     float vignetteExponent = 0.5f;                   // 周辺減光の境目の強さ
   };
 
+  // 晴れの円の境目の見た目（角度は度）
+  struct ClearEdge {
+    float softnessDeg = 8.0f;    // 境目のぼかしの幅
+    float darkWidthDeg = 25.0f;  // 境目の外側で闇が濃くなる帯の幅
+    float darkStrength = 0.5f;   // 闇が濃くなる強さ（0〜1）
+    float noiseDeg = 6.0f;       // 境目を雲のノイズで内外へ揺らす幅
+  };
+
+  // 晴れの進み具合（クリア演出が毎フレーム渡す）
+  struct ClearState {
+    Vector3 center = {0.0f, 1.0f, 0.0f}; // 晴れの円の中心の向き（ワールド）
+    float radius = 0.0f;                 // 晴れの円の半径（中心からの角度、ラジアン。0 で晴れなし）
+    float amount = 0.0f;                 // 光・霧・ポストエフェクトを晴れの値へ寄せる割合（0〜1）
+    float edgeDarkScale = 1.0f;          // 境目の闇の濃さに掛ける値（0〜1）
+    float sunIntensityScale = 1.0f;      // 晴れた空の太陽の強さに掛ける値
+    bool hasSunDirection = false;        // 晴れた空の太陽の向きを、下の向きに置き換えるか（物を照らす光と逆光の縁も、晴れの割合だけこの向きへ寄せる）
+    Vector3 sunDirection = {0.0f, 1.0f, 0.0f}; // 晴れた空の太陽の向き（ワールド）
+  };
+
   /// <summary>
   /// 設定ファイルを読み込む（ないときは既定値のまま）
   /// </summary>
   void Initialize();
+
+  /// <summary>
+  /// 晴れの進み具合を決める（Apply の前に呼ぶ）
+  /// </summary>
+  void SetClearState(const ClearState &state) { clearState_ = state; }
+
+  /// <summary>
+  /// 光・霧・ポストエフェクトを晴れの値へ寄せている割合（0〜1）
+  /// </summary>
+  float GetClearAmount() const;
+
+  /// <summary>
+  /// 晴れた空を全体に混ぜて見る割合（0〜1。ImGui で調べるとき。雲海の円の外側の色を合わせるのに使う）
+  /// </summary>
+  float GetClearPreview() const { return clearPreview_; }
+
+  /// <summary>
+  /// 雲海へ渡す晴れの円（空と同じ円と、円の内外の霧の色）を out に書く。skyTime は空の時刻（秒）
+  /// </summary>
+  void FillCloudSeaClearing(CloudSeaClearing &out, float skyTime) const;
 
   /// <summary>
   /// 空・光・霧・ポストエフェクトを設定する
@@ -78,5 +118,10 @@ private:
   void LoadConfig();
   void SaveConfig() const;
 
-  Config config_;
+  Config config_;      // 淀んだ空（ふだん）の値
+  Config clearConfig_; // 晴れた空の値
+  ClearEdge clearEdge_;
+  ClearState clearState_;
+  // 晴れた空を全体に混ぜて見る割合（ImGui で晴れの値を調べる。保存しない）
+  float clearPreview_ = 0.0f;
 };

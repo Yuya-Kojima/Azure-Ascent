@@ -95,6 +95,18 @@ void CloudSea::Update() {
     paramsData_->glows[i] = {g.position, (std::max)(g.radius, 0.01f), g.color,
                              0.0f};
   }
+  const CloudSeaClearing &cl = clearing_;
+  paramsData_->clearCircle = {cl.center.x, cl.center.y, cl.center.z, cl.radius};
+  paramsData_->clearEdge = {cl.softness, cl.darkWidth, cl.darkStrength,
+                            cl.noiseWidth};
+  paramsData_->darkFogColor = {cl.darkFogColor.x, cl.darkFogColor.y,
+                               cl.darkFogColor.z, 1.0f};
+  paramsData_->clearFogColor = {cl.clearFogColor.x, cl.clearFogColor.y,
+                                cl.clearFogColor.z, 1.0f};
+  paramsData_->clearColor = {cl.clearColor.x, cl.clearColor.y, cl.clearColor.z,
+                             cl.clearBrightness};
+  paramsData_->clearValleyDarkness = cl.clearValleyDarkness;
+  paramsData_->skyTime = cl.skyTime;
 }
 
 void CloudSea::Draw() {

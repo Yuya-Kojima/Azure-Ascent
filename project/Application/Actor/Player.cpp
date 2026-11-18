@@ -687,6 +687,12 @@ void Player::SetReticleAlpha(float alpha) {
   }
 }
 
+void Player::SetBackRimScale(float scale) {
+  if (Object3d *body = GetBodyObject()) {
+    body->SetBackRimScale(scale);
+  }
+}
+
 void Player::Draw3D() {
   // 無敵時間中の点滅
   if (invincibleTimer_ > 0 && (invincibleTimer_ / 4) % 2 == 0) {
@@ -835,6 +841,13 @@ void Player::UseExternalTransform() {
   if (dragonModel_) {
     dragonModel_->GetWingAnimator().SetLookDirection(std::nullopt);
   }
+}
+
+void Player::UseExternalOrientation(const Quaternion &orientation) {
+  UseExternalTransform();
+  flightOrientation_ = orientation;
+  useFlightOrientation_ = true;
+  blendedOrientation_.reset();
 }
 
 void Player::BlendOrientationFrom(const Vector3 &rotate, float ratio) {

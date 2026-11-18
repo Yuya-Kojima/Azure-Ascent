@@ -170,4 +170,13 @@ void Skybox::CreateMaterialResource() {
   materialData_->sunColor = Vector4(1.0f, 0.95f, 0.85f, 1.0f);
   materialData_->cloudColor = Vector4(0.0f, 0.0f, 0.0f, 0.0f);
   materialData_->horizonGlow = Vector4(0.0f, 0.0f, 0.0f, 0.0f);
+  // 晴れた空は、円の半径 0（晴れなし）で始める
+  materialData_->clearZenithColor = materialData_->zenithColor;
+  materialData_->clearHorizonColor = materialData_->horizonColor;
+  materialData_->clearSunDir = materialData_->sunDir;
+  materialData_->clearSunColor = materialData_->sunColor;
+  materialData_->clearCloudColor = Vector4(0.0f, 0.0f, 0.0f, 0.0f);
+  materialData_->clearHorizonGlow = Vector4(0.0f, 0.0f, 0.0f, 0.0f);
+  materialData_->clearCircle = Vector4(0.0f, 1.0f, 0.0f, 0.0f);
+  materialData_->clearEdge = Vector4(0.0f, 0.0f, 0.0f, 0.0f);
 }

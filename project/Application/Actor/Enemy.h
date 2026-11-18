@@ -139,8 +139,6 @@ protected:
   // 光る部品（ない敵は nullptr）。model_ を親にするので、model_ より後に宣言して先に破棄する
   std::unique_ptr<EnemyLights> lights_;
 
-  // 死亡フラグ
-  bool isDead_ = false; // 体力
   int hp_ = 3;          // 体力
   float speed_ = 0.5f;  // 移動速度
   Vector3 moveDirection_ = {

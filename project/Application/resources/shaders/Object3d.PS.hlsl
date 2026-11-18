@@ -2,6 +2,7 @@
 #include "Common.hlsli"
 #include "Lighting.hlsli"
 #include "LightCulling.hlsli"
+#include "SkyClearing.hlsli"
 
 Texture2D<float4> gTexture : register(t0);
 TextureCube<float4> gEnvironmentTexture : register(t1);
@@ -23,13 +24,30 @@ StructuredBuffer<SpotLight> gSpotLights : register(t4);
 StructuredBuffer<uint> gTileLights : register(t5);
 
 struct FogData {
-    float4 color;
+    float4 color;        // 霧の色（晴れの円があるときは円の外側の霧の色）
     float nearDist;
     float farDist;
     float enabled;
     float padding;
+    float4 clearColor;   // rgb: 円の内側の霧の色
+    float4 clearCircle;  // xyz: 晴れの円の中心の向き, w: 半径（ラジアン。0 以下で晴れなし）
+    float4 clearEdge;    // x: 境目のぼかしの幅, y: 外側で闇が濃くなる帯の幅, z: 濃くなる強さ, w: 境目をノイズで揺らす幅（ラジアン）
+    float skyTime;       // 空の時刻（秒）
 };
 ConstantBuffer<FogData> gFog : register(b5);
+
+// viewDir の向きに見える霧の色。晴れの円があるときは、その向きが空の円の内側か外側かで決める
+// （空と同じ式。外側は淀んだ空の霧の色で、境目のすぐ外側の帯では空と同じだけ暗く、内側は晴れた空の霧の色）
+float3 FogColor(float3 viewDir) {
+	if (gFog.clearCircle.w <= 0.0f) {
+		return gFog.color.rgb;
+	}
+	float n = SkyCloudNoise(viewDir, gFog.skyTime);
+	float outside = ClearCircleOutside(viewDir, gFog.clearCircle, gFog.clearEdge.w, n);
+	float clearRatio = ClearCircleRatio(outside, gFog.clearEdge.x);
+	float darken = 1.0f - gFog.clearEdge.z * ClearCirclePush(outside, gFog.clearEdge.y);
+	return lerp(gFog.color.rgb * darken, gFog.clearColor.rgb, clearRatio);
+}
 
 //=========================
 // 模様の光と傷
@@ -268,6 +286,11 @@ GeometryShaderOutput input) {
 		float3 aura = base.rgb * (pow(1.0f - NdotV, 0.8f) + 0.4f);
 
 		output.color = float4(core + aura, base.a);
+		// 縁取り（縁ほど強い、ふちの光の色。強度0なら無効）
+		if (gMaterial.rimColor.w > 0.0f) {
+			float rim = pow(1.0f - NdotV, max(gMaterial.rimPower, 0.01f));
+			output.color.rgb += gMaterial.rimColor.rgb * gMaterial.rimColor.w * rim;
+		}
 		return output;
 	}
 	
@@ -405,9 +428,11 @@ GeometryShaderOutput input) {
 
 	// Fog
 	if (gFog.enabled != 0.0f) {
-		float dist = length(gCamera.worldPosition - input.worldPosition);
+		float3 toPixel = input.worldPosition - gCamera.worldPosition;
+		float dist = length(toPixel);
 		float fogFactor = saturate((dist - gFog.nearDist) / (gFog.farDist - gFog.nearDist));
-		output.color.rgb = lerp(output.color.rgb, gFog.color.rgb, fogFactor);
+		float3 fogColor = FogColor(toPixel / max(dist, 1e-4f));
+		output.color.rgb = lerp(output.color.rgb, fogColor, fogFactor);
 	}
 
 	output.color.a = gMaterial.color.a * textureColor.a;

@@ -27,6 +27,19 @@ class Skybox {
     Vector4 cloudColor;   // rgb: 雲の色, a: 雲の不透明度（0 のときは白い雲）
     // x: 地平線の光の強さ(0で無効), y: 光の帯の高さ, z: 方位の絞り, w: 未使用
     Vector4 horizonGlow;
+
+    // 晴れた空の値（円の内側で使う。並びは上の空の値と同じ）
+    Vector4 clearZenithColor;  // 天頂の色
+    Vector4 clearHorizonColor; // 地平線の色
+    Vector4 clearSunDir;       // xyz: 太陽の方向(正規化), w: 雲の量(0〜1)
+    Vector4 clearSunColor;     // rgb: 太陽の色, a: 太陽の強さ
+    Vector4 clearCloudColor;   // rgb: 雲の色, a: 雲の不透明度（0 のときは白い雲）
+    // x: 地平線の光の強さ, y: 光の帯の高さ, z: 方位の絞り, w: 雲の縁の明るさ
+    Vector4 clearHorizonGlow;
+    // xyz: 晴れの円の中心の向き(正規化), w: 円の半径（中心からの角度、ラジアン。0 以下で晴れなし）
+    Vector4 clearCircle;
+    // x: 境目のぼかしの幅, y: 境目の外の闇が濃くなる帯の幅, z: 闇が濃くなる強さ(0〜1), w: 境目をノイズで揺らす幅（角度はすべてラジアン）
+    Vector4 clearEdge;
   };
 
 public:
@@ -48,6 +61,10 @@ public:
   void SetProceduralSky(bool enable) {
     materialData_->skyParams.x = enable ? 1.0f : 0.0f;
   }
+  /// 手続き空の確認用の表示（0: ふつう, 1: 向きを色で, 2: 雲のノイズを白黒で, 3: 晴れの割合を白黒で）
+  void SetDebugView(int view) {
+    materialData_->skyParams.w = static_cast<float>(view);
+  }
   /// 手続き空のパラメータ設定
   void SetSkyColors(const Vector3 &zenith, const Vector3 &horizon) {
     materialData_->zenithColor = {zenith.x, zenith.y, zenith.z, 1.0f};
@@ -68,6 +85,36 @@ public:
   /// azimuthPower が大きいほど太陽の左右の狭い範囲だけ光る。strength=0で無効
   void SetHorizonGlow(float strength, float height, float azimuthPower) {
     materialData_->horizonGlow = {strength, height, azimuthPower, 0.0f};
+  }
+
+  /// 晴れた空の値（SetSkyColors〜SetHorizonGlow と同じ意味。晴れの円の内側で使う）
+  void SetClearSkyColors(const Vector3 &zenith, const Vector3 &horizon) {
+    materialData_->clearZenithColor = {zenith.x, zenith.y, zenith.z, 1.0f};
+    materialData_->clearHorizonColor = {horizon.x, horizon.y, horizon.z, 1.0f};
+  }
+  void SetClearSun(const Vector3 &dir, const Vector3 &color, float intensity,
+                   float cloudAmount) {
+    materialData_->clearSunDir = {dir.x, dir.y, dir.z, cloudAmount};
+    materialData_->clearSunColor = {color.x, color.y, color.z, intensity};
+  }
+  void SetClearCloudColor(const Vector3 &color, float opacity, float rim) {
+    materialData_->clearCloudColor = {color.x, color.y, color.z, opacity};
+    materialData_->clearHorizonGlow.w = rim;
+  }
+  void SetClearHorizonGlow(float strength, float height, float azimuthPower) {
+    materialData_->clearHorizonGlow.x = strength;
+    materialData_->clearHorizonGlow.y = height;
+    materialData_->clearHorizonGlow.z = azimuthPower;
+  }
+  /// 晴れの円。center の向きから radius（ラジアン）より内側を晴れた空で描く。radius が 0 以下なら晴れなし
+  void SetClearCircle(const Vector3 &center, float radius) {
+    materialData_->clearCircle = {center.x, center.y, center.z, radius};
+  }
+  /// 晴れの円の境目。softness はぼかしの幅、darkWidth は外側で闇が濃くなる帯の幅、
+  /// darkStrength はその濃くなる強さ（0〜1）、noise は境目をノイズで揺らす幅（角度はラジアン）
+  void SetClearEdge(float softness, float darkWidth, float darkStrength,
+                    float noise) {
+    materialData_->clearEdge = {softness, darkWidth, darkStrength, noise};
   }
 
   Vector3 GetScale() const { return transform_.scale; }

@@ -1,4 +1,4 @@
-"""文字カード（ステージ開始演出の目標・ゲームオーバー・拠点に戻ったあとの UI・長押しスキップ）と評価の UI・ポーズ画面の文字画像を書き出す
+"""文字カード（ステージ開始演出の目標・ゲームオーバー・クリア・拠点に戻ったあとの UI・長押しスキップ）と評価の UI・ポーズ画面の文字画像を書き出す
 
 エンジンのフォントは ASCII しか焼いていないので、日本語の文字は画像にして Sprite で出す。
 M PLUS 1p Black で文字を描き、上から下への色のグラデーションと、縁のうっすらした光（明るい背景に置く文字は暗い影）をつける。
@@ -22,6 +22,7 @@ GAME_OVER_DIR = ROOT / "Application/resources/UI/GameOver"
 COMMON_DIR = ROOT / "Application/resources/UI/Common"
 SCORE_DIR = ROOT / "Application/resources/UI/Score"
 PAUSE_DIR = ROOT / "Application/resources/UI/Pause"
+CLEAR_DIR = ROOT / "Application/resources/UI/Clear"
 
 # 文字の色: (上の色, 下の色, 縁の光の色)。上 → 下のグラデーション
 GOLD = ((255, 247, 220), (232, 196, 110), (255, 214, 130))  # 淡い金色（出撃）
@@ -38,6 +39,10 @@ GOLD_SHADOWED = (GOLD[0], GOLD[1], SHADOW, 0.85, 2)
 FADED_GOLD_SHADOWED = (FADED_GOLD[0], FADED_GOLD[1], SHADOW, 0.85, 2)
 RED_SHADOWED = (RED[0], RED[1], SHADOW, 0.85, 2)
 PALE_SHADOWED = (PALE[0], PALE[1], SHADOW, 0.85, 2)
+# 縁をぼかさず、濃い紺のくっきりした縁取りにする色（明るい空の上に大きく置く文字用。ぼかし半径は 1 にする）
+NAVY_OUTLINE = (22, 34, 64)
+GOLD_OUTLINED = (GOLD[0], GOLD[1], NAVY_OUTLINE, 1.0, 3)
+GOLD_OUTLINED_THIN = (GOLD[0], GOLD[1], NAVY_OUTLINE, 1.0, 2)
 
 # 書き出す文字: (書き出し先, ファイル名, 文字, 文字の大きさ px, 字間（文字の大きさに対する割合）, 縁の光のぼかし半径 px, 色)
 TEXTS = [
@@ -45,6 +50,9 @@ TEXTS = [
     (INTRO_DIR, "objective", "天空を奪還せよ", 60, 0.12, 8, GOLD),
     (GAME_OVER_DIR, "gameover_title", "GAME OVER", 76, 0.28, 10, RED),
     (GAME_OVER_DIR, "gameover_result", "第一空域　奪還ならず", 24, 0.36, 4, FADED_GOLD),
+    # クリア（晴れた明るい空の上に置くので、縁は濃い紺の縁取り）
+    (CLEAR_DIR, "clear_title", "STAGE CLEAR", 76, 0.28, 1, GOLD_OUTLINED),
+    (CLEAR_DIR, "clear_result", "第一空域　奪還", 30, 0.3, 1, GOLD_OUTLINED_THIN),
     # 拠点に戻ったあとの UI（空域名・選択肢・空路の線の下の名前）
     (GAME_OVER_DIR, "route_title", "第一空域", 30, 0.25, 5, GOLD_SHADOWED),
     (GAME_OVER_DIR, "retry", "再出撃", 36, 0.15, 5, GOLD_SHADOWED),

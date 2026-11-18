@@ -87,7 +87,8 @@ float CloudSeaEvents::CalcStrength(const Event &event, float time) {
   return strength;
 }
 
-void CloudSeaEvents::Apply(CloudSea *cloudSea) const {
+void CloudSeaEvents::Apply(CloudSea *cloudSea,
+                           const CloudSeaClearing &clearing) const {
   if (!cloudSea) {
     return;
   }
@@ -99,10 +100,11 @@ void CloudSeaEvents::Apply(CloudSea *cloudSea) const {
   look.thickness = c.thickness;
   look.edgeSoftness = c.edgeSoftness;
   look.density = c.density;
-  look.color = c.color;
-  look.brightness = c.brightness;
+  look.color = Lerp(c.color, c.clearColor, clearAmount_);
+  look.brightness = Lerp(c.brightness, c.clearBrightness, clearAmount_);
   look.powder = c.powder;
-  look.valleyDarkness = c.valleyDarkness;
+  look.valleyDarkness =
+      Lerp(c.valleyDarkness, c.clearValleyDarkness, clearAmount_);
   look.forwardScatter = c.forwardScatter;
   look.rimStrength = c.rimStrength;
   look.rimPower = c.rimPower;
@@ -111,6 +113,12 @@ void CloudSeaEvents::Apply(CloudSea *cloudSea) const {
   look.detailStrength = c.detailStrength;
   look.jitter = c.jitter;
   cloudSea->SetLook(look);
+  // 晴れの円の内側の雲の色・明るさ
+  CloudSeaClearing withClearLook = clearing;
+  withClearLook.clearColor = c.clearColor;
+  withClearLook.clearBrightness = c.clearBrightness;
+  withClearLook.clearValleyDarkness = c.clearValleyDarkness;
+  cloudSea->SetClearing(withClearLook);
   cloudSea->SetDebugView(CloudSea::DebugView(debugView_));
   cloudSea->ClearShapes();
 
@@ -171,6 +179,9 @@ void CloudSeaEvents::LoadConfig() {
   ReadFloat(root, "detailSize", c.detailSize);
   ReadFloat(root, "detailStrength", c.detailStrength);
   ReadFloat(root, "jitter", c.jitter);
+  ReadVector3(root, "clearColor", c.clearColor);
+  ReadFloat(root, "clearBrightness", c.clearBrightness);
+  ReadFloat(root, "clearValleyDarkness", c.clearValleyDarkness);
 }
 
 void CloudSeaEvents::SaveConfig() const {
@@ -194,6 +205,9 @@ void CloudSeaEvents::SaveConfig() const {
   root["detailSize"] = c.detailSize;
   root["detailStrength"] = c.detailStrength;
   root["jitter"] = c.jitter;
+  root["clearColor"] = {c.clearColor.x, c.clearColor.y, c.clearColor.z};
+  root["clearBrightness"] = c.clearBrightness;
+  root["clearValleyDarkness"] = c.clearValleyDarkness;
 
   if (!std::filesystem::exists(kConfigDirectory)) {
     std::filesystem::create_directories(kConfigDirectory);
@@ -228,6 +242,12 @@ void CloudSeaEvents::DrawImGui() {
     ImGui::SliderFloat("Forward Scatter", &c.forwardScatter, 0.0f, 1.0f);
     ImGui::SliderFloat("Rim Strength", &c.rimStrength, 0.0f, 1.0f);
     ImGui::SliderFloat("Rim Power", &c.rimPower, 1.0f, 8.0f);
+    ImGui::SeparatorText("Clear");
+    ImGui::ColorEdit3("Clear Color", &c.clearColor.x,
+                      ImGuiColorEditFlags_HDR | ImGuiColorEditFlags_Float);
+    ImGui::SliderFloat("Clear Brightness", &c.clearBrightness, 0.0f, 2.0f);
+    ImGui::SliderFloat("Clear Valley Darkness", &c.clearValleyDarkness, 0.0f,
+                       1.0f);
     ImGui::SeparatorText("Debug");
     ImGui::SliderFloat("Jitter", &c.jitter, 0.0f, 1.0f);
     const char *const kDebugViews[] = {"Normal", "Sun Only", "Ambient Only",

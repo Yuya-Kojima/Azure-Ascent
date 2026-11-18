@@ -14,6 +14,89 @@
     "bloomIntensity": 0.4,
     "bloomSigma": 4.0,
     "bloomThreshold": 1.0,
+    "clear": {
+        "backRimColor": [
+            1.2,
+            0.62,
+            0.25
+        ],
+        "backRimFrom": [
+            0.1,
+            0.05,
+            1.0
+        ],
+        "backRimIntensity": 1.0,
+        "backRimPower": 4.0,
+        "bloomIntensity": 0.4,
+        "bloomSigma": 4.0,
+        "bloomThreshold": 1.0,
+        "cloudAmount": 0.35,
+        "cloudColor": [
+            0.85,
+            0.88,
+            0.95
+        ],
+        "cloudOpacity": 0.8,
+        "cloudRim": 0.3,
+        "exposure": 1.0,
+        "fogFar": 1200.0,
+        "fogNear": 200.0,
+        "groundAmbient": [
+            0.35,
+            0.38,
+            0.42
+        ],
+        "horizonGlow": 0.5,
+        "horizonGlowAzimuth": 6.0,
+        "horizonGlowHeight": 0.03,
+        "lightColor": [
+            1.0,
+            0.97,
+            0.9
+        ],
+        "lightFrom": [
+            0.5,
+            0.65,
+            -0.55
+        ],
+        "lightIntensity": 1.2,
+        "skyAmbient": [
+            0.55,
+            0.65,
+            0.85
+        ],
+        "skyHorizon": [
+            0.55,
+            0.72,
+            0.95
+        ],
+        "skyZenith": [
+            0.1,
+            0.28,
+            0.75
+        ],
+        "sunColor": [
+            1.0,
+            0.92,
+            0.8
+        ],
+        "sunDir": [
+            0.1,
+            0.6,
+            1.0
+        ],
+        "sunIntensity": 1.0,
+        "useBloom": true,
+        "useVignette": true,
+        "vignetteExponent": 0.15,
+        "vignetteScale": 16.0
+    },
+    "clearEdge": {
+        "darkStrength": 0.5,
+        "darkWidthDeg": 25.0,
+        "noiseDeg": 6.0,
+        "softnessDeg": 8.0
+    },
     "cloudAmount": 0.75,
     "cloudColor": [
         0.025,

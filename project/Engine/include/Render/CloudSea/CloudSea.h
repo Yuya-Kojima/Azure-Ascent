@@ -33,6 +33,24 @@ struct CloudSeaGlow {
 };
 
 /// <summary>
+/// 晴れの円（空と同じ円）。視線の向きごとに、円の内側では晴れた空の霧の色と雲の色を使う。毎フレーム設定し直す
+/// </summary>
+struct CloudSeaClearing {
+  Vector3 center = {0.0f, 1.0f, 0.0f}; // 円の中心の向き（ワールド）
+  float radius = 0.0f;       // 円の半径（中心からの角度、ラジアン。0 で晴れなし）
+  float softness = 0.0f;     // 境目の内側をぼかす幅（ラジアン）
+  float darkWidth = 0.0f;    // 境目の外側で闇が濃くなる帯の幅（ラジアン）
+  float darkStrength = 0.0f; // 闇が濃くなる強さ（0〜1）
+  float noiseWidth = 0.0f;   // 境目を空の雲のノイズで内外へ揺らす幅（ラジアン）
+  float skyTime = 0.0f;      // 空の時刻（秒。空と同じノイズで揺らす）
+  Vector3 darkFogColor = {0.0f, 0.0f, 0.0f};  // 円の外側の霧の色
+  Vector3 clearFogColor = {0.0f, 0.0f, 0.0f}; // 円の内側の霧の色
+  Vector3 clearColor = {0.16f, 0.16f, 0.17f}; // 円の内側の雲の色
+  float clearBrightness = 1.0f;     // 円の内側の雲が返す光の強さの倍率
+  float clearValleyDarkness = 0.3f; // 円の内側の、低い所の環境光を暗くする強さ
+};
+
+/// <summary>
 /// 雲海の見た目の値
 /// </summary>
 struct CloudSeaLook {
@@ -111,6 +129,7 @@ public:
   // 風で雲が流れる速さ（ワールドの XZ、1 秒あたり）
   void SetWind(const Vector2 &wind) { wind_ = wind; }
   void SetLook(const CloudSeaLook &look) { look_ = look; }
+  void SetClearing(const CloudSeaClearing &clearing) { clearing_ = clearing; }
   void SetDebugView(DebugView view) { debugView_ = view; }
   // 風で流す時刻（秒）
   void SetTime(float time) { time_ = time; }
@@ -167,6 +186,14 @@ private:
     GlowForGPU glows[kMaxGlows];
     int32_t glowCount;
     float glowPadding[3];
+    Vector4 clearCircle;  // xyz: 円の中心の向き, w: 半径
+    Vector4 clearEdge;    // x: ぼかしの幅, y: 闇の帯の幅, z: 闇の強さ, w: ノイズで揺らす幅
+    Vector4 darkFogColor; // rgb: 円の外側の霧の色
+    Vector4 clearFogColor; // rgb: 円の内側の霧の色
+    Vector4 clearColor;   // rgb: 円の内側の雲の色, a: 円の内側の雲の明るさ
+    float clearValleyDarkness;
+    float skyTime;
+    float clearPadding[2];
   };
 
   void CreateParamsResource();
@@ -181,6 +208,7 @@ private:
   float blobSize_ = 30.0f;
   Vector2 wind_ = {0.0f, 0.0f};
   CloudSeaLook look_;
+  CloudSeaClearing clearing_;
   DebugView debugView_ = DebugView::Normal;
   float time_ = 0.0f;
   CloudSeaShape shapes_[kMaxShapes] = {};

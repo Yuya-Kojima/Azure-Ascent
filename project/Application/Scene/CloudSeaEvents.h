@@ -3,6 +3,7 @@
 #include <vector>
 
 class CloudSea;
+struct CloudSeaClearing;
 
 /// <summary>
 /// 雲海を演出側から動かす。
@@ -57,6 +58,11 @@ public:
     float detailSize = 6.0f;      // 細かいノイズ 1 枚のワールドの長さ
     float detailStrength = 0.35f; // 細かいノイズで縁を削る強さ
     float jitter = 1.0f;          // 視線の出発点を画素ごとにずらす量（0〜1）
+
+    // 晴れたときの値（クリア演出で、晴れの割合に合わせて上の値から移す）
+    Vector3 clearColor = {0.55f, 0.57f, 0.62f}; // 雲の色
+    float clearBrightness = 1.0f;               // 雲が返す光の強さの倍率
+    float clearValleyDarkness = 0.3f;           // 低い所の環境光を暗くする強さ
   };
 
   /// <summary>
@@ -84,9 +90,15 @@ public:
   float GetTime() const { return time_; }
 
   /// <summary>
-  /// 雲海の見た目の値と、今の時刻での形を雲海へ渡す
+  /// 雲海の見た目の値と、今の時刻での形を雲海へ渡す。
+  /// clearing は空と同じ晴れの円（円の内側の雲の色・明るさはここで書き足す）
   /// </summary>
-  void Apply(CloudSea *cloudSea) const;
+  void Apply(CloudSea *cloudSea, const CloudSeaClearing &clearing) const;
+
+  /// <summary>
+  /// 晴れの円の外側の色・明るさを、晴れたときの値へ寄せる割合（0〜1）を決める（Apply の前に呼ぶ）
+  /// </summary>
+  void SetClearAmount(float amount) { clearAmount_ = amount; }
 
   /// <summary>
   /// 雲海の見た目の調整用 ImGui（呼び出し側の窓の中に描く）
@@ -108,4 +120,5 @@ private:
   int debugView_ = 0;
   std::vector<Event> events_;
   float time_ = 0.0f;
+  float clearAmount_ = 0.0f; // 晴れの円の外側の色・明るさを晴れの値へ寄せる割合（0〜1）
 };
