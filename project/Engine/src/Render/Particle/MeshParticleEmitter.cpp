@@ -7,14 +7,14 @@
 #include <cstring>
 
 void MeshParticleEmitter::InitializeAsPlane(const std::string& textureFilePath) {
-    BaseInitialize(textureFilePath);
+    BaseInitialize(textureFilePath, kDefaultMaxParticles);
     materialData_->isBillboard = 0;
     CreateVertexDataFromPlane();
 }
 
 void MeshParticleEmitter::InitializeAsRing(const std::string& textureFilePath, 
     uint32_t divide, float outerRadius, float innerRadius) {
-    BaseInitialize(textureFilePath);
+    BaseInitialize(textureFilePath, kDefaultMaxParticles);
     materialData_->isBillboard = 0;
     
     Ring ring;
@@ -23,7 +23,7 @@ void MeshParticleEmitter::InitializeAsRing(const std::string& textureFilePath,
 }
 
 void MeshParticleEmitter::InitializeAsSphere(const std::string& textureFilePath, uint32_t divide, float radius) {
-    BaseInitialize(textureFilePath);
+    BaseInitialize(textureFilePath, kDefaultMaxParticles);
     materialData_->isBillboard = 0;
 
     Sphere sphere;
@@ -33,7 +33,7 @@ void MeshParticleEmitter::InitializeAsSphere(const std::string& textureFilePath,
 
 void MeshParticleEmitter::InitializeAsCylinder(const std::string& textureFilePath, 
     uint32_t divide, float topRadius, float bottomRadius, float height) {
-    BaseInitialize(textureFilePath);
+    BaseInitialize(textureFilePath, kDefaultMaxParticles);
     materialData_->isBillboard = 0;
     
     Cylinder cylinder;

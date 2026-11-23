@@ -38,6 +38,7 @@ void ParticleManager::Finalize() {
   // GPUリソース類を解放
   graphicsPipeLineState_.Reset();
   alphaPipelineState_.Reset();
+  premultipliedPipelineState_.Reset();
   rootSignature_.Reset();
 
   computeRootSignature_.Reset();
@@ -278,6 +279,13 @@ void ParticleManager::CreatePSO() {
   hr = dx12Core_->GetDevice()->CreateGraphicsPipelineState(
       &graphicsPipeLineStateDesc, IID_PPV_ARGS(&alphaPipelineState_));
   assert(SUCCEEDED(hr));
+
+  // 透明度を掛け済みの色を足すPSO：色はそのまま足し、背景を (1 - α) の割合で残す
+  graphicsPipeLineStateDesc.BlendState.RenderTarget[0].SrcBlend = D3D12_BLEND_ONE;
+  premultipliedPipelineState_ = nullptr;
+  hr = dx12Core_->GetDevice()->CreateGraphicsPipelineState(
+      &graphicsPipeLineStateDesc, IID_PPV_ARGS(&premultipliedPipelineState_));
+  assert(SUCCEEDED(hr));
 }
 
 void ParticleManager::CreateComputePipeline() {
@@ -389,7 +397,8 @@ void ParticleManager::InitializeEmitter(IParticleEmitter* emitter, bool isFirstI
   commandList->SetComputeRootUnorderedAccessView(
       2, emitter->GetFreeListResource()->GetGPUVirtualAddress());
 
-  commandList->Dispatch((kMaxParticles + 1023) / 1024, 1, 1);
+  // 1 グループ 1024 スレッドで、上限の数だけ初期化する
+  commandList->Dispatch((emitter->GetMaxParticles() + kParticleGroupSize_ - 1) / kParticleGroupSize_, 1, 1);
 
   // ResourceBarrier: UNORDERED_ACCESS -> NON_PIXEL_SHADER_RESOURCE
   dx12Core_->TransitionResource(emitter->GetGPUParticleResource(), D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
@@ -425,10 +434,10 @@ void ParticleManager::CreateEmitComputePipeline() {
   rootParameters[0].DescriptorTable.NumDescriptorRanges =
       _countof(descriptorRange);
 
-  // パラメータ1: EmitterSphere (CBV)
-  rootParameters[1].ParameterType = D3D12_ROOT_PARAMETER_TYPE_CBV;
+  // パラメータ1: 出す頼みの列 (RootSRV)
+  rootParameters[1].ParameterType = D3D12_ROOT_PARAMETER_TYPE_SRV;
   rootParameters[1].ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL;
-  rootParameters[1].Descriptor.ShaderRegister = 0; // b0
+  rootParameters[1].Descriptor.ShaderRegister = 0; // t0
 
   // パラメータ2: PerFrame (CBV)
   rootParameters[2].ParameterType = D3D12_ROOT_PARAMETER_TYPE_CBV;
@@ -494,7 +503,7 @@ void ParticleManager::CreateUpdateComputePipeline() {
   descriptorRange[0].OffsetInDescriptorsFromTableStart =
       D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND;
 
-  D3D12_ROOT_PARAMETER rootParameters[4] = {};
+  D3D12_ROOT_PARAMETER rootParameters[5] = {};
   // パラメータ0: UAV (DescriptorTable)
   rootParameters[0].ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
   rootParameters[0].ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL;
@@ -516,6 +525,11 @@ void ParticleManager::CreateUpdateComputePipeline() {
   rootParameters[3].ParameterType = D3D12_ROOT_PARAMETER_TYPE_UAV;
   rootParameters[3].ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL;
   rootParameters[3].Descriptor.ShaderRegister = 2; // u2
+
+  // パラメータ4: 粒にかかる力 ParticleMotion (CBV)
+  rootParameters[4].ParameterType = D3D12_ROOT_PARAMETER_TYPE_CBV;
+  rootParameters[4].ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL;
+  rootParameters[4].Descriptor.ShaderRegister = 1; // b1
 
   descriptionRootSignature.pParameters = rootParameters;
   descriptionRootSignature.NumParameters = _countof(rootParameters);
@@ -588,9 +602,11 @@ void ParticleManager::Emit() {
           2, emitter->GetFreeListIndexResource()->GetGPUVirtualAddress());
       commandList->SetComputeRootUnorderedAccessView(
           3, emitter->GetFreeListResource()->GetGPUVirtualAddress());
+      commandList->SetComputeRootConstantBufferView(
+          4, emitter->GetMotionResource()->GetGPUVirtualAddress());
       
-      // kMaxParticles(1024) に合わせたディスパッチ
-      commandList->Dispatch((1024 + 1023) / 1024, 1, 1);
+      // 1 グループ 1024 スレッドで、上限の数だけ動かす
+      commandList->Dispatch((emitter->GetMaxParticles() + kParticleGroupSize_ - 1) / kParticleGroupSize_, 1, 1);
   }
 
   // --- UAVバリア（書き込み完了待ち） ---
@@ -618,23 +634,26 @@ void ParticleManager::Emit() {
   commandList->SetPipelineState(emitComputePipelineState_.Get());
 
   for (auto emitter : emitters_) {
-    if (emitter && emitter->IsEmitting()) {
-      commandList->SetComputeRootDescriptorTable(
-          0, srvManager_->GetGPUDescriptorHandle(emitter->GetGPUParticleUavIndex()));
-      commandList->SetComputeRootConstantBufferView(
-          1, emitter->GetEmitterResource()->GetGPUVirtualAddress());
-      commandList->SetComputeRootConstantBufferView(
-          2, perFrameResource_->GetGPUVirtualAddress());
-      commandList->SetComputeRootUnorderedAccessView(
-          3, emitter->GetFreeListIndexResource()->GetGPUVirtualAddress());
-      commandList->SetComputeRootUnorderedAccessView(
-          4, emitter->GetFreeListResource()->GetGPUVirtualAddress());
+    if (!emitter) continue;
 
-      commandList->Dispatch(1, 1, 1);
-      
-      // 発射後にフラグをリセットして毎フレーム出続けるのを防ぐ
-      emitter->SetEmit(false);
-    }
+    // このフレームに積まれた頼みを GPU へ渡し、列を空にする
+    uint32_t maxCount = 0;
+    const uint32_t requestCount = emitter->FlushEmitRequests(maxCount);
+    if (requestCount == 0 || maxCount == 0) continue;
+
+    commandList->SetComputeRootDescriptorTable(
+        0, srvManager_->GetGPUDescriptorHandle(emitter->GetGPUParticleUavIndex()));
+    commandList->SetComputeRootShaderResourceView(
+        1, emitter->GetEmitRequestResource()->GetGPUVirtualAddress());
+    commandList->SetComputeRootConstantBufferView(
+        2, perFrameResource_->GetGPUVirtualAddress());
+    commandList->SetComputeRootUnorderedAccessView(
+        3, emitter->GetFreeListIndexResource()->GetGPUVirtualAddress());
+    commandList->SetComputeRootUnorderedAccessView(
+        4, emitter->GetFreeListResource()->GetGPUVirtualAddress());
+
+    // X: 頼みの中の何粒目か（一番多い頼みに合わせる）、Y: 何番目の頼みか
+    commandList->Dispatch((maxCount + kEmitGroupSize_ - 1) / kEmitGroupSize_, requestCount, 1);
   }
 
   // リソースバリア: 描画読み取り用（SRV）に状態遷移

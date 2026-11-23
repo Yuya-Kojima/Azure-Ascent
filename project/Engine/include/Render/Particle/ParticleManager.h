@@ -49,6 +49,8 @@ private:
 	Microsoft::WRL::ComPtr<ID3D12PipelineState> graphicsPipeLineState_ = nullptr;
 	// PSO (Graphics、半透明合成)
 	Microsoft::WRL::ComPtr<ID3D12PipelineState> alphaPipelineState_ = nullptr;
+	// PSO (Graphics、透明度を掛け済みの色を足し、背景を (1 - α) の割合で残す)
+	Microsoft::WRL::ComPtr<ID3D12PipelineState> premultipliedPipelineState_ = nullptr;
 
 	// Particleを0クリアするためのComputePipeline
 	Microsoft::WRL::ComPtr<ID3D12RootSignature> computeRootSignature_ = nullptr;
@@ -84,7 +86,10 @@ private:
 	Microsoft::WRL::ComPtr<ID3D12Resource> perFrameResource_ = nullptr;
 	PerFrame* perFrameData_ = nullptr;
 
-	const uint32_t kMaxParticles = 1024;
+	// 初期化・更新の CS の 1 グループのスレッド数（InitializeParticle・UpdateParticle の numthreads）
+	static constexpr uint32_t kParticleGroupSize_ = 1024;
+	// 出す CS の 1 グループのスレッド数（EmitParticle の numthreads）
+	static constexpr uint32_t kEmitGroupSize_ = 256;
 
 public:
 	Dx12Core* GetDx12Core() const { return dx12Core_; }
@@ -92,6 +97,7 @@ public:
 	ID3D12RootSignature* GetRootSignature() const { return rootSignature_.Get(); }
 	ID3D12PipelineState* GetPipelineState() const { return graphicsPipeLineState_.Get(); }
 	ID3D12PipelineState* GetAlphaPipelineState() const { return alphaPipelineState_.Get(); }
+	ID3D12PipelineState* GetPremultipliedPipelineState() const { return premultipliedPipelineState_.Get(); }
 
 	ID3D12Resource* GetPerViewResource() const { return perViewResource_.Get(); }
 	PerView* GetPerViewData() const { return perViewData_; }

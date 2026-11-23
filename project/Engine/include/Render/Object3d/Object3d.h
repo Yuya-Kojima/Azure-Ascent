@@ -313,7 +313,22 @@ public:
   /// <param name="enable">trueで有効、falseで無効</param>
   void SetEnableDissolve(bool enable) {
     if (materialData) {
-      materialData->enableDissolve = enable ? 1 : 0;
+      materialData->enableDissolve = enable ? kDissolveMask_ : 0;
+    }
+  }
+
+  /// <summary>
+  /// 点からの距離で消すディゾルブにする。点から radius より近い所が消え、
+  /// radius から edgeRange（SetDissolveEdgeRange、ワールドの長さ）までが境目として光る
+  /// </summary>
+  /// <param name="center">距離を測る点（ワールド座標）</param>
+  /// <param name="radius">消す半径（ワールドの長さ）</param>
+  /// <param name="noise">境目を模様の画像でずらす幅（ワールドの長さ）</param>
+  void SetDissolveSphere(const Vector3& center, float radius, float noise) {
+    if (materialData) {
+      materialData->enableDissolve = kDissolveSphere_;
+      materialData->dissolveSphere = {center.x, center.y, center.z, radius};
+      materialData->dissolveNoise = noise;
     }
   }
 
@@ -364,6 +379,10 @@ public:
   }
 
 private:
+  // enableDissolve の値（Common.hlsli の kDissolveMask・kDissolveSphere と同じ）
+  static constexpr int32_t kDissolveMask_ = 1;   // 模様の画像としきい値で消す
+  static constexpr int32_t kDissolveSphere_ = 2; // 点からの距離で消す
+
   std::string maskTexturePath_ = "resources/noise0.png";
   std::string modelFilePath_ = "";
 

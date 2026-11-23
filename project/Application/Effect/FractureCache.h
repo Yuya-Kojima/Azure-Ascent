@@ -2,8 +2,9 @@
 #include "Effect/FractureDebris.h" // 調整値 FractureDebris::Params（入れ子の型）をメンバに持つため
 #include "Effect/MeshFracture.h" // 調整値 MeshFracture::SeedBias をメンバに持つため
 #include <cstdint>
+#include <map>
 #include <memory>
-#include <unordered_map>
+#include <utility>
 
 class Model;
 class FracturePieceSet;
@@ -11,7 +12,7 @@ class FracturePieceSet;
 /// <summary>
 /// 事前に割った破片の形セットの保管庫
 /// ロード時にモデルを割って保存し、撃破時はモデルから形セットを探すだけにする
-/// 同じモデルを使う敵は同じ Model を共有しているので、モデルごとに1セットだけ作られる
+/// 同じモデルを使う敵は同じ Model を共有しているので、モデルと種の数の組ごとに1セットだけ作られる
 /// </summary>
 class FractureCache {
 
@@ -25,10 +26,23 @@ public: // メンバ関数
   void Prebuild(const Model *model);
 
   /// <summary>
+  /// 種の数を指定してモデルを割り、形セットを保存する（作成済みなら何もしない）
+  /// </summary>
+  /// <param name="model">割るモデル（凸で閉じていること）</param>
+  /// <param name="seedCount">種の数（≒ 破片の数）</param>
+  void Prebuild(const Model *model, int seedCount);
+
+  /// <summary>
   /// 保存した形セットを探す
   /// </summary>
   /// <returns>見つからなければ nullptr（呼び出し側は旧演出に戻す）</returns>
   const FracturePieceSet *Find(const Model *model) const;
+
+  /// <summary>
+  /// 種の数を指定して、保存した形セットを探す
+  /// </summary>
+  /// <returns>見つからなければ nullptr</returns>
+  const FracturePieceSet *Find(const Model *model, int seedCount) const;
 
   /// <summary>
   /// 形セットを全部捨てる（GPU バッファを持つので、デバイスを消す前に呼ぶこと）
@@ -65,8 +79,8 @@ private: // メンバ関数
   void SaveConfig();
 
 private: // メンバ変数
-  // モデル → そのモデルを割った形セット
-  std::unordered_map<const Model *, std::unique_ptr<FracturePieceSet>> sets_;
+  // （モデル, 種の数）→ そのモデルをその種の数で割った形セット
+  std::map<std::pair<const Model *, int>, std::unique_ptr<FracturePieceSet>> sets_;
 
   // 撃破時の爆発の調整値
   FractureDebris::Params debrisParams_;
@@ -74,6 +88,9 @@ private: // メンバ変数
   // 種の数（≒ 1体あたりの破片の数）
   // 形セットを作るときにだけ使うので、変えても反映されるのは次の起動から
   int seedCount_ = 0;
+
+  // 種の数を指定しない Prebuild・Find が使う種の数（起動時の seedCount_）
+  int startupSeedCount_ = 0;
 
   // 種の偏らせ方（破片の大小の差）。種の数と同じく、反映されるのは次の起動から
   MeshFracture::SeedBias seedBias_;

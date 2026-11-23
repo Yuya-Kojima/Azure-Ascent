@@ -2,8 +2,9 @@
 #include "Particle/ParticleManager.h"
 #include "Math/MathUtil.h"
 
-void BillboardParticleEmitter::Initialize(const std::string& textureFilePath) {
-    BaseInitialize(textureFilePath);
+void BillboardParticleEmitter::Initialize(const std::string& textureFilePath,
+                                          uint32_t maxParticles) {
+    BaseInitialize(textureFilePath, maxParticles);
     CreateVertexData();
 }
 

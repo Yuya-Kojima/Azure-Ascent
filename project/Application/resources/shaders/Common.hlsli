@@ -15,7 +15,7 @@ struct Material {
 	float dissolveThreshold;
 	float dissolveEdgeRange;
 	float2 maskTransform;
-	float padding2;
+	float dissolveNoise; // 距離のディゾルブで、境目を模様の画像でずらす幅
 	float4 dissolveEdgeColor;
 	float4 rimColor;
 	float rimPower;
@@ -29,7 +29,12 @@ struct Material {
 	float4 woundTangent; // xyz=面に沿った向き, w=開いた割合（0で傷なし）
 	float4 woundGlow;    // rgb=色, w=強さ
 	float4 woundShape;   // x=ひびの太さ, y=縁の殻の幅の割合, z=縁のぎざぎざの割合, w=周りににじむ光
+	float4 dissolveSphere; // xyz=距離を測る点, w=この距離より近い所を消す半径
 };
+
+// enableDissolve の値
+static const int kDissolveMask = 1;   // 模様の画像としきい値で消す
+static const int kDissolveSphere = 2; // 点からの距離で消す
 
 struct Camera {
 	float3 worldPosition;
