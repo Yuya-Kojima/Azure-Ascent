@@ -1,5 +1,6 @@
 #pragma once
 #include "Core/D3DResourceLeakChecker.h"
+#include "Core/ConstantBufferManager.h"
 #include "Core/SrvManager.h"
 #include "Input/Input.h"
 #include "Particle/ParticleManager.h"
@@ -64,6 +65,9 @@ public:
   LightManager *GetLightManager() const { return lightManager_.get(); }
   TiledLightCuller *GetTiledLightCuller() const { return tiledLightCuller_.get(); }
   SrvManager *GetSrvManager() const { return srvManager_.get(); }
+  ConstantBufferManager *GetConstantBufferManager() const {
+    return constantBufferManager_.get();
+  }
   Dx12Core *GetDx12Core() const { return dx12Core_.get(); }
 
 protected:
@@ -95,6 +99,9 @@ protected:
   std::unique_ptr<CloudSeaRenderer> cloudSeaRenderer_ = nullptr;
 
   std::unique_ptr<SrvManager> srvManager_ = nullptr;
+
+  // 定数バッファの置き場（Object3d が枠を借りる）
+  std::unique_ptr<ConstantBufferManager> constantBufferManager_ = nullptr;
 
   // シーンファクトリー
   std::unique_ptr<AbstractSceneFactory> sceneFactory_ = nullptr;

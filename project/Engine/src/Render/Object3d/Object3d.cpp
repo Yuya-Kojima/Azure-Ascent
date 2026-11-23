@@ -1,5 +1,6 @@
 #include "Object3d/Object3d.h"
 #include "Camera/ICamera.h"
+#include "Core/ConstantBufferManager.h"
 #include "Debug/Logger.h"
 #include "Math/MathUtil.h"
 #include "Model/ModelManager.h"
@@ -101,11 +102,11 @@ void Object3d::Draw() {
 
   assert(dx12Core_ && "Object3d::Draw: not initialized");
   assert(object3dRenderer_ && "Object3d::Draw: not initialized");
-  assert(materialResource && "Object3d::Draw: materialResource is null");
-  assert(transformationMatrixResource &&
-         "Object3d::Draw: transformationMatrixResource is null");
-  assert(cameraForGPUResource &&
-         "Object3d::Draw: cameraForGPUResource is null");
+  assert(materialBuffer_.IsValid() && "Object3d::Draw: materialBuffer_ is empty");
+  assert(transformationMatrixBuffer_.IsValid() &&
+         "Object3d::Draw: transformationMatrixBuffer_ is empty");
+  assert(cameraForGPUBuffer_.IsValid() &&
+         "Object3d::Draw: cameraForGPUBuffer_ is empty");
 
   ID3D12GraphicsCommandList *commandList = dx12Core_->GetCommandList();
   assert(commandList && "Object3d::Draw: commandList is null");
@@ -121,11 +122,11 @@ void Object3d::RecordDraw(ID3D12GraphicsCommandList *commandList) {
 
   // マテリアルCBufferの場所を設定
   commandList->SetGraphicsRootConstantBufferView(
-      0, materialResource->GetGPUVirtualAddress());
+      0, materialBuffer_.GetGpuAddress());
 
   // wvp用のCBufferの場所を設定
   commandList->SetGraphicsRootConstantBufferView(
-      1, transformationMatrixResource->GetGPUVirtualAddress());
+      1, transformationMatrixBuffer_.GetGpuAddress());
 
   // Lighting
   commandList->SetGraphicsRootConstantBufferView(
@@ -134,7 +135,7 @@ void Object3d::RecordDraw(ID3D12GraphicsCommandList *commandList) {
 
   // Camera
   commandList->SetGraphicsRootConstantBufferView(
-      4, cameraForGPUResource->GetGPUVirtualAddress());
+      4, cameraForGPUBuffer_.GetGpuAddress());
 
   // 点の光・スポットライトの数と名簿
   const LightManager *lightManager = object3dRenderer_->GetLightManager();
@@ -207,20 +208,12 @@ void Object3d::SetMaskTexturePath(const std::string& path) {
 
 void Object3d::CreateTransformationMatrixData() {
 
-  // cbvのsizeは256バイト単位で確保する
-  UINT transformationMatrixSize = (sizeof(TransformationMatrix) + 255) & ~255;
-
-  assert(transformationMatrixSize % 256 == 0);
-
-  // データを書き込む
-  transformationMatrixResource =
-      dx12Core_->CreateBufferResource(transformationMatrixSize);
-
-  // 書き込むためのアドレスを取得
-  HRESULT hr = transformationMatrixResource->Map(
-      0, nullptr, reinterpret_cast<void **>(&transformationMatrixData));
-  assert(SUCCEEDED(hr));
-  assert(transformationMatrixData);
+  // 定数バッファの置き場から枠を借り、書き込む先を受け取る
+  transformationMatrixBuffer_ =
+      object3dRenderer_->GetConstantBufferManager()->Allocate(
+          sizeof(TransformationMatrix));
+  transformationMatrixData = static_cast<TransformationMatrix *>(
+      transformationMatrixBuffer_.GetCpuAddress());
 
   // 単位行列を書き込んでおく
   transformationMatrixData->World = MakeIdentity4x4();
@@ -230,36 +223,22 @@ void Object3d::CreateTransformationMatrixData() {
 
 void Object3d::CreateCameraForGPUData() {
 
-  UINT cameraSize = (sizeof(CameraForGPU) + 255) & ~255;
-  cameraForGPUResource = dx12Core_->CreateBufferResource(cameraSize);
-
-  // データを書き込む
-  cameraForGPUData = nullptr;
-
-  // 書き込むためのアドレスを取得
-  HRESULT hr = cameraForGPUResource->Map(
-      0, nullptr, reinterpret_cast<void **>(&cameraForGPUData));
-  assert(SUCCEEDED(hr));
-  assert(cameraForGPUData);
+  // 定数バッファの置き場から枠を借り、書き込む先を受け取る
+  cameraForGPUBuffer_ =
+      object3dRenderer_->GetConstantBufferManager()->Allocate(
+          sizeof(CameraForGPU));
+  cameraForGPUData =
+      static_cast<CameraForGPU *>(cameraForGPUBuffer_.GetCpuAddress());
 
   cameraForGPUData->worldPosition = {0.0f, 0.0f, 0.0f};
 }
 
 void Object3d::CreateMaterialData() {
 
-  UINT materialSize = (sizeof(Model::Material) + 255) & ~255;
-  assert(materialSize % 256 == 0);
-
-  materialResource = dx12Core_->CreateBufferResource(materialSize);
-
-  // マテリアルにデータを書き込む
-  materialData = nullptr;
-
-  // 書き込むためのアドレスを取得
-  HRESULT hr = materialResource->Map(0, nullptr,
-                                     reinterpret_cast<void **>(&materialData));
-  assert(SUCCEEDED(hr));
-  assert(materialData);
+  // 定数バッファの置き場から枠を借り、書き込む先を受け取る
+  materialBuffer_ = object3dRenderer_->GetConstantBufferManager()->Allocate(
+      sizeof(Model::Material));
+  materialData = static_cast<Model::Material *>(materialBuffer_.GetCpuAddress());
 
   // 色の指定
   materialData->color = Vector4(1.0f, 1.0f, 1.0f, 1.0f);
