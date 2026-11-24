@@ -1,5 +1,6 @@
 #pragma once
 #include "Camera/CameraForGPU.h"
+#include "Core/ConstantBufferHandle.h"
 #include "Core/Dx12Core.h"
 #include "Math/MathUtil.h"
 #include "Model/Model.h"
@@ -70,8 +71,8 @@ public:
 private:
   /* 座標変換行列データ
   -----------------------------*/
-  // バッファリソース
-  Microsoft::WRL::ComPtr<ID3D12Resource> transformationMatrixResource = nullptr;
+  // 定数バッファの置き場から借りた枠
+  ConstantBufferHandle transformationMatrixBuffer_;
 
   // バッファリソース内のデータを指すポインタ
   TransformationMatrix *transformationMatrixData = nullptr;
@@ -83,8 +84,8 @@ private:
 
   /* 鏡面反射用データ
   -----------------------------*/
-  // バッファリソース
-  Microsoft::WRL::ComPtr<ID3D12Resource> cameraForGPUResource = nullptr;
+  // 定数バッファの置き場から借りた枠
+  ConstantBufferHandle cameraForGPUBuffer_;
 
   // バッファリソース内のデータを指すポインタ
   CameraForGPU *cameraForGPUData = nullptr;
@@ -97,8 +98,8 @@ private:
   /* マテリアルデータ
 ----------------------------*/
 
-  // マテリアルバッファリソース
-  Microsoft::WRL::ComPtr<ID3D12Resource> materialResource = nullptr;
+  // 定数バッファの置き場から借りた枠
+  ConstantBufferHandle materialBuffer_;
 
   // バッファリソース内のデータを指すポインタ
   Model::Material *materialData = nullptr;

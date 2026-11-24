@@ -155,6 +155,8 @@
     <ClCompile Include="src\Core\Dx12Core.cpp" />
     <ClCompile Include="src\Core\EngineBase.cpp" />
     <ClCompile Include="src\Core\ResourceObject.cpp" />
+    <ClCompile Include="src\Core\ConstantBufferHandle.cpp" />
+    <ClCompile Include="src\Core\ConstantBufferManager.cpp" />
     <ClCompile Include="src\Core\SrvHandle.cpp" />
     <ClCompile Include="src\Core\SrvManager.cpp" />
     <ClCompile Include="src\Core\WindowSystem.cpp" />
@@ -225,6 +227,8 @@
     <ClInclude Include="include\Core\Dx12Core.h" />
     <ClInclude Include="include\Core\EngineBase.h" />
     <ClInclude Include="include\Core\ResourceObject.h" />
+    <ClInclude Include="include\Core\ConstantBufferHandle.h" />
+    <ClInclude Include="include\Core\ConstantBufferManager.h" />
     <ClInclude Include="include\Core\SrvHandle.h" />
     <ClInclude Include="include\Core\SrvManager.h" />
     <ClInclude Include="include\Core\WindowSystem.h" />

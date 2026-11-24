@@ -60,11 +60,15 @@ void EngineBase::Initialize() {
   srvManager_ = std::make_unique<SrvManager>();
   srvManager_->Initialize(dx12Core_.get());
 
+  // 定数バッファの置き場（Object3d より先に作る）
+  constantBufferManager_ = std::make_unique<ConstantBufferManager>();
+  constantBufferManager_->Initialize(dx12Core_.get());
+
   spriteRenderer_ = std::make_unique<SpriteRenderer>();
   spriteRenderer_->Initialize(dx12Core_.get());
 
   object3dRenderer_ = std::make_unique<Object3dRenderer>();
-  object3dRenderer_->Initialize(dx12Core_.get());
+  object3dRenderer_->Initialize(dx12Core_.get(), constantBufferManager_.get());
 
   lightManager_ = std::make_unique<LightManager>();
   lightManager_->Initialize(dx12Core_.get());
@@ -150,6 +154,7 @@ void EngineBase::Finalize() {
   spriteRenderer_.reset();
   skyboxRenderer_.reset();
   cloudSeaRenderer_.reset();
+  constantBufferManager_.reset();
   srvManager_.reset();
 
   dx12Core_.reset();

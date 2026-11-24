@@ -3,8 +3,10 @@
 #include "Render/Light/TiledLightCuller.h"
 #include "Util/StringUtil.h"
 
-void Object3dRenderer::Initialize(Dx12Core *dx12Core) {
+void Object3dRenderer::Initialize(Dx12Core *dx12Core,
+                                  ConstantBufferManager *constantBufferManager) {
   dx12Core_ = dx12Core;
+  constantBufferManager_ = constantBufferManager;
 
   CreatePSO();
   CreateSkinningComputePSO();

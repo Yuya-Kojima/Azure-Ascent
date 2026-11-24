@@ -3,6 +3,7 @@
 #include "Math/MathUtil.h"
 #include "Renderer/Fog.h"
 
+class ConstantBufferManager;
 class ICamera;
 class LightManager;
 class TiledLightCuller;
@@ -14,7 +15,8 @@ public:
   /// 初期化
   /// </summary>
   /// <param name="dx12Core"></param>
-  void Initialize(Dx12Core *dx12Core);
+  /// <param name="constantBufferManager">Object3d が定数バッファの枠を借りる置き場</param>
+  void Initialize(Dx12Core *dx12Core, ConstantBufferManager *constantBufferManager);
 
   /// <summary>
   /// 描画前共通部分処理
@@ -40,8 +42,13 @@ public:
 private:
   Dx12Core *dx12Core_ = nullptr;
 
+  ConstantBufferManager *constantBufferManager_ = nullptr;
+
 public:
   Dx12Core *GetDx12Core() const { return dx12Core_; }
+  ConstantBufferManager *GetConstantBufferManager() const {
+    return constantBufferManager_;
+  }
 
 private:
   // ルートシグネチャ
