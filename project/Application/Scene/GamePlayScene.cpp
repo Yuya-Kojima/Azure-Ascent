@@ -781,9 +781,11 @@ void GamePlayScene::Update() {
     } else {
       fortress->UpdateTransform();
     }
-    // 砦が爆発したらカメラを揺らす
+    // 砦が倒されたら時間を止め、大爆発したらカメラを揺らす
     for (FloatingFortress::Event event : fortress->TakeEvents()) {
-      if (event == FloatingFortress::Event::Destroyed) {
+      if (event == FloatingFortress::Event::Killed) {
+        RequestHitStop(hitStopBossPartFrames_);
+      } else if (event == FloatingFortress::Event::Exploded) {
         railCamera_->Shake(kFortressDestroyedShakeIntensity_, kFortressDestroyedShakeSeconds_);
       }
     }

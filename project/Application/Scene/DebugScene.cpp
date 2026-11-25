@@ -208,6 +208,13 @@ void DebugScene::Initialize(EngineBase *engine) {
     testTargets_.push_back(std::move(target));
   }
 
+  // 前線で消える本物の箱（エンジン組み込みの一辺 1 の箱）
+  motionTestBoxModel_ = std::make_unique<Object3d>();
+  motionTestBoxModel_->Initialize(engine_->GetObject3dRenderer());
+  motionTestBoxModel_->SetModel("__builtin_box");
+  motionTestBoxModel_->SetColor(kMotionTestBoxColor_);
+  motionTestBoxModel_->SetSpecularScale(0.0f);
+
   animatedCube_ = std::make_unique<Object3d>();
   animatedCube_->Initialize(engine_->GetObject3dRenderer());
   animatedCube_->SetModel("AnimatedCube.gltf");
@@ -303,6 +310,10 @@ void DebugScene::Initialize(EngineBase *engine) {
 
   planeHitParticleGroup_ = std::make_unique<MeshParticleEmitter>();
   planeHitParticleGroup_->InitializeAsPlane("resources/uvChecker.png");
+
+  motionTestGroup_ = std::make_unique<BillboardParticleEmitter>();
+  motionTestGroup_->Initialize("resources/white1x1.png", kMotionTestMaxParticles_);
+  motionTestGroup_->SetBlendMode(IParticleEmitter::BlendMode::Alpha);
 
   // 中心からXY方向にランダム速度
   particleEmitter_ = std::make_unique<ParticleEmitter>(
@@ -442,6 +453,7 @@ void DebugScene::Finalize() {
   hitParticleGroup_->ClearParticles();
   cylinderParticleGroup_->ClearParticles();
   planeHitParticleGroup_->ClearParticles();
+  motionTestGroup_->ClearParticles();
 
   auto *sm = SoundManager::GetInstance();
   sm->StopBGM();
@@ -606,6 +618,20 @@ void DebugScene::Update() {
 
   animatedCube_->Update();
 
+  // 本物の箱を試しの箱に合わせ、前線の半径より近い所を消す
+  motionTestBoxModel_->SetTranslation(motionTestBoxCenter_);
+  motionTestBoxModel_->SetRotation(motionTestBoxRotate_);
+  motionTestBoxModel_->SetScale(motionTestBoxHalfSize_ * 2.0f);
+  if (motionTestFrontRadius_ > 0.0f) {
+    motionTestBoxModel_->SetDissolveSphere(motionTestBandCenter_, motionTestFrontRadius_,
+                                           motionTestDissolveNoise_);
+    motionTestBoxModel_->SetDissolveEdgeRange(motionTestDissolveEdge_);
+    motionTestBoxModel_->SetDissolveEdgeColor(motionTestDissolveEdgeColor_);
+  } else {
+    motionTestBoxModel_->SetEnableDissolve(false);
+  }
+  motionTestBoxModel_->Update();
+
   // 自機ドラゴンの見比べ：中心から左右へ半分ずつずらして並べる
   const float dragonHalfSpacing = dragonCompareSpacing_ * 0.5f;
   const Vector3 dragonScale = {dragonCompareScale_, dragonCompareScale_,
@@ -757,6 +783,8 @@ void DebugScene::Update() {
                               activeCamera->GetProjectionMatrix());
   hitParticleGroup_->Update(activeCamera->GetViewMatrix(),
                             activeCamera->GetProjectionMatrix());
+  motionTestGroup_->Update(activeCamera->GetViewMatrix(),
+                           activeCamera->GetProjectionMatrix());
 
   // === Playerにロックオン用の情報を渡す ===
   if (playerPtr_) {
@@ -824,6 +852,38 @@ void DebugScene::Update() {
     skybox_->Update();
   }
 
+  // 粒の動きの試し：力の設定は毎フレーム渡し、出す頼みは出すフレームだけ積む
+  motionTestGroup_->SetGravity(motionTestGravity_);
+  motionTestGroup_->SetWind(motionTestWind_);
+  motionTestGroup_->SetDrag(motionTestDrag_);
+  if (motionTestShape_ == 1 && motionTestFrontRunning_) {
+    // 前線を走らせる間は毎フレーム、前線の距離の範囲から出す
+    motionTestFrontRadius_ += motionTestFrontSpeed_ * kMotionTestDeltaTime_;
+    motionTestEmitOnce_ = true;
+    // 箱の一番遠い角を前線が越えたら止める
+    float farthest = 0.0f;
+    const Matrix4x4 boxWorld = MotionTestBoxWorld();
+    for (int corner = 0; corner < 8; ++corner) {
+      const Vector3 local = {(corner & 1 ? 1.0f : -1.0f) * motionTestBoxHalfSize_.x,
+                             (corner & 2 ? 1.0f : -1.0f) * motionTestBoxHalfSize_.y,
+                             (corner & 4 ? 1.0f : -1.0f) * motionTestBoxHalfSize_.z};
+      farthest = (std::max)(farthest, Length(TransformPoint(local, boxWorld) - motionTestBandCenter_));
+    }
+    if (motionTestFrontRadius_ - motionTestBandWidth_ > farthest) {
+      motionTestFrontRunning_ = false;
+    }
+  } else if (motionTestAutoEmit_) {
+    motionTestTimer_ += kMotionTestDeltaTime_;
+    if (motionTestTimer_ >= motionTestInterval_) {
+      motionTestTimer_ = 0.0f;
+      motionTestEmitOnce_ = true;
+    }
+  }
+  if (motionTestEmitOnce_) {
+    EmitMotionTest();
+    motionTestEmitOnce_ = false;
+  }
+
   // パーティクルの射出処理(GPU)
   ParticleManager::GetInstance()->Emit();
 
@@ -833,6 +893,66 @@ void DebugScene::Update() {
 
 #ifdef USE_IMGUI
   auto *renderer = engine_->GetObject3dRenderer();
+
+  //========================
+  // 粒の動きの試し
+  //========================
+  ImGui::Begin("World Settings");
+  if (ImGui::CollapsingHeader("Particle Motion Test",
+                              ImGuiTreeNodeFlags_DefaultOpen)) {
+    ImGui::Checkbox("Auto Emit##Motion", &motionTestAutoEmit_);
+    ImGui::SameLine();
+    if (ImGui::Button("Emit Once##Motion")) {
+      motionTestEmitOnce_ = true;
+    }
+    ImGui::DragFloat("Interval##Motion", &motionTestInterval_, 0.05f, 0.05f, 10.0f);
+    ImGui::DragFloat3("Center##Motion", &motionTestCenter_.x, 0.1f);
+    ImGui::Text("Max Particles %u  FPS %.1f (%.2f ms)", kMotionTestMaxParticles_,
+                ImGui::GetIO().Framerate, 1000.0f / ImGui::GetIO().Framerate);
+    ImGui::DragInt("Count##Motion", &motionTestCount_, 10.0f, 1, kMotionTestMaxCount_);
+    ImGui::SliderInt("Requests##Motion", &motionTestRequests_, 1,
+                     static_cast<int>(IParticleEmitter::kMaxEmitRequests));
+    ImGui::DragFloat("Speed Random##Motion", &motionTestSpeed_, 0.05f, 0.0f, 50.0f);
+    ImGui::DragFloat("Life##Motion", &motionTestLife_, 0.05f, 0.1f, 20.0f);
+    ImGui::DragFloat("Weight Min##Motion", &motionTestWeightMin_, 0.01f, 0.01f, 20.0f);
+    ImGui::DragFloat("Weight Max##Motion", &motionTestWeightMax_, 0.01f, 0.01f, 20.0f);
+    ImGui::DragFloat3("Gravity##Motion", &motionTestGravity_.x, 0.1f);
+    ImGui::DragFloat3("Wind##Motion", &motionTestWind_.x, 0.1f);
+    ImGui::DragFloat("Drag##Motion", &motionTestDrag_, 0.01f, 0.0f, 50.0f);
+    ImGui::ColorEdit3("Color Start##Motion", &motionTestColorStart_.x);
+    ImGui::ColorEdit3("Color End##Motion", &motionTestColorEnd_.x);
+    ImGui::DragFloat("Scale##Motion", &motionTestScale_, 0.01f, 0.01f, 5.0f);
+    ImGui::DragFloat("Scale End Rate##Motion", &motionTestScaleEndRate_, 0.01f, 0.0f, 5.0f);
+    ImGui::SliderFloat("Fade Start##Motion", &motionTestFadeStart_, 0.0f, 0.99f);
+
+    ImGui::SeparatorText("Box Surface");
+    const char *shapes[] = {"Volume", "Box Surface"};
+    ImGui::Combo("Shape##Motion", &motionTestShape_, shapes, IM_ARRAYSIZE(shapes));
+    ImGui::DragFloat3("Box Center##Motion", &motionTestBoxCenter_.x, 0.1f);
+    ImGui::DragFloat3("Box Half Size##Motion", &motionTestBoxHalfSize_.x, 0.05f, 0.05f, 100.0f);
+    ImGui::DragFloat3("Box Rotate##Motion", &motionTestBoxRotate_.x, 0.01f);
+    ImGui::DragFloat3("Band Center##Motion", &motionTestBandCenter_.x, 0.1f);
+    ImGui::DragFloat("Band Width##Motion", &motionTestBandWidth_, 0.01f, 0.01f, 20.0f);
+    ImGui::DragFloat("Front Speed##Motion", &motionTestFrontSpeed_, 0.1f, 0.1f, 200.0f);
+    ImGui::DragFloat("Surface Speed##Motion", &motionTestSurfaceSpeed_, 0.05f, 0.0f, 50.0f);
+    ImGui::DragFloat("Dissolve Noise##Motion", &motionTestDissolveNoise_, 0.01f, 0.0f, 10.0f);
+    ImGui::DragFloat("Dissolve Edge##Motion", &motionTestDissolveEdge_, 0.01f, 0.0f, 10.0f);
+    ImGui::ColorEdit3("Dissolve Edge Color##Motion", &motionTestDissolveEdgeColor_.x);
+    if (ImGui::Button("Reset Box##Motion")) {
+      motionTestFrontRunning_ = false;
+      motionTestFrontRadius_ = 0.0f;
+    }
+    ImGui::SameLine();
+    if (ImGui::Button("Run Front##Motion")) {
+      motionTestShape_ = 1;
+      motionTestFrontRunning_ = true;
+      motionTestFrontRadius_ = 0.0f;
+    }
+    ImGui::SameLine();
+    ImGui::Text("Radius %.2f m%s", motionTestFrontRadius_,
+                motionTestFrontRunning_ ? " (running)" : "");
+  }
+  ImGui::End();
 
   //========================
   // ライトを格子状に並べる台
@@ -996,6 +1116,73 @@ void DebugScene::Update() {
 #endif // USE_IMGUI
 }
 
+void DebugScene::EmitMotionTest() {
+  ParticleEmitDesc desc{};
+  desc.position = motionTestCenter_;
+  desc.count = static_cast<uint32_t>(motionTestCount_);
+  desc.velocityRandom = {motionTestSpeed_, motionTestSpeed_, motionTestSpeed_};
+  desc.lifeMin = motionTestLife_;
+  desc.lifeMax = motionTestLife_;
+  desc.color = motionTestColorStart_;
+  desc.colorEnd = Vector3{motionTestColorEnd_.x, motionTestColorEnd_.y,
+                          motionTestColorEnd_.z};
+  desc.baseScale = {motionTestScale_, motionTestScale_, motionTestScale_};
+  desc.scaleEndRate = motionTestScaleEndRate_;
+  desc.fadeStart = motionTestFadeStart_;
+  desc.weightMin = motionTestWeightMin_;
+  desc.weightMax = motionTestWeightMax_;
+
+  if (motionTestShape_ == 1) {
+    // 箱の表面から出す。前線を走らせている間は、前線の幅の範囲だけ
+    desc.shape = ParticleEmitShape::BoxSurface;
+    desc.boxWorld = MotionTestBoxWorld();
+    desc.boxHalfSize = motionTestBoxHalfSize_;
+    desc.bandCenter = motionTestBandCenter_;
+    if (motionTestFrontRunning_) {
+      desc.bandInner = (std::max)(motionTestFrontRadius_ - motionTestBandWidth_, 0.0f);
+      desc.bandOuter = motionTestFrontRadius_;
+    }
+    desc.surfaceSpeed = motionTestSurfaceSpeed_;
+    motionTestGroup_->Emit(desc);
+    return;
+  }
+
+  // 頼みを Requests 個積む。出す位置は 1 m ずつ横にずらす
+  for (int i = 0; i < motionTestRequests_; ++i) {
+    desc.position = motionTestCenter_ + Vector3{static_cast<float>(i), 0.0f, 0.0f};
+    motionTestGroup_->Emit(desc);
+  }
+}
+
+Matrix4x4 DebugScene::MotionTestBoxWorld() const {
+  return MakeAffineMatrix(Vector3{1.0f, 1.0f, 1.0f}, motionTestBoxRotate_,
+                          motionTestBoxCenter_);
+}
+
+void DebugScene::DrawMotionTestBox() {
+  if (motionTestShape_ != 1) {
+    return;
+  }
+  const Matrix4x4 boxWorld = MotionTestBoxWorld();
+  // 角の番号のビット 0・1・2 が、x・y・z の + 側か - 側か
+  auto corner = [&](int index) {
+    const Vector3 local = {(index & 1 ? 1.0f : -1.0f) * motionTestBoxHalfSize_.x,
+                           (index & 2 ? 1.0f : -1.0f) * motionTestBoxHalfSize_.y,
+                           (index & 4 ? 1.0f : -1.0f) * motionTestBoxHalfSize_.z};
+    return TransformPoint(local, boxWorld);
+  };
+  const Vector4 kBoxLineColor = {1.0f, 1.0f, 0.0f, 1.0f}; // 箱の辺の色（黄）
+  // 1 ビットだけ違う角どうしを結ぶと、12 本の辺になる
+  for (int a = 0; a < 8; ++a) {
+    for (int bit = 1; bit < 8; bit <<= 1) {
+      const int b = a | bit;
+      if (b != a) {
+        engine_->GetLineRenderer()->DrawLine(corner(a), corner(b), kBoxLineColor);
+      }
+    }
+  }
+}
+
 void DebugScene::AddLightGrid() const {
   LightManager *lightManager = engine_->GetLightManager();
 
@@ -1065,6 +1252,9 @@ void DebugScene::Draw3D() {
     target->Draw();
   }
   animatedCube_->Draw();
+  if (motionTestShape_ == 1) {
+    motionTestBoxModel_->Draw();
+  }
 
   if (showDragonCompare_) {
     dragonObj_->Draw();
@@ -1119,6 +1309,8 @@ void DebugScene::Draw3D() {
   hitParticleGroup_->Draw();
   cylinderParticleGroup_->Draw();
   planeHitParticleGroup_->Draw();
+  motionTestGroup_->Draw();
+  DrawMotionTestBox();
 
   // レールのデバッグ描画（Catmull-Rom曲線）
   if (waypoints_.size() >= 2) {

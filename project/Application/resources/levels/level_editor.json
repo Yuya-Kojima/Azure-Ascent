@@ -186,7 +186,7 @@
         },
         {
             "modelPath": "resources/models/rock_tower/rock_tower_s4_a_rock.gltf",
-            "translation": [-1208.753, -15.0, 1295.353],
+            "translation": [-1208.753, -15.0, 1445.353],
             "rotation": [0.0, -0.7854, 0.0],
             "scale": [1.571, 1.259, 1.537],
             "color": [0.42, 0.37, 0.32],
@@ -194,7 +194,7 @@
         },
         {
             "modelPath": "resources/models/rock_tower/rock_tower_s4_a_machine.gltf",
-            "translation": [-1208.753, -15.0, 1295.353],
+            "translation": [-1208.753, -15.0, 1445.353],
             "rotation": [0.0, -0.7854, 0.0],
             "scale": [1.571, 1.259, 1.537],
             "color": [0.1, 0.11, 0.13],
@@ -202,7 +202,7 @@
         },
         {
             "modelPath": "resources/models/rock_tower/rock_tower_s4_a_light.gltf",
-            "translation": [-1208.753, -15.0, 1295.353],
+            "translation": [-1208.753, -15.0, 1445.353],
             "rotation": [0.0, -0.7854, 0.0],
             "scale": [1.571, 1.259, 1.537],
             "color": [0.5, 1.6, 2.2],
@@ -922,7 +922,7 @@
         },
         {
             "modelPath": "resources/models/rock_tower/rock_tower_s2_c_rock.gltf",
-            "translation": [-1082.77, -15.0, 1133.332],
+            "translation": [-1094.732, -15.0, 1123.246],
             "rotation": [0.0, -0.6501, 0.0],
             "scale": [0.891, 0.821, 0.761],
             "color": [0.42, 0.37, 0.32],
@@ -930,7 +930,7 @@
         },
         {
             "modelPath": "resources/models/rock_tower/rock_tower_s2_c_machine.gltf",
-            "translation": [-1082.77, -15.0, 1133.332],
+            "translation": [-1094.732, -15.0, 1123.246],
             "rotation": [0.0, -0.6501, 0.0],
             "scale": [0.891, 0.821, 0.761],
             "color": [0.1, 0.11, 0.13],
@@ -938,7 +938,7 @@
         },
         {
             "modelPath": "resources/models/rock_tower/rock_tower_s2_c_light.gltf",
-            "translation": [-1082.77, -15.0, 1133.332],
+            "translation": [-1094.732, -15.0, 1123.246],
             "rotation": [0.0, -0.6501, 0.0],
             "scale": [0.891, 0.821, 0.761],
             "color": [0.5, 1.6, 2.2],
@@ -946,7 +946,7 @@
         },
         {
             "modelPath": "resources/models/rock_tower/rock_tower_s3_b_rock.gltf",
-            "translation": [-1107.264, -15.0, 1164.708],
+            "translation": [-1119.511, -15.0, 1153.089],
             "rotation": [0.0, 2.3749, 0.0],
             "scale": [0.947, 1.024, 1.034],
             "color": [0.42, 0.37, 0.32],
@@ -954,7 +954,7 @@
         },
         {
             "modelPath": "resources/models/rock_tower/rock_tower_s3_b_machine.gltf",
-            "translation": [-1107.264, -15.0, 1164.708],
+            "translation": [-1119.511, -15.0, 1153.089],
             "rotation": [0.0, 2.3749, 0.0],
             "scale": [0.947, 1.024, 1.034],
             "color": [0.1, 0.11, 0.13],
@@ -962,7 +962,7 @@
         },
         {
             "modelPath": "resources/models/rock_tower/rock_tower_s3_b_light.gltf",
-            "translation": [-1107.264, -15.0, 1164.708],
+            "translation": [-1119.511, -15.0, 1153.089],
             "rotation": [0.0, 2.3749, 0.0],
             "scale": [0.947, 1.024, 1.034],
             "color": [0.5, 1.6, 2.2],
@@ -970,7 +970,7 @@
         },
         {
             "modelPath": "resources/models/rock_tower/rock_tower_s3_c_rock.gltf",
-            "translation": [-1134.823, -15.0, 1184.167],
+            "translation": [-1140.906, -15.0, 1179.011],
             "rotation": [0.0, -1.007, 0.0],
             "scale": [0.787, 0.979, 0.875],
             "color": [0.42, 0.37, 0.32],
@@ -978,7 +978,7 @@
         },
         {
             "modelPath": "resources/models/rock_tower/rock_tower_s3_c_machine.gltf",
-            "translation": [-1134.823, -15.0, 1184.167],
+            "translation": [-1140.906, -15.0, 1179.011],
             "rotation": [0.0, -1.007, 0.0],
             "scale": [0.787, 0.979, 0.875],
             "color": [0.1, 0.11, 0.13],
@@ -986,7 +986,7 @@
         },
         {
             "modelPath": "resources/models/rock_tower/rock_tower_s3_c_light.gltf",
-            "translation": [-1134.823, -15.0, 1184.167],
+            "translation": [-1140.906, -15.0, 1179.011],
             "rotation": [0.0, -1.007, 0.0],
             "scale": [0.787, 0.979, 0.875],
             "color": [0.5, 1.6, 2.2],
@@ -1066,7 +1066,7 @@
         },
         {
             "modelPath": "resources/models/rock_tower/rock_tower_s3_b_rock.gltf",
-            "translation": [-1228.381, -15.0, 1279.77],
+            "translation": [-1228.381, -15.0, 1429.77],
             "rotation": [0.0, -1.3457, 0.0],
             "scale": [0.669, 0.763, 0.693],
             "color": [0.42, 0.37, 0.32],
@@ -1074,7 +1074,7 @@
         },
         {
             "modelPath": "resources/models/rock_tower/rock_tower_s3_b_machine.gltf",
-            "translation": [-1228.381, -15.0, 1279.77],
+            "translation": [-1228.381, -15.0, 1429.77],
             "rotation": [0.0, -1.3457, 0.0],
             "scale": [0.669, 0.763, 0.693],
             "color": [0.1, 0.11, 0.13],
@@ -1082,7 +1082,7 @@
         },
         {
             "modelPath": "resources/models/rock_tower/rock_tower_s3_b_light.gltf",
-            "translation": [-1228.381, -15.0, 1279.77],
+            "translation": [-1228.381, -15.0, 1429.77],
             "rotation": [0.0, -1.3457, 0.0],
             "scale": [0.669, 0.763, 0.693],
             "color": [0.5, 1.6, 2.2],
@@ -1090,7 +1090,7 @@
         },
         {
             "modelPath": "resources/models/rock_tower/rock_tower_s3_b_rock.gltf",
-            "translation": [-1289.911, -15.0, 1300.222],
+            "translation": [-1289.911, -15.0, 1450.222],
             "rotation": [0.0, 1.7483, 0.0],
             "scale": [1.036, 0.891, 0.79],
             "color": [0.42, 0.37, 0.32],
@@ -1098,7 +1098,7 @@
         },
         {
             "modelPath": "resources/models/rock_tower/rock_tower_s3_b_machine.gltf",
-            "translation": [-1289.911, -15.0, 1300.222],
+            "translation": [-1289.911, -15.0, 1450.222],
             "rotation": [0.0, 1.7483, 0.0],
             "scale": [1.036, 0.891, 0.79],
             "color": [0.1, 0.11, 0.13],
@@ -1106,7 +1106,7 @@
         },
         {
             "modelPath": "resources/models/rock_tower/rock_tower_s3_b_light.gltf",
-            "translation": [-1289.911, -15.0, 1300.222],
+            "translation": [-1289.911, -15.0, 1450.222],
             "rotation": [0.0, 1.7483, 0.0],
             "scale": [1.036, 0.891, 0.79],
             "color": [0.5, 1.6, 2.2],
@@ -1114,7 +1114,7 @@
         },
         {
             "modelPath": "resources/models/rock_tower/rock_tower_s4_c_rock.gltf",
-            "translation": [-1344.302, -15.0, 1316.138],
+            "translation": [-1337.526, -15.0, 1259.095],
             "rotation": [0.0, 1.764, 0.0],
             "scale": [0.681, 0.821, 0.855],
             "color": [0.42, 0.37, 0.32],
@@ -1122,7 +1122,7 @@
         },
         {
             "modelPath": "resources/models/rock_tower/rock_tower_s4_c_machine.gltf",
-            "translation": [-1344.302, -15.0, 1316.138],
+            "translation": [-1337.526, -15.0, 1259.095],
             "rotation": [0.0, 1.764, 0.0],
             "scale": [0.681, 0.821, 0.855],
             "color": [0.1, 0.11, 0.13],
@@ -1130,7 +1130,7 @@
         },
         {
             "modelPath": "resources/models/rock_tower/rock_tower_s4_c_light.gltf",
-            "translation": [-1344.302, -15.0, 1316.138],
+            "translation": [-1337.526, -15.0, 1259.095],
             "rotation": [0.0, 1.764, 0.0],
             "scale": [0.681, 0.821, 0.855],
             "color": [0.5, 1.6, 2.2],
@@ -1222,30 +1222,6 @@
             "rotation": [0.0, -2.0026, 0.0],
             "scale": [6.0, 3.0, 8.0],
             "color": [0.12, 0.125, 0.14],
-            "specularScale": 0.0
-        },
-        {
-            "modelPath": "__builtin_box",
-            "translation": [-1300.738, 45.831, 1239.854],
-            "rotation": [0.0, -1.3933, 0.0],
-            "scale": [14.0, 121.662, 14.0],
-            "color": [0.08, 0.085, 0.1],
-            "specularScale": 0.0
-        },
-        {
-            "modelPath": "__builtin_box",
-            "translation": [-1292.617, 45.831, 1285.132],
-            "rotation": [0.0, -1.3933, 0.0],
-            "scale": [14.0, 121.662, 14.0],
-            "color": [0.08, 0.085, 0.1],
-            "specularScale": 0.0
-        },
-        {
-            "modelPath": "__builtin_box",
-            "translation": [-1296.678, 55.662, 1262.493],
-            "rotation": [0.0, -1.3933, 0.0],
-            "scale": [60.0, 8.0, 14.0],
-            "color": [0.08, 0.085, 0.1],
             "specularScale": 0.0
         },
         {

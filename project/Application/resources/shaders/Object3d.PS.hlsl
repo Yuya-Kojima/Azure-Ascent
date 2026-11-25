@@ -249,7 +249,17 @@ GeometryShaderOutput input) {
 
 	// ディゾルブ
 	float edge = 0.0f;
-	if (gMaterial.enableDissolve != 0) {
+	if (gMaterial.enableDissolve == kDissolveSphere) {
+		// 点からの距離で消す: 「距離 − 半径」が 0 より小さい画素を捨て、0〜dissolveEdgeRange を境目として光らせる
+		// 境目は模様の画像で ±dissolveNoise/2 ずらす
+		float mask = gMaskTexture.Sample(gSampler, input.texcoord + gMaterial.maskTransform).r;
+		float beyond = length(input.worldPosition - gMaterial.dissolveSphere.xyz) - gMaterial.dissolveSphere.w;
+		beyond += (mask - 0.5f) * gMaterial.dissolveNoise;
+		if (beyond < 0.0f) {
+			discard;
+		}
+		edge = 1.0f - smoothstep(0.0f, max(gMaterial.dissolveEdgeRange, 1e-4f), beyond);
+	} else if (gMaterial.enableDissolve != 0) {
 		float mask = gMaskTexture.Sample(gSampler, input.texcoord + gMaterial.maskTransform).r;
 		if (mask <= gMaterial.dissolveThreshold) {
 			discard;

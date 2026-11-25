@@ -49,23 +49,31 @@ FractureCache::FractureCache() {
   seedCount_ = kDefaultSeedCount;
   seedBias_ = kDefaultSeedBias;
   LoadConfig();
+  startupSeedCount_ = seedCount_;
 }
 
 FractureCache::~FractureCache() = default;
 
-void FractureCache::Prebuild(const Model *model) {
-  if (!model || sets_.contains(model)) {
+void FractureCache::Prebuild(const Model *model) { Prebuild(model, startupSeedCount_); }
+
+void FractureCache::Prebuild(const Model *model, int seedCount) {
+  const std::pair<const Model *, int> key = {model, seedCount};
+  if (!model || seedCount < kMinSeedCount || sets_.contains(key)) {
     return;
   }
 
   auto pieceSet = std::make_unique<FracturePieceSet>();
-  pieceSet->Create(model->GetModelData(), static_cast<uint32_t>(seedCount_),
+  pieceSet->Create(model->GetModelData(), static_cast<uint32_t>(seedCount),
                    kRandomSeed, seedBias_);
-  sets_.emplace(model, std::move(pieceSet));
+  sets_.emplace(key, std::move(pieceSet));
 }
 
 const FracturePieceSet *FractureCache::Find(const Model *model) const {
-  auto it = sets_.find(model);
+  return Find(model, startupSeedCount_);
+}
+
+const FracturePieceSet *FractureCache::Find(const Model *model, int seedCount) const {
+  auto it = sets_.find({model, seedCount});
   if (it == sets_.end()) {
     return nullptr;
   }
@@ -99,7 +107,6 @@ void FractureCache::DrawEditorUI() {
                                          0.0f, kMaxSeedBiasMinSpacing);
   }
   ImGui::TextDisabled("種の数・偏りは保存して再起動すると反映されます");
-
   const char *saveLabel = isConfigDirty_ ? "[* 未保存] Save Fracture Config"
                                          : "Save Fracture Config";
   if (ImGui::Button(saveLabel)) {

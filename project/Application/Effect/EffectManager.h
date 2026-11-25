@@ -7,6 +7,7 @@
 #include <array>
 #include "Render/Particle/ParticleEmitter.h"
 #include "Render/Particle/BillboardParticleEmitter.h"
+#include "Effect/BigEnemyDeath.h"
 
 class RailCamera;
 class ICamera;
@@ -136,6 +137,23 @@ public:
     PlayEffect(EffectType::EnemyDeathSimple, worldPos, baseColor);
   }
 
+  /// <summary>
+  /// 大物の死亡演出の、層ごとの入れ物
+  /// </summary>
+  IParticleEmitter *GetDeathEmitter(BigEnemyDeath::Layer layer) const {
+    return deathParticleGroups_[static_cast<size_t>(layer)].get();
+  }
+
+  /// <summary>
+  /// 大物の死亡演出の調整値
+  /// </summary>
+  const BigEnemyDeath::Config &GetDeathConfig() const { return deathConfig_; }
+
+  /// <summary>
+  /// 大物の死亡演出の炎の模様を置く原点（燃えている物の位置。毎フレーム渡す）
+  /// </summary>
+  void SetDeathFireOrigin(const Vector3 &origin) { deathFireOrigin_ = origin; }
+
 private:
   EffectManager() = default;
   ~EffectManager() = default;
@@ -200,6 +218,14 @@ private:
   std::array<std::unique_ptr<ParticleEmitter>, kMaxHitEffects> deathRingEmitters_;
   std::array<std::unique_ptr<ParticleEmitter>, kMaxHitEffects> hitGlintEmitters_;
   int nextHitEffectIndex_ = 0;
+
+  // 大物の死亡演出の、層ごとの入れ物（BigEnemyDeath::Layer の順）と調整値
+  std::array<std::unique_ptr<BillboardParticleEmitter>, BigEnemyDeath::kLayerCount>
+      deathParticleGroups_;
+  BigEnemyDeath::Config deathConfig_;
+  bool isDeathConfigDirty_ = false;
+  Vector3 deathFireOrigin_ = {0.0f, 0.0f, 0.0f}; // 炎の模様を置く原点（ワールド座標）
+  float deathFireTime_ = 0.0f;                     // 炎の模様を流す時間（秒）
 
   // 粒の入れ物（BillboardParticleEmitter）を作ったか
   bool hasCreatedParticleGroups_ = false;

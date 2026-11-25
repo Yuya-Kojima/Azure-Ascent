@@ -11,6 +11,24 @@
 #include <fstream>
 #include <iomanip>
 
+namespace {
+// 大物の死亡演出の層ごとの絵・数の上限・混ぜ方（BigEnemyDeath::Layer の順）
+struct DeathGroupSpec {
+  const char *texture;
+  uint32_t maxParticles;
+  IParticleEmitter::BlendMode blendMode;
+  IParticleEmitter::FireMode fireMode; // 炎の描き方（Off でなければ板の中で回さない）
+};
+constexpr DeathGroupSpec kDeathGroupSpecs[BigEnemyDeath::kLayerCount] = {
+    {"resources/death_glow.png", 2000, IParticleEmitter::BlendMode::Add, IParticleEmitter::FireMode::Off},              // 閃光
+    {"resources/death_fire.png", 30000, IParticleEmitter::BlendMode::Premultiplied, IParticleEmitter::FireMode::Ball},  // 炎
+    {"resources/death_glow.png", 60000, IParticleEmitter::BlendMode::Add, IParticleEmitter::FireMode::Off},             // 火花
+    {"resources/death_puff.png", 30000, IParticleEmitter::BlendMode::Alpha, IParticleEmitter::FireMode::Off},           // 黒煙
+    {"resources/death_fire.png", 30000, IParticleEmitter::BlendMode::Premultiplied, IParticleEmitter::FireMode::Flame}, // 燃え続ける炎
+};
+constexpr float kDeathFrameTime = 1.0f / 60.0f; // 1 フレームの秒数
+} // namespace
+
 EffectManager *EffectManager::GetInstance() {
   static EffectManager instance;
   return &instance;
@@ -19,6 +37,8 @@ EffectManager *EffectManager::GetInstance() {
 void EffectManager::Initialize() {
   LoadShockwaveConfig();
   LoadEffectsConfig();
+  BigEnemyDeath::LoadConfig(deathConfig_);
+  isDeathConfigDirty_ = false;
 
   activeShockwaves_.clear();
   submittedShockwaves_.clear();
@@ -131,6 +151,16 @@ void EffectManager::CreateParticleGroups() {
     hitGlintParticleGroups_[i] = std::make_unique<BillboardParticleEmitter>();
     hitGlintParticleGroups_[i]->Initialize("resources/laser_hit_glint.png");
   }
+
+  // 大物の死亡演出：層ごとに絵と混ぜ方を変える。炎の層は炎の描き方でまっすぐ立て、ほかは板の中で回す
+  for (size_t i = 0; i < deathParticleGroups_.size(); ++i) {
+    const DeathGroupSpec &spec = kDeathGroupSpecs[i];
+    deathParticleGroups_[i] = std::make_unique<BillboardParticleEmitter>();
+    deathParticleGroups_[i]->Initialize(spec.texture, spec.maxParticles);
+    deathParticleGroups_[i]->SetBlendMode(spec.blendMode);
+    deathParticleGroups_[i]->SetFireMode(spec.fireMode);
+    deathParticleGroups_[i]->SetBillboardSpin(spec.fireMode == IParticleEmitter::FireMode::Off);
+  }
 }
 
 void EffectManager::ClearParticleGroups() {
@@ -141,6 +171,9 @@ void EffectManager::ClearParticleGroups() {
     hitFlareParticleGroups_[i]->ClearParticles();
     hitRingParticleGroups_[i]->ClearParticles();
     hitGlintParticleGroups_[i]->ClearParticles();
+  }
+  for (auto &group : deathParticleGroups_) {
+    group->ClearParticles();
   }
 }
 
@@ -158,6 +191,9 @@ void EffectManager::Finalize() {
     hitFlareParticleGroups_[i].reset();
     hitRingParticleGroups_[i].reset();
     hitGlintParticleGroups_[i].reset();
+  }
+  for (auto &group : deathParticleGroups_) {
+    group.reset();
   }
   hasCreatedParticleGroups_ = false;
 }
@@ -253,6 +289,22 @@ void EffectManager::Update(const ICamera *camera) {
     bossBurstParticleGroup_->Update(camera->GetViewMatrix(),
                                     camera->GetProjectionMatrix());
   }
+
+  // 層の力は、調整値をそのまま毎フレーム渡す。炎の層には模様の原点と流す時間、火花の層には線の長さと太さも渡す
+  deathFireTime_ += kDeathFrameTime;
+  if (auto &sparks = deathParticleGroups_[static_cast<size_t>(BigEnemyDeath::Layer::Spark)]) {
+    sparks->SetVelocityStreak(deathConfig_.sparkStreakSeconds, deathConfig_.sparkStreakWidthRate);
+  }
+  for (size_t i = 0; i < deathParticleGroups_.size(); ++i) {
+    const BigEnemyDeath::LayerConfig &layer = deathConfig_.layers[i];
+    if (kDeathGroupSpecs[i].fireMode != IParticleEmitter::FireMode::Off) {
+      deathParticleGroups_[i]->SetFireNoise(deathFireOrigin_, deathFireTime_);
+    }
+    deathParticleGroups_[i]->SetGravity(layer.gravity);
+    deathParticleGroups_[i]->SetWind(layer.wind);
+    deathParticleGroups_[i]->SetDrag(layer.drag);
+    deathParticleGroups_[i]->Update(camera->GetViewMatrix(), camera->GetProjectionMatrix());
+  }
 }
 
 void EffectManager::Draw() {
@@ -269,6 +321,15 @@ void EffectManager::Draw() {
 
   if (bossBurstParticleGroup_) {
     bossBurstParticleGroup_->Draw();
+  }
+
+  // 死亡演出の粒は、半透明の層（黒煙）を先に、足し算の層（燃え続ける炎 → 炎 → 火花 → 閃光）をあとに描く
+  for (BigEnemyDeath::Layer layer :
+       {BigEnemyDeath::Layer::Smoke, BigEnemyDeath::Layer::Flame,
+        BigEnemyDeath::Layer::Fire, BigEnemyDeath::Layer::Spark, BigEnemyDeath::Layer::Flash}) {
+    if (auto &group = deathParticleGroups_[static_cast<size_t>(layer)]) {
+      group->Draw();
+    }
   }
 }
 
@@ -425,7 +486,7 @@ void EffectManager::DrawEditorUI(RailCamera *railCamera) {
   ImGui::Separator();
 
   // Shockwave 設定保存
-  if (isShockwaveConfigDirty_ || isEffectsConfigDirty_) {
+  if (isShockwaveConfigDirty_ || isEffectsConfigDirty_ || isDeathConfigDirty_) {
     ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.8f, 0.6f, 0.0f, 1.0f));
     ImGui::PushStyleColor(ImGuiCol_ButtonHovered,
                           ImVec4(0.9f, 0.7f, 0.1f, 1.0f));
@@ -433,7 +494,7 @@ void EffectManager::DrawEditorUI(RailCamera *railCamera) {
                           ImVec4(1.0f, 0.8f, 0.2f, 1.0f));
   }
 
-  std::string saveButtonText = (isShockwaveConfigDirty_ || isEffectsConfigDirty_)
+  std::string saveButtonText = (isShockwaveConfigDirty_ || isEffectsConfigDirty_ || isDeathConfigDirty_)
                                    ? (const char *)u8"[* 未保存] Save All Configs"
                                    : (const char *)u8"Save All Configs";
   if (ImGui::Button(saveButtonText.c_str(),
@@ -444,9 +505,13 @@ void EffectManager::DrawEditorUI(RailCamera *railCamera) {
     if (isEffectsConfigDirty_) {
       SaveEffectsConfig();
     }
+    if (isDeathConfigDirty_) {
+      BigEnemyDeath::SaveConfig(deathConfig_);
+      isDeathConfigDirty_ = false;
+    }
   }
 
-  if (isShockwaveConfigDirty_ || isEffectsConfigDirty_) {
+  if (isShockwaveConfigDirty_ || isEffectsConfigDirty_ || isDeathConfigDirty_) {
     ImGui::PopStyleColor(3);
   }
 
@@ -543,6 +608,14 @@ void EffectManager::DrawEditorUI(RailCamera *railCamera) {
 
     if (changed) {
       isShockwaveConfigDirty_ = true;
+    }
+    ImGui::TreePop();
+  }
+
+  ImGui::Separator();
+  if (ImGui::TreeNode((const char *)u8"大物の死亡演出 (Big Enemy Death)")) {
+    if (BigEnemyDeath::DrawConfigUI(deathConfig_)) {
+      isDeathConfigDirty_ = true;
     }
     ImGui::TreePop();
   }

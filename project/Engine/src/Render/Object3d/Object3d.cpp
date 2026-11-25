@@ -258,6 +258,8 @@ void Object3d::CreateMaterialData() {
   materialData->dissolveThreshold = 0.0f;
   materialData->dissolveEdgeRange = 0.05f;
   materialData->maskTransform = {0.0f, 0.0f};
+  materialData->dissolveNoise = 0.0f;
+  materialData->dissolveSphere = Vector4(0.0f, 0.0f, 0.0f, 0.0f);
   materialData->dissolveEdgeColor = Vector4(1.0f, 0.4f, 0.3f, 1.0f);
 
   // 模様の光と傷は使わない

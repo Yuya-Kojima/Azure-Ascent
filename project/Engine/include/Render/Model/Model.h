@@ -67,7 +67,7 @@ public:
     float dissolveThreshold;
     float dissolveEdgeRange;
     Vector2 maskTransform;
-    float padding2;
+    float dissolveNoise = 0.0f; // 距離のディゾルブで、境目を模様の画像でずらす幅（ワールドの長さ）
     Vector4 dissolveEdgeColor;
     // リムライト（縁の発光）: rgb=色, w=強度(0で無効)
     Vector4 rimColor = {0.0f, 0.0f, 0.0f, 0.0f};
@@ -90,6 +90,8 @@ public:
     Vector4 woundGlow = {0.0f, 0.0f, 0.0f, 0.0f};
     // 傷の形: x=ひびの根元の太さ（ワールドの長さ）, y=縁の欠けた殻の幅（穴の半径に対する割合）, z=縁のぎざぎざの深さ（穴の半径に対する割合）, w=周りの面ににじむ光の強さ
     Vector4 woundShape = {0.0f, 0.0f, 0.0f, 0.0f};
+    // 距離のディゾルブ: xyz=距離を測る点（ワールド座標）, w=この距離より近い所を消す半径（ワールドの長さ）
+    Vector4 dissolveSphere = {0.0f, 0.0f, 0.0f, 0.0f};
   };
 
   /// <summary>

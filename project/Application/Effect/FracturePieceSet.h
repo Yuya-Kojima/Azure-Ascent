@@ -14,10 +14,22 @@
 class FracturePieceSet {
 
 public: // 型
+  // 割れ目の線 1 本（外側の面と割れ口の面の境目）。元のモデルの座標
+  struct CrackSegment {
+    Vector3 start = {0.0f, 0.0f, 0.0f};
+    Vector3 end = {0.0f, 0.0f, 0.0f};
+    Vector3 normal = {0.0f, 1.0f, 0.0f}; // 線が乗っている外側の面の外向き（長さ1）
+  };
+
   // 破片1つ分の形
   struct Piece {
-    // GPU 用のモデル（原点を重心に移し済みなので、置いた場所でそのまま回る）
+    // 外側の面（元のモデルの表面だった所）の GPU 用のモデル
+    // 原点を重心に移し済みなので、置いた場所でそのまま回る
     std::unique_ptr<Model> model = nullptr;
+    // 割れ口の面（割ってできた新しい面）の GPU 用のモデル。原点は model と同じ。なければ nullptr
+    std::unique_ptr<Model> capModel = nullptr;
+    // この破片のふちにある割れ目の線（隣の破片と同じ線を持つ）
+    std::vector<CrackSegment> cracks;
     // 元のモデルの座標での重心（破片を置く位置）
     Vector3 centroid = {0.0f, 0.0f, 0.0f};
     // 元のモデルの重心 → 破片の重心 の向き（長さ1。飛ばす向き）
