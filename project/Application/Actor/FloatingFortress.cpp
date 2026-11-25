@@ -124,13 +124,18 @@ Vector3 FloatingFortress::PathPoint(float u) const {
   if (n <= 0) {
     return path_.empty() ? Vector3{0.0f, 0.0f, 0.0f} : path_.front();
   }
-  u = std::clamp(u, 0.0f, static_cast<float>(n));
+  // 最後の点を過ぎたら、最後の 2 点を結ぶ向きにまっすぐ延ばす
+  if (u > static_cast<float>(n)) {
+    return path_[n] + (path_[n] - path_[n - 1]) * (u - static_cast<float>(n));
+  }
+  u = (std::max)(u, 0.0f);
   const int i = (std::min)(static_cast<int>(u), n - 1);
   const float t = u - static_cast<float>(i);
-  const Vector3 &p0 = path_[(std::max)(i - 1, 0)];
+  // 両端の外側の点は、端の 2 点を結ぶ向きにまっすぐ延ばして作る
+  const Vector3 p0 = i > 0 ? path_[i - 1] : path_[0] * 2.0f - path_[1];
   const Vector3 &p1 = path_[i];
   const Vector3 &p2 = path_[i + 1];
-  const Vector3 &p3 = path_[(std::min)(i + 2, n)];
+  const Vector3 p3 = i + 2 <= n ? path_[i + 2] : path_[n] * 2.0f - path_[n - 1];
   const float t2 = t * t;
   const float t3 = t2 * t;
   return (p1 * 2.0f + (p2 - p0) * t + (p0 * 2.0f - p1 * 5.0f + p2 * 4.0f - p3) * t2 +
@@ -161,8 +166,10 @@ void FloatingFortress::UpdateFly() {
   const float n = static_cast<float>(path_.size() - 1);
   const float u = (railCamera_->GetT() - spawnT_) / pathSpanT_ * n;
 
-  // 道筋の終わりまで残った部品は、砦と一緒に静かに消える
-  if (u >= n) {
+  // 道筋の終わりを過ぎたら、最後の向きにまっすぐ飛び続け、画面から外れたところで、残った部品と一緒に静かに消える
+  // 画面に映ったままでも、終わりから kMaxOverrunT_ 進んだら消す
+  const float overrunT = railCamera_->GetT() - spawnT_ - pathSpanT_;
+  if (u >= n && (!IsOnScreen() || overrunT >= kMaxOverrunT_)) {
     for (EnemyPart *&part : parts_) {
       if (part) {
         part->Vanish();
@@ -190,11 +197,8 @@ void FloatingFortress::UpdateFly() {
     }
   }
 
-  // カメラの頭上に来たら（レールの前の向きの距離が kPassOverDistance_ より近づいたら）、砲座が撃ってよくなる
-  const Vector3 toFortress = position_ - railCamera_->GetRailPosition();
-  if (Dot(toFortress, railCamera_->GetRailForward()) < kPassOverDistance_) {
-    hasPassedOver_ = true;
-  }
+  // 頭上を過ぎたら、砲座が撃ってよくなる
+  CheckPassOver();
 
   UpdateTilt();
   EmitThrusterFlames();
@@ -211,23 +215,12 @@ void FloatingFortress::FollowPathAfterDeath() {
 
   // カメラの t ではなく自分の時計で道筋を進む。割れ始めてからは推力を失い、進む速さが減っていく
   const float thrust = isFalling ? std::exp(-kDeadThrustLossRate_ * fallTime_) : 1.0f;
-  const float n = static_cast<float>(path_.size() - 1);
-  deadPathU_ += kPathTPerSecond_ * thrust * kFrameTime_ / pathSpanT_ * n;
-  if (deadPathU_ < n) {
-    const Vector3 next = PathPoint(deadPathU_);
-    pathVelocity_ = (next - pathPosition_) * (1.0f / kFrameTime_);
-    pathPosition_ = next;
-  } else {
-    // 道筋の終わりを過ぎたら、最後の向きのまままっすぐ進む
-    const float previousThrust =
-        isFalling ? std::exp(-kDeadThrustLossRate_ * (fallTime_ - kFrameTime_)) : 1.0f;
-    pathVelocity_ = pathVelocity_ * (thrust / previousThrust);
-    pathPosition_ = pathPosition_ + pathVelocity_ * kFrameTime_;
-  }
+  AdvanceDeadPath(deadPathU_, deadPathHeight_, thrust, kFrameTime_);
 
-  // 割れ始めてからは、道筋の上の位置から重力で落ちた分だけ下に置く
+  // 横の位置は道筋の上に置き、高さは道筋の上の高さから、割れ始めてから重力で落ちた分だけ下げる
   const float fallDepth = isFalling ? 0.5f * kDeadGravity_ * fallTime_ * fallTime_ : 0.0f;
-  const Vector3 next = pathPosition_ - Vector3{0.0f, fallDepth, 0.0f};
+  const Vector3 onPath = PathPoint(deadPathU_);
+  const Vector3 next = {onPath.x, deadPathHeight_ - fallDepth, onPath.z};
   velocity_ = (next - position_) * (1.0f / kFrameTime_);
   position_ = next;
 
@@ -265,6 +258,24 @@ void FloatingFortress::FollowPathAfterDeath() {
   BuildDeathBoxes();
 }
 
+void FloatingFortress::AdvanceDeadPath(float &u, float &height, float thrust, float dt) const {
+  const float n = static_cast<float>(path_.size() - 1);
+  const float uPerSecond = kPathTPerSecond_ / pathSpanT_ * n; // 生きている間に 1 秒に進む道筋の点の番号
+
+  // 今いる所での、道筋自身の水平の速さ（m/秒）
+  const Vector3 d = PathPoint(u + kHeadingStep_) - PathPoint(u - kHeadingStep_);
+  const float pathSpeed = std::sqrt(d.x * d.x + d.z * d.z) / (2.0f * kHeadingStep_) * uPerSecond;
+
+  // 上限を決めたあと、道筋自身が上限より速い所では、上限の速さになるよう進む番号を減らす
+  const float rate =
+      hasDeadSpeedLimit_ && pathSpeed > deadSpeedLimit_ ? deadSpeedLimit_ / pathSpeed : 1.0f;
+  u += uPerSecond * rate * thrust * dt;
+
+  // 道筋が今より下る所だけ下げる
+  // 頭上を過ぎる前は道筋の高さに乗り、過ぎてからは道筋が下る所だけ下げる
+  height = hasPassedOver_ ? (std::min)(height, PathPoint(u).y) : PathPoint(u).y;
+}
+
 void FloatingFortress::BuildDeathBoxes() {
   // 箱のモデルの拡大は除き、回転と位置だけにする
   deathBoxes_.clear();
@@ -275,16 +286,39 @@ void FloatingFortress::BuildDeathBoxes() {
   }
 }
 
+void FloatingFortress::CheckPassOver() {
+  const Vector3 toFortress = position_ - railCamera_->GetRailPosition();
+  if (Dot(toFortress, railCamera_->GetRailForward()) < kPassOverDistance_) {
+    hasPassedOver_ = true;
+  }
+}
+
 void FloatingFortress::UpdateEnduring() {
   FollowPathAfterDeath();
-  enduringTimer_ += kFrameTime_;
   death_.UpdateDamage(deathBoxes_, velocity_);
 
-  // 見える位置に来て、飛び散る塊がカメラに近づきすぎないなら割れ始める
-  // そうならなくても、耐える時間を過ぎるか道筋の終わりを過ぎたら割れ始める
+  // 頭上を過ぎる前に倒されたら、道筋のまま頭上を抜ける。耐えた時間は頭上を過ぎてから数える
+  if (railCamera_) {
+    CheckPassOver();
+  }
+  if (!hasPassedOver_) {
+    return;
+  }
+  enduringTimer_ += kFrameTime_;
+
+  // 頭上を過ぎて初めて見える位置に入ったら、そのときの水平の速さを、これから先に進む速さの上限にする
+  if (!hasDeadSpeedLimit_ && IsInDeathView()) {
+    const float speed = std::sqrt(velocity_.x * velocity_.x + velocity_.z * velocity_.z);
+    deadSpeedLimit_ = (std::max)(speed, kDeadSpeedMin_);
+    hasDeadSpeedLimit_ = true;
+  }
+
+  // 頭上を過ぎてから下限の時間を耐えたあと、見える位置に来て大爆発まで本体がカメラに近づきすぎないか、道筋の終わりを過ぎたら割れ始める
+  // そうならなくても、頭上を過ぎてから耐える時間の上限を過ぎたら割れ始める
   const float n = static_cast<float>(path_.size() - 1);
-  if ((IsInDeathView() && KeepsClearOfCamera()) || enduringTimer_ >= kMaxEnduringSeconds_ ||
-      deadPathU_ >= n) {
+  const bool hasEnduredEnough = enduringTimer_ >= kMinEnduringSeconds_;
+  if ((hasEnduredEnough && ((IsInDeathView() && KeepsClearOfCamera()) || deadPathU_ >= n)) ||
+      enduringTimer_ >= kMaxEnduringSeconds_) {
     state_ = State::Dying;
     StartDeath(lastPartPosition_);
   }
@@ -292,7 +326,8 @@ void FloatingFortress::UpdateEnduring() {
 
 void FloatingFortress::UpdateDying() {
   FollowPathAfterDeath();
-  death_.Update(frame_, deathBoxes_, velocity_);
+  const Vector3 cameraPosition = railCamera_ ? railCamera_->GetTranslate() : position_;
+  death_.Update(frame_, deathBoxes_, velocity_, cameraPosition);
 
   // 大爆発を、砦の出来事としてシーンへ伝える（ヒットストップは倒された瞬間に伝えてある）
   for (BigEnemyDeath::Event event : death_.TakeEvents()) {
@@ -312,39 +347,22 @@ bool FloatingFortress::KeepsClearOfCamera() const {
     return true;
   }
   const BigEnemyDeath::Config &config = EffectManager::GetInstance()->GetDeathConfig();
-  const float n = static_cast<float>(path_.size() - 1);
-  const float uPerSecond = kPathTPerSecond_ / pathSpanT_ * n; // 1 秒に進む道筋の点の番号
   const float cameraTPerSecond = railCamera_->GetCurrentSpeed();
-  const float crackSeconds = config.crackSeconds;
-  const float drag = (std::max)(config.chunkDrag, 1e-3f);
+  const int releaseFrame = static_cast<int>(std::round(config.crackSeconds / kFrameTime_));
 
-  // 割れ始めてから s 秒の、道筋の点の番号と本体の位置（推力を失って進みが減り、重力で落ちる）
-  const auto uAt = [&](float s) {
-    return deadPathU_ + uPerSecond * (1.0f - std::exp(-kDeadThrustLossRate_ * s)) / kDeadThrustLossRate_;
-  };
-  const auto bodyAt = [&](float s) {
-    return PathPoint(uAt(s)) - Vector3{0.0f, 0.5f * kDeadGravity_ * s * s, 0.0f};
-  };
-
-  // 大爆発で放す位置と速さ
-  const Vector3 release = bodyAt(crackSeconds);
-  const Vector3 releaseVelocity =
-      (bodyAt(crackSeconds + kFrameTime_) - release) * (1.0f / kFrameTime_);
-
-  for (float s = 0.0f; s <= crackSeconds + config.chunkLifetime; s += kClearanceStep_) {
-    Vector3 point;
-    if (s <= crackSeconds) {
-      point = bodyAt(s);
-    } else {
-      // 速さは空気の抵抗で 1 秒に drag の割合ずつ減り、落ちる速さは重力 / drag に近づく
-      const float a = s - crackSeconds;
-      const float travel = (1.0f - std::exp(-drag * a)) / drag;
-      point = release + releaseVelocity * travel +
-              Vector3{0.0f, -(config.chunkGravity / drag) * (a - travel), 0.0f};
+  // 割れ始めてから大爆発までの本体の位置を、毎フレームの動きと同じ計算で求め、その時のカメラとの距離を確かめる
+  float u = deadPathU_;
+  float height = deadPathHeight_;
+  for (int f = 0; f <= releaseFrame; ++f) {
+    const float s = static_cast<float>(f) * kFrameTime_;
+    if (f > 0) {
+      AdvanceDeadPath(u, height, std::exp(-kDeadThrustLossRate_ * s), kFrameTime_);
     }
+    const Vector3 onPath = PathPoint(u);
+    const Vector3 body = {onPath.x, height - 0.5f * kDeadGravity_ * s * s, onPath.z};
     Vector3 camera = railCamera_->CalcPosition(railCamera_->GetT() + cameraTPerSecond * s);
     camera.y += RailCamera::kRailHeight_;
-    if (Length(point - camera) < kDeathMinClearance_) {
+    if (Length(body - camera) < kDeathMinClearance_) {
       return false;
     }
   }
@@ -364,6 +382,34 @@ bool FloatingFortress::IsInDeathView() const {
   const Vector2 uv = EffectManager::WorldToScreenUV(position_, railCamera_);
   return uv.x >= kDeathViewMarginUV_ && uv.x <= 1.0f - kDeathViewMarginUV_ &&
          uv.y >= kDeathViewMarginUV_ && uv.y <= 1.0f - kDeathViewMarginUV_;
+}
+
+bool FloatingFortress::IsOnScreen() const {
+  if (!railCamera_) {
+    return true;
+  }
+  const Matrix4x4 &viewProjection = railCamera_->GetViewProjectionMatrix();
+  // 点を画面の座標（w で割る前）に直し、w が正で x と y が -w から w の間なら画面の中
+  const auto isInside = [&](const Vector3 &p) {
+    const auto &m = viewProjection.m;
+    const float x = p.x * m[0][0] + p.y * m[1][0] + p.z * m[2][0] + m[3][0];
+    const float y = p.x * m[0][1] + p.y * m[1][1] + p.z * m[2][1] + m[3][1];
+    const float w = p.x * m[0][3] + p.y * m[1][3] + p.z * m[2][3] + m[3][3];
+    return w > 0.0f && std::abs(x) <= w && std::abs(y) <= w;
+  };
+  if (isInside(position_)) {
+    return true;
+  }
+  // 中心から kScreenExitHalf_ の箱の 8 つの角
+  for (int i = 0; i < 8; ++i) {
+    const Vector3 corner = {(i & 1) ? kScreenExitHalf_ : -kScreenExitHalf_,
+                            (i & 2) ? kScreenExitHalf_ : -kScreenExitHalf_,
+                            (i & 4) ? kScreenExitHalf_ : -kScreenExitHalf_};
+    if (isInside(position_ + corner)) {
+      return true;
+    }
+  }
+  return false;
 }
 
 void FloatingFortress::UpdateTilt() {
@@ -459,9 +505,9 @@ void FloatingFortress::OnPartDestroyed(int index) {
     deadTiltRate_ = 0.0f;
     deadTime_ = 0.0f;
     fallTime_ = 0.0f;
-    pathPosition_ = position_;
-    pathVelocity_ = velocity_;
     deadPathU_ = (railCamera_->GetT() - spawnT_) / pathSpanT_ * static_cast<float>(path_.size() - 1);
+    deadPathHeight_ = PathPoint(deadPathU_).y;
+    hasDeadSpeedLimit_ = false;
     enduringTimer_ = 0.0f;
     lastPartPosition_ = spec.localPosition;
     events_.push_back(Event::Killed);

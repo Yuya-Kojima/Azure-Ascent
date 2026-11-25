@@ -63,7 +63,7 @@ void BigEnemyDeath::Start(const Vector3 &localHitPoint, const Vector3 &localHitN
 }
 
 void BigEnemyDeath::Update(const Matrix4x4 &ownerFrame, const std::vector<Box> &boxes,
-                           const Vector3 &ownerVelocity) {
+                           const Vector3 &ownerVelocity, const Vector3 &cameraPosition) {
   if (phase_ == Phase::None || phase_ == Phase::Finished) {
     return;
   }
@@ -77,10 +77,11 @@ void BigEnemyDeath::Update(const Matrix4x4 &ownerFrame, const std::vector<Box> &
   case Phase::Crack: {
     // 撃ち抜いた点は持ち主と一緒に動くので、毎フレーム持ち主の中からワールドへ直す
     const Vector3 hitPoint = TransformPoint(localHitPoint_, ownerFrame);
-    UpdateCrack(config, boxes, hitPoint, ownerVelocity);
+    const Vector3 hitNormal = Normalize(TransformNormal(localHitNormal_, ownerFrame));
+    UpdateCrack(config, boxes, hitPoint, hitNormal, ownerVelocity);
     // 決めた秒数が過ぎたら大爆発
     if (timer_ >= config.crackSeconds) {
-      Blast(config, boxes, ownerVelocity);
+      Blast(config, boxes, ownerVelocity, cameraPosition);
     }
     break;
   }
@@ -105,11 +106,22 @@ void BigEnemyDeath::UpdateDamage(const std::vector<Box> &boxes, const Vector3 &o
     return;
   }
   const Config &config = EffectManager::GetInstance()->GetDeathConfig();
+  // 耐え始めの最初のフレームは、間隔を待たずに 1 発出す
+  const bool isFirst = damageElapsed_ <= 0.0f;
+  damageElapsed_ += kFrameTime_;
   damageTimer_ += kFrameTime_;
-  if (damageTimer_ < config.damageInterval) {
+
+  // 耐えた時間の割合で、間隔と大きさを始めの値から激しくなりきった値へ寄せる
+  const float ramp =
+      std::clamp(damageElapsed_ / (std::max)(config.damageRampSeconds, 1e-3f), 0.0f, 1.0f);
+  const float interval =
+      config.damageIntervalStart + (config.damageIntervalEnd - config.damageIntervalStart) * ramp;
+  if (!isFirst && damageTimer_ < interval) {
     return;
   }
   damageTimer_ = 0.0f;
+  const float scaleRate =
+      config.damageScaleStart + (config.damageScaleEnd - config.damageScaleStart) * ramp;
 
   // 箱を 1 つ選び、面を広さに比べた割合で選ぶ（x の面・y の面・z の面）
   const Box &box = boxes[std::uniform_int_distribution<size_t>(0, boxes.size() - 1)(random_)];
@@ -137,25 +149,34 @@ void BigEnemyDeath::UpdateDamage(const std::vector<Box> &boxes, const Vector3 &o
   const Vector3 point = TransformPoint(local, box.world);
   const Vector3 normal = Normalize(TransformNormal(localNormal, box.world));
 
-  // 小さな閃光、面の外へ飛ぶ火花、少し遅れて流れる黒煙
+  EmitSmallExplosion(config, point, normal, ownerVelocity, scaleRate);
+}
+
+void BigEnemyDeath::EmitSmallExplosion(const Config &config, const Vector3 &point,
+                                       const Vector3 &normal, const Vector3 &ownerVelocity,
+                                       float scaleRate) {
+  const Vector3 spread = {config.damageFireSpread, config.damageFireSpread, config.damageFireSpread};
+  // 閃光と火の玉は持ち主の速さを受け継いで表面に付いたままふくらむ
   EmitBurst(Layer::Flash, point, {0.0f, 0.0f, 0.0f}, 1, ownerVelocity, 0.0f,
-            config.damageFlashScale);
+            config.damageFlashScale * scaleRate);
+  EmitBurst(Layer::Fire, point, spread * scaleRate, config.damageFireCount,
+            ownerVelocity + normal * config.damageFireSpeed, config.damageFireSpeed * 0.5f,
+            config.damageFireScale * scaleRate);
   EmitBurst(Layer::Spark, point, {0.0f, 0.0f, 0.0f}, config.damageSparkCount,
             ownerVelocity + normal * config.damageSparkSpeed, config.damageSparkSpeed * 0.5f);
+  // 黒煙は持ち主の速さを少しだけ受け継ぎ、持ち主が進むと後ろに置いていかれる
   EmitBurst(Layer::Smoke, point, {0.0f, 0.0f, 0.0f}, config.damageSmokeCount,
-            ownerVelocity + normal * config.damageSmokeSpeed, config.damageSmokeSpeed,
-            config.damageSmokeScale);
+            ownerVelocity * config.damageSmokeInherit + normal * config.damageSmokeSpeed,
+            config.damageSmokeSpeed, config.damageSmokeScale * scaleRate);
 }
 
 void BigEnemyDeath::UpdateCrack(const Config &config, const std::vector<Box> &boxes,
-                                const Vector3 &hitPoint, const Vector3 &ownerVelocity) {
-  // 割れ始め: 最初のフレームに、撃ち抜いた点で小さな閃光と火花
+                                const Vector3 &hitPoint, const Vector3 &hitNormal,
+                                const Vector3 &ownerVelocity) {
+  // 割れ始め: 最初のフレームに、割れ目の出発点で一番大きな小さな爆発を起こす
   if (!hasCrackStarted_) {
     hasCrackStarted_ = true;
-    EmitBurst(Layer::Flash, hitPoint, {0.0f, 0.0f, 0.0f}, 1, ownerVelocity, 0.0f,
-              config.crackStartFlashScale);
-    EmitBurst(Layer::Spark, hitPoint, {0.0f, 0.0f, 0.0f}, config.crackStartSparkCount,
-              ownerVelocity, config.crackStartSparkSpeed);
+    EmitSmallExplosion(config, hitPoint, hitNormal, ownerVelocity, config.damageFinalScale);
   }
 
   // 前線: 割れ目が走る長さで、撃ち抜いた点から体の一番遠い角まで走る
@@ -218,7 +239,7 @@ bool BigEnemyDeath::EmitCrackJet(Layer layer, const std::vector<Box> &boxes,
 }
 
 void BigEnemyDeath::Blast(const Config &config, const std::vector<Box> &boxes,
-                          const Vector3 &ownerVelocity) {
+                          const Vector3 &ownerVelocity, const Vector3 &cameraPosition) {
   phase_ = Phase::Aftermath;
   timer_ = 0.0f;
   events_.push_back(Event::Blast);
@@ -240,7 +261,22 @@ void BigEnemyDeath::Blast(const Config &config, const std::vector<Box> &boxes,
   }
   center = center * (1.0f / (std::max)(totalVolume, 1e-6f));
 
-  EmitBurst(Layer::Flash, center, {0.0f, 0.0f, 0.0f}, config.blastFlashCount, ownerVelocity, 0.0f);
+  // 閃光: 大きな芯と、芯より長く残るまわりの光を、体の中心からカメラの方へずらした所に出す
+  const Vector3 toCamera = cameraPosition - center;
+  const float cameraDistance = Length(toCamera);
+  Vector3 flashPosition = center;
+  if (cameraDistance > 1e-3f) {
+    const float shift = (std::min)(config.blastFlashTowardCamera, cameraDistance * 0.5f);
+    flashPosition = center + toCamera * (shift / cameraDistance);
+  }
+  EmitBurst(Layer::Flash, flashPosition, {0.0f, 0.0f, 0.0f}, config.blastFlashCount, ownerVelocity,
+            0.0f, config.blastFlashScale, config.blastFlashLifeRate, config.blastFlashIntensity);
+  EmitBurst(Layer::Flash, flashPosition, {0.0f, 0.0f, 0.0f}, config.blastGlowCount, ownerVelocity,
+            0.0f, config.blastGlowScale, config.blastGlowLifeRate, config.blastGlowIntensity);
+  // 空気のゆがみの輪を、大爆発の中心から広げる
+  if (config.blastShockwave) {
+    EffectManager::GetInstance()->PlayShockwave(center);
+  }
   // 炎: 開いた割れ目の線から面の外へ噴く（塊と塊の間から出て、塊を隠さない）
   for (int i = 0; i < config.blastFireCount; ++i) {
     if (!EmitCrackJet(Layer::Fire, boxes, ownerVelocity, config.blastFireSpeed,
@@ -260,7 +296,7 @@ void BigEnemyDeath::Blast(const Config &config, const std::vector<Box> &boxes,
 
 void BigEnemyDeath::EmitBurst(Layer layer, const Vector3 &position, const Vector3 &spread,
                               int count, const Vector3 &baseVelocity, float speed,
-                              float scaleRate, float lifeRate) {
+                              float scaleRate, float lifeRate, float intensity) {
   IParticleEmitter *emitter = EffectManager::GetInstance()->GetDeathEmitter(layer);
   if (!emitter || count <= 0) {
     return;
@@ -270,11 +306,32 @@ void BigEnemyDeath::EmitBurst(Layer layer, const Vector3 &position, const Vector
              scaleRate, desc);
   desc.lifeMin *= lifeRate;
   desc.lifeMax *= lifeRate;
+  desc.color.x *= intensity;
+  desc.color.y *= intensity;
+  desc.color.z *= intensity;
+  if (desc.colorEnd) {
+    *desc.colorEnd = *desc.colorEnd * intensity;
+  }
   desc.position = position;
   desc.spawnRandom = spread;
   desc.count = static_cast<uint32_t>(count);
   desc.baseVelocity = baseVelocity;
   desc.velocityRandom = {speed, speed, speed};
+  // 閃光は縦・横・奥を同じ大きさにして、1 粒ずつ出す
+  // 大きさは、層の大きさの範囲を出す数で等間隔に分けた値にする
+  if (layer == Layer::Flash) {
+    const float smallest = desc.baseScale.x;
+    const float range = desc.scaleRandom.x;
+    desc.scaleRandom = {0.0f, 0.0f, 0.0f};
+    desc.count = 1;
+    for (int i = 0; i < count; ++i) {
+      const float size =
+          smallest + range * (static_cast<float>(i) + 0.5f) / static_cast<float>(count);
+      desc.baseScale = {size, size, size};
+      emitter->Emit(desc);
+    }
+    return;
+  }
   emitter->Emit(desc);
 }
 
@@ -323,9 +380,6 @@ void BigEnemyDeath::LoadConfig(Config &config) {
       value = root[key].get<int>();
     }
   };
-  readFloat(root, "crackStartFlashScale", config.crackStartFlashScale);
-  readInt("crackStartSparkCount", config.crackStartSparkCount);
-  readFloat(root, "crackStartSparkSpeed", config.crackStartSparkSpeed);
   readFloat(root, "crackOpenWidth", config.crackOpenWidth);
   readFloat(root, "crackGap", config.crackGap);
   readFloat(root, "sparkStreakSeconds", config.sparkStreakSeconds);
@@ -339,6 +393,17 @@ void BigEnemyDeath::LoadConfig(Config &config) {
   readFloat(root, "crackSmokeScale", config.crackSmokeScale);
   readFloat(root, "flameSpeed", config.flameSpeed);
   readInt("blastFlashCount", config.blastFlashCount);
+  readFloat(root, "blastFlashScale", config.blastFlashScale);
+  readFloat(root, "blastFlashLifeRate", config.blastFlashLifeRate);
+  readFloat(root, "blastFlashIntensity", config.blastFlashIntensity);
+  readInt("blastGlowCount", config.blastGlowCount);
+  readFloat(root, "blastGlowScale", config.blastGlowScale);
+  readFloat(root, "blastGlowLifeRate", config.blastGlowLifeRate);
+  readFloat(root, "blastGlowIntensity", config.blastGlowIntensity);
+  readFloat(root, "blastFlashTowardCamera", config.blastFlashTowardCamera);
+  if (root.contains("blastShockwave")) {
+    config.blastShockwave = root["blastShockwave"].get<bool>();
+  }
   readInt("blastFireCount", config.blastFireCount);
   readFloat(root, "blastFireSpeed", config.blastFireSpeed);
   readFloat(root, "blastFireSpread", config.blastFireSpread);
@@ -370,13 +435,23 @@ void BigEnemyDeath::LoadConfig(Config &config) {
   readFloat(root, "chunkTrailInherit", config.chunkTrailInherit);
   readFloat(root, "chunkSmokeScale", config.chunkSmokeScale);
   readFloat(root, "chunkSmokeSpread", config.chunkSmokeSpread);
-  readFloat(root, "damageInterval", config.damageInterval);
+  readFloat(root, "damageIntervalStart", config.damageIntervalStart);
+  readFloat(root, "damageIntervalEnd", config.damageIntervalEnd);
+  readFloat(root, "damageScaleStart", config.damageScaleStart);
+  readFloat(root, "damageScaleEnd", config.damageScaleEnd);
+  readFloat(root, "damageRampSeconds", config.damageRampSeconds);
+  readFloat(root, "damageFinalScale", config.damageFinalScale);
   readFloat(root, "damageFlashScale", config.damageFlashScale);
+  readInt("damageFireCount", config.damageFireCount);
+  readFloat(root, "damageFireSpeed", config.damageFireSpeed);
+  readFloat(root, "damageFireSpread", config.damageFireSpread);
+  readFloat(root, "damageFireScale", config.damageFireScale);
   readInt("damageSparkCount", config.damageSparkCount);
   readFloat(root, "damageSparkSpeed", config.damageSparkSpeed);
   readInt("damageSmokeCount", config.damageSmokeCount);
   readFloat(root, "damageSmokeSpeed", config.damageSmokeSpeed);
   readFloat(root, "damageSmokeScale", config.damageSmokeScale);
+  readFloat(root, "damageSmokeInherit", config.damageSmokeInherit);
   for (int i = 0; i < kLayerCount; ++i) {
     if (!root.contains("layers") || !root["layers"].contains(kLayerNames[i])) {
       continue;
@@ -404,9 +479,6 @@ void BigEnemyDeath::SaveConfig(const Config &config) {
   nlohmann::json root;
   root["crackSeconds"] = config.crackSeconds;
   root["aftermathSeconds"] = config.aftermathSeconds;
-  root["crackStartFlashScale"] = config.crackStartFlashScale;
-  root["crackStartSparkCount"] = config.crackStartSparkCount;
-  root["crackStartSparkSpeed"] = config.crackStartSparkSpeed;
   root["crackOpenWidth"] = config.crackOpenWidth;
   root["crackGap"] = config.crackGap;
   root["sparkStreakSeconds"] = config.sparkStreakSeconds;
@@ -420,6 +492,15 @@ void BigEnemyDeath::SaveConfig(const Config &config) {
   root["crackSmokeScale"] = config.crackSmokeScale;
   root["flameSpeed"] = config.flameSpeed;
   root["blastFlashCount"] = config.blastFlashCount;
+  root["blastFlashScale"] = config.blastFlashScale;
+  root["blastFlashLifeRate"] = config.blastFlashLifeRate;
+  root["blastFlashIntensity"] = config.blastFlashIntensity;
+  root["blastGlowCount"] = config.blastGlowCount;
+  root["blastGlowScale"] = config.blastGlowScale;
+  root["blastGlowLifeRate"] = config.blastGlowLifeRate;
+  root["blastGlowIntensity"] = config.blastGlowIntensity;
+  root["blastFlashTowardCamera"] = config.blastFlashTowardCamera;
+  root["blastShockwave"] = config.blastShockwave;
   root["blastFireCount"] = config.blastFireCount;
   root["blastFireSpeed"] = config.blastFireSpeed;
   root["blastFireSpread"] = config.blastFireSpread;
@@ -451,13 +532,23 @@ void BigEnemyDeath::SaveConfig(const Config &config) {
   root["chunkTrailInherit"] = config.chunkTrailInherit;
   root["chunkSmokeScale"] = config.chunkSmokeScale;
   root["chunkSmokeSpread"] = config.chunkSmokeSpread;
-  root["damageInterval"] = config.damageInterval;
+  root["damageIntervalStart"] = config.damageIntervalStart;
+  root["damageIntervalEnd"] = config.damageIntervalEnd;
+  root["damageScaleStart"] = config.damageScaleStart;
+  root["damageScaleEnd"] = config.damageScaleEnd;
+  root["damageRampSeconds"] = config.damageRampSeconds;
+  root["damageFinalScale"] = config.damageFinalScale;
   root["damageFlashScale"] = config.damageFlashScale;
+  root["damageFireCount"] = config.damageFireCount;
+  root["damageFireSpeed"] = config.damageFireSpeed;
+  root["damageFireSpread"] = config.damageFireSpread;
+  root["damageFireScale"] = config.damageFireScale;
   root["damageSparkCount"] = config.damageSparkCount;
   root["damageSparkSpeed"] = config.damageSparkSpeed;
   root["damageSmokeCount"] = config.damageSmokeCount;
   root["damageSmokeSpeed"] = config.damageSmokeSpeed;
   root["damageSmokeScale"] = config.damageSmokeScale;
+  root["damageSmokeInherit"] = config.damageSmokeInherit;
   for (int i = 0; i < kLayerCount; ++i) {
     const LayerConfig &layer = config.layers[i];
     nlohmann::json item;
@@ -495,22 +586,29 @@ bool BigEnemyDeath::DrawConfigUI(Config &config) {
   changed |= ImGui::DragFloat((const char *)u8"余韻の長さ (秒)", &config.aftermathSeconds, 0.01f, 0.0f, 10.0f);
 
   ImGui::SeparatorText((const char *)u8"耐える間");
-  changed |= ImGui::DragFloat((const char *)u8"小さな爆発の間隔 (秒)", &config.damageInterval, 0.005f, 0.02f, 2.0f);
+  changed |= ImGui::DragFloat((const char *)u8"倒した直後の間隔 (秒)", &config.damageIntervalStart, 0.005f, 0.02f, 3.0f);
+  changed |= ImGui::DragFloat((const char *)u8"激しくなりきった間隔 (秒)", &config.damageIntervalEnd, 0.005f, 0.02f, 3.0f);
+  changed |= ImGui::DragFloat((const char *)u8"倒した直後の大きさの倍率", &config.damageScaleStart, 0.01f, 0.0f, 5.0f);
+  changed |= ImGui::DragFloat((const char *)u8"激しくなりきった大きさの倍率", &config.damageScaleEnd, 0.01f, 0.0f, 5.0f);
+  changed |= ImGui::DragFloat((const char *)u8"激しくなりきるまで (秒)", &config.damageRampSeconds, 0.05f, 0.0f, 10.0f);
+  changed |= ImGui::DragFloat((const char *)u8"割れ始めの爆発の大きさの倍率", &config.damageFinalScale, 0.01f, 0.0f, 10.0f);
   changed |= ImGui::DragFloat((const char *)u8"閃光の大きさの倍率##damage", &config.damageFlashScale, 0.01f, 0.0f, 3.0f);
+  changed |= ImGui::DragInt((const char *)u8"火の玉の粒の数##damage", &config.damageFireCount, 1.0f, 0, 100);
+  changed |= ImGui::DragFloat((const char *)u8"火の玉がふくらむ速さ (m/秒)##damage", &config.damageFireSpeed, 0.1f, 0.0f, 50.0f);
+  changed |= ImGui::DragFloat((const char *)u8"火の玉を散らす範囲 (m)##damage", &config.damageFireSpread, 0.05f, 0.0f, 20.0f);
+  changed |= ImGui::DragFloat((const char *)u8"火の玉の大きさの倍率##damage", &config.damageFireScale, 0.01f, 0.0f, 5.0f);
   changed |= ImGui::DragInt((const char *)u8"火花の数##damage", &config.damageSparkCount, 1.0f, 0, 500);
   changed |= ImGui::DragFloat((const char *)u8"火花の速さ (m/秒)##damage", &config.damageSparkSpeed, 0.1f, 0.0f, 200.0f);
   changed |= ImGui::DragInt((const char *)u8"黒煙の数##damage", &config.damageSmokeCount, 1.0f, 0, 100);
   changed |= ImGui::DragFloat((const char *)u8"黒煙の速さ (m/秒)##damage", &config.damageSmokeSpeed, 0.1f, 0.0f, 50.0f);
   changed |= ImGui::DragFloat((const char *)u8"黒煙の大きさの倍率##damage", &config.damageSmokeScale, 0.01f, 0.0f, 5.0f);
+  changed |= ImGui::DragFloat((const char *)u8"黒煙が受け継ぐ速さの割合##damage", &config.damageSmokeInherit, 0.01f, 0.0f, 1.0f);
 
   ImGui::SeparatorText((const char *)u8"火花の見た目");
   changed |= ImGui::DragFloat((const char *)u8"線の長さ (速さ × 秒)", &config.sparkStreakSeconds, 0.005f, 0.0f, 1.0f);
   changed |= ImGui::DragFloat((const char *)u8"線の太さの倍率", &config.sparkStreakWidthRate, 0.01f, 0.01f, 2.0f);
 
   ImGui::SeparatorText((const char *)u8"割れ目");
-  changed |= ImGui::DragFloat((const char *)u8"割れ始めの閃光の大きさの倍率", &config.crackStartFlashScale, 0.01f, 0.0f, 3.0f);
-  changed |= ImGui::DragInt((const char *)u8"割れ始めの火花の数", &config.crackStartSparkCount, 1.0f, 0, 2000);
-  changed |= ImGui::DragFloat((const char *)u8"割れ始めの火花の速さ (m/秒)", &config.crackStartSparkSpeed, 0.1f, 0.0f, 200.0f);
   changed |= ImGui::DragFloat((const char *)u8"開ききるまでの距離 (m)", &config.crackOpenWidth, 0.1f, 0.1f, 50.0f);
   changed |= ImGui::DragFloat((const char *)u8"開く幅 (m)", &config.crackGap, 0.01f, 0.0f, 10.0f);
   changed |= ImGui::DragFloat((const char *)u8"噴く火花の数 (1 秒あたり)", &config.crackSparkRate, 1.0f, 0.0f, 5000.0f);
@@ -525,7 +623,16 @@ bool BigEnemyDeath::DrawConfigUI(Config &config) {
   changed |= ImGui::DragFloat((const char *)u8"燃え続ける炎の速さ (m/秒)", &config.flameSpeed, 0.05f, 0.0f, 50.0f);
 
   ImGui::SeparatorText((const char *)u8"大爆発");
-  changed |= ImGui::DragInt((const char *)u8"閃光の数", &config.blastFlashCount, 1.0f, 0, 50);
+  changed |= ImGui::DragInt((const char *)u8"閃光の芯の数", &config.blastFlashCount, 1.0f, 0, 50);
+  changed |= ImGui::DragFloat((const char *)u8"閃光の芯の大きさの倍率", &config.blastFlashScale, 0.01f, 0.0f, 10.0f);
+  changed |= ImGui::DragFloat((const char *)u8"閃光の芯の寿命の倍率", &config.blastFlashLifeRate, 0.01f, 0.0f, 10.0f);
+  changed |= ImGui::DragFloat((const char *)u8"閃光の芯の明るさの倍率", &config.blastFlashIntensity, 0.05f, 0.0f, 50.0f);
+  changed |= ImGui::DragInt((const char *)u8"まわりの光の数", &config.blastGlowCount, 1.0f, 0, 50);
+  changed |= ImGui::DragFloat((const char *)u8"まわりの光の大きさの倍率", &config.blastGlowScale, 0.01f, 0.0f, 10.0f);
+  changed |= ImGui::DragFloat((const char *)u8"まわりの光の寿命の倍率", &config.blastGlowLifeRate, 0.01f, 0.0f, 10.0f);
+  changed |= ImGui::DragFloat((const char *)u8"まわりの光の明るさの倍率", &config.blastGlowIntensity, 0.05f, 0.0f, 50.0f);
+  changed |= ImGui::DragFloat((const char *)u8"閃光をカメラの方へずらす距離 (m)", &config.blastFlashTowardCamera, 0.5f, 0.0f, 200.0f);
+  changed |= ImGui::Checkbox((const char *)u8"空気のゆがみの輪", &config.blastShockwave);
   changed |= ImGui::DragInt((const char *)u8"割れ目から噴く炎の数", &config.blastFireCount, 1.0f, 0, 200);
   changed |= ImGui::DragFloat((const char *)u8"炎が噴く速さ (m/秒)", &config.blastFireSpeed, 0.1f, 0.0f, 200.0f);
   changed |= ImGui::DragFloat((const char *)u8"炎の速さのばらつき (m/秒)", &config.blastFireSpread, 0.1f, 0.0f, 100.0f);

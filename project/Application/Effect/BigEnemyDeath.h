@@ -53,18 +53,25 @@ public:
     // 時間
     float crackSeconds = 1.0f;     // 倒されてから大爆発までの秒数（割れ目が走る長さ）
     float aftermathSeconds = 2.5f; // 大爆発から終わりまでの秒数
-    // 耐える間（倒されてから割れ始めるまで、体のあちこちで小さな爆発が起きる）
-    float damageInterval = 0.15f;   // 小さな爆発の間隔（秒）
-    float damageFlashScale = 0.4f;  // 閃光の大きさ（閃光の層の大きさに対する倍率）
-    int damageSparkCount = 30;      // 火花の数
-    float damageSparkSpeed = 25.0f; // 火花が面の外へ飛ぶ速さ（m/秒）
-    int damageSmokeCount = 4;       // 黒煙の数
-    float damageSmokeSpeed = 4.0f;  // 黒煙が面の外へ出る速さ（m/秒）
-    float damageSmokeScale = 0.5f;  // 黒煙の大きさ（黒煙の層の大きさに対する倍率）
+    // 耐える間（倒されてから割れ始めるまで、体のあちこちで小さな爆発が起き、だんだん激しくなる）
+    float damageIntervalStart = 0.6f; // 倒した直後の、小さな爆発の間隔（秒）
+    float damageIntervalEnd = 0.2f;   // 激しくなりきったときの、小さな爆発の間隔（秒）
+    float damageScaleStart = 0.6f;    // 倒した直後の、小さな爆発の大きさの倍率
+    float damageScaleEnd = 1.0f;      // 激しくなりきったときの、小さな爆発の大きさの倍率
+    float damageRampSeconds = 1.5f;   // 倒してから、激しくなりきるまでの秒数
+    float damageFinalScale = 2.0f;    // 割れ始めの瞬間に、割れ目の出発点で起きる爆発の大きさの倍率
+    float damageFlashScale = 0.4f;    // 閃光の大きさ（閃光の層の大きさに対する倍率）
+    int damageFireCount = 6;          // 火の玉の粒の数
+    float damageFireSpeed = 4.0f;     // 火の玉が面の外へふくらむ速さ（m/秒）
+    float damageFireSpread = 1.5f;    // 火の玉の粒を散らす範囲（m）
+    float damageFireScale = 0.5f;     // 火の玉の大きさ（炎の層の大きさに対する倍率）
+    int damageSparkCount = 0;         // 火花の数
+    float damageSparkSpeed = 25.0f;   // 火花が面の外へ飛ぶ速さ（m/秒）
+    int damageSmokeCount = 6;         // 黒煙の数
+    float damageSmokeSpeed = 4.0f;    // 黒煙が面の外へ出る速さ（m/秒）
+    float damageSmokeScale = 0.8f;    // 黒煙の大きさ（黒煙の層の大きさに対する倍率）
+    float damageSmokeInherit = 0.2f;  // 黒煙が持って生まれる、持ち主の速さの割合（小さいほど後ろに残る）
     // 割れ目（前線は割れ目が走る長さで、撃ち抜いた点から体の一番遠い所まで走る）
-    float crackStartFlashScale = 0.6f; // 割れ始めの閃光の大きさ（閃光の層の大きさに対する倍率）
-    int crackStartSparkCount = 25;     // 割れ始めの火花の数
-    float crackStartSparkSpeed = 25.0f; // 割れ始めの火花の速さ（m/秒）
     float crackOpenWidth = 6.0f;   // 前線が塊の重心を過ぎてから、割れ目が開ききるまでの距離（m）
     float crackGap = 0.6f;         // 開ききった塊が外へずれる幅（m）
     float crackSparkRate = 600.0f; // 開いた割れ目から噴く火花の数（1 秒あたり）
@@ -80,7 +87,16 @@ public:
     // 燃え続ける炎
     float flameSpeed = 2.0f;       // 燃え続ける炎の速さのばらつき（m/秒）
     // 大爆発
-    int blastFlashCount = 3;        // 閃光の数
+    int blastFlashCount = 1;          // 閃光の芯の数
+    float blastFlashScale = 2.8f;     // 閃光の芯の大きさ（閃光の層の大きさに対する倍率）
+    float blastFlashLifeRate = 1.5f;  // 閃光の芯の寿命（閃光の層の寿命に対する倍率）
+    float blastFlashIntensity = 4.0f; // 閃光の芯の明るさ（閃光の層の色に対する倍率。1 を超えた分が光の漏れになる）
+    int blastGlowCount = 2;           // 芯のまわりに広がる光の数（閃光の層に出す）
+    float blastGlowScale = 1.8f;      // まわりの光の大きさ（閃光の層の大きさに対する倍率）
+    float blastGlowLifeRate = 2.0f;   // まわりの光の寿命（閃光の層の寿命に対する倍率）
+    float blastGlowIntensity = 2.0f;  // まわりの光の明るさ（閃光の層の色に対する倍率）
+    float blastFlashTowardCamera = 25.0f; // 閃光と光を、体の中心からカメラの方へずらす距離（m。カメラまでの半分を超えない）
+    bool blastShockwave = true;       // 大爆発の中心から空気のゆがみの輪を広げるか
     int blastFireCount = 80;        // 割れ目から噴く炎の数（1 粒ずつ出す頼みになるので、1 フレームの頼みの上限 256 より少なくする）
     float blastFireSpeed = 25.0f;   // 炎が面の外へ噴く速さ（m/秒）
     float blastFireSpread = 6.0f;   // 炎の速さのばらつき（m/秒）
@@ -158,8 +174,9 @@ public:
   /// <param name="ownerFrame">持ち主の中 → ワールドの行列（回転と位置だけ）</param>
   /// <param name="boxes">体の箱</param>
   /// <param name="ownerVelocity">持ち主の動く速さ（m/秒）</param>
+  /// <param name="cameraPosition">カメラの位置（大爆発の閃光をカメラの方へずらすのに使う）</param>
   void Update(const Matrix4x4 &ownerFrame, const std::vector<Box> &boxes,
-              const Vector3 &ownerVelocity);
+              const Vector3 &ownerVelocity, const Vector3 &cameraPosition);
 
   bool IsStarted() const { return phase_ != Phase::None; }
 
@@ -171,7 +188,8 @@ public:
   bool IsFinished() const { return phase_ == Phase::Finished; }
 
   /// <summary>
-  /// 耐える間の 1 フレーム分。決めた間隔ごとに、体の箱の表面のどこかで小さな爆発（閃光・火花・黒煙）を起こす
+  /// 耐える間の 1 フレーム分。間隔ごとに、体の箱の表面のどこかで小さな爆発（閃光・火の玉・黒煙）を起こす
+  /// 耐えた時間が長いほど、間隔が短く、爆発が大きくなる
   /// </summary>
   /// <param name="boxes">体の箱</param>
   /// <param name="ownerVelocity">持ち主の動く速さ（m/秒）</param>
@@ -228,7 +246,17 @@ private:
   /// 割れ目を 1 フレーム進める。前線を広げ、前線が過ぎた塊の割れ目を開き、開いた割れ目から火花と煙を噴く
   /// </summary>
   void UpdateCrack(const Config &config, const std::vector<Box> &boxes,
-                   const Vector3 &hitPoint, const Vector3 &ownerVelocity);
+                   const Vector3 &hitPoint, const Vector3 &hitNormal, const Vector3 &ownerVelocity);
+
+  /// <summary>
+  /// 面の上の 1 点で、小さな爆発（閃光・火の玉・火花・黒煙）を 1 回起こす
+  /// </summary>
+  /// <param name="point">爆発する点（ワールド座標）</param>
+  /// <param name="normal">その点の面の外向き</param>
+  /// <param name="ownerVelocity">持ち主の動く速さ（m/秒）</param>
+  /// <param name="scaleRate">閃光・火の玉・黒煙の大きさに掛ける倍率</param>
+  static void EmitSmallExplosion(const Config &config, const Vector3 &point, const Vector3 &normal,
+                                 const Vector3 &ownerVelocity, float scaleRate);
 
   /// <summary>
   /// 開いた割れ目の線の上の点から、面の外向きに層の粒を 1 つ噴く
@@ -241,10 +269,11 @@ private:
                     float speed, float spread, float scaleRate);
 
   /// <summary>
-  /// 大爆発（1 回だけ）。体の中心から閃光・火花・火の粉・黒煙、開いた割れ目から外へ炎
+  /// 大爆発（1 回だけ）。体の中心から閃光・空気のゆがみの輪・火花・火の粉・黒煙、開いた割れ目から外へ炎
   /// 割れ目が開いていなければ、炎も体の中心から出す
   /// </summary>
-  void Blast(const Config &config, const std::vector<Box> &boxes, const Vector3 &ownerVelocity);
+  void Blast(const Config &config, const std::vector<Box> &boxes, const Vector3 &ownerVelocity,
+             const Vector3 &cameraPosition);
 
   /// <summary>
   /// 点のまわりに、層の粒を四方へ出す
@@ -253,9 +282,10 @@ private:
   /// <param name="speed">四方へ飛ぶ速さの最大（m/秒）</param>
   /// <param name="scaleRate">層の大きさに対する倍率</param>
   /// <param name="lifeRate">層の寿命に対する倍率</param>
+  /// <param name="intensity">層の色（始まりと終わり）に掛ける明るさの倍率</param>
   static void EmitBurst(Layer layer, const Vector3 &position, const Vector3 &spread,
                         int count, const Vector3 &baseVelocity, float speed,
-                        float scaleRate = 1.0f, float lifeRate = 1.0f);
+                        float scaleRate = 1.0f, float lifeRate = 1.0f, float intensity = 1.0f);
 
   Phase phase_ = Phase::None;
   Vector3 localHitPoint_ = {0.0f, 0.0f, 0.0f};
@@ -264,9 +294,10 @@ private:
   float frontRadius_ = 0.0f;   // 今の前線の、撃ち抜いた点からの距離（m）
   float sparkCarry_ = 0.0f;    // 出し切れなかった割れ目の火花の数の端数
   float smokeCarry_ = 0.0f;    // 出し切れなかった割れ目の煙の数の端数
-  bool hasCrackStarted_ = false; // 割れ始めの閃光を出したか
+  bool hasCrackStarted_ = false; // 割れ始めの爆発を出したか
   bool hasBlastSmoked_ = false; // 大爆発の黒煙を出したか
   float damageTimer_ = 0.0f;    // 前の小さな爆発からの時間（秒）
+  float damageElapsed_ = 0.0f;  // 耐え始めてからの時間（秒）
   Vector3 blastCenter_ = {0.0f, 0.0f, 0.0f}; // 大爆発の中心（ワールド座標）
   Vector3 blastSpread_ = {0.0f, 0.0f, 0.0f}; // 大爆発の粒を散らす範囲（半分の大きさ m）
   std::mt19937 random_{std::random_device{}()};

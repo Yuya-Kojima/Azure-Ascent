@@ -1,0 +1,240 @@
+{
+    "aftermathSeconds": 2.5,
+    "blastEmberCount": 150,
+    "blastEmberLifeRate": 2.5,
+    "blastEmberSpeed": 20.0,
+    "blastFireCount": 80,
+    "blastFireScale": 1.2000000476837158,
+    "blastFireSpeed": 25.0,
+    "blastFireSpread": 6.0,
+    "blastFlashCount": 1,
+    "blastFlashIntensity": 4.0,
+    "blastFlashLifeRate": 1.5,
+    "blastFlashScale": 2.799999952316284,
+    "blastFlashTowardCamera": 25.0,
+    "blastGlowCount": 2,
+    "blastGlowIntensity": 2.0,
+    "blastGlowLifeRate": 2.0,
+    "blastGlowScale": 1.7999999523162842,
+    "blastShockwave": true,
+    "blastSmokeCount": 120,
+    "blastSmokeDelay": 0.15000000596046448,
+    "blastSmokeScale": 1.5,
+    "blastSmokeSpeed": 8.0,
+    "blastSparkCount": 800,
+    "blastSparkSpeed": 70.0,
+    "blastSpreadRate": 0.6000000238418579,
+    "chunkCapColor": [
+        1.0,
+        0.25,
+        0.05000000074505806
+    ],
+    "chunkCapIntensity": 3.0,
+    "chunkColorRate": 1.0,
+    "chunkCoolSeconds": 1.0,
+    "chunkCooledRate": 0.07999999821186066,
+    "chunkDrag": 2.0,
+    "chunkFlameRate": 30.0,
+    "chunkGravity": 80.0,
+    "chunkLargeSeedCount": 24,
+    "chunkLifetime": 3.0,
+    "chunkSeedCount": 4,
+    "chunkSmokeRate": 8.0,
+    "chunkSmokeScale": 0.6000000238418579,
+    "chunkSmokeSpread": 2.0,
+    "chunkSpeed": 60.0,
+    "chunkSpin": 1.0,
+    "chunkTrailInherit": 0.20000000298023224,
+    "crackGap": 0.6000000238418579,
+    "crackOpenWidth": 6.0,
+    "crackSeconds": 1.0,
+    "crackSmokeRate": 40.0,
+    "crackSmokeScale": 0.4000000059604645,
+    "crackSmokeSpeed": 6.0,
+    "crackSmokeSpread": 2.0,
+    "crackSparkRate": 600.0,
+    "crackSparkSpeed": 30.0,
+    "crackSparkSpread": 8.0,
+    "damageFinalScale": 2.0,
+    "damageFireCount": 6,
+    "damageFireScale": 0.5,
+    "damageFireSpeed": 4.0,
+    "damageFireSpread": 1.5,
+    "damageFlashScale": 0.4000000059604645,
+    "damageIntervalEnd": 0.20000000298023224,
+    "damageIntervalStart": 0.6000000238418579,
+    "damageRampSeconds": 1.5,
+    "damageScaleEnd": 1.0,
+    "damageScaleStart": 0.6000000238418579,
+    "damageSmokeCount": 6,
+    "damageSmokeInherit": 0.20000000298023224,
+    "damageSmokeScale": 0.800000011920929,
+    "damageSmokeSpeed": 4.0,
+    "damageSparkCount": 0,
+    "damageSparkSpeed": 25.0,
+    "flameSpeed": 2.0,
+    "layers": {
+        "fire": {
+            "colorEnd": [
+                1.0,
+                1.0,
+                1.0
+            ],
+            "colorStart": [
+                1.0,
+                1.0,
+                1.0
+            ],
+            "drag": 3.0,
+            "fadeStart": 0.6000000238418579,
+            "gravity": [
+                0.0,
+                4.0,
+                0.0
+            ],
+            "lifeMax": 1.100000023841858,
+            "lifeMin": 0.6000000238418579,
+            "scaleEndRate": 3.0,
+            "scaleMax": 6.0,
+            "scaleMin": 3.0,
+            "spin": 0.0,
+            "weightMax": 1.5,
+            "weightMin": 0.5,
+            "wind": [
+                0.0,
+                0.0,
+                0.0
+            ]
+        },
+        "flame": {
+            "colorEnd": [
+                1.0,
+                1.0,
+                1.0
+            ],
+            "colorStart": [
+                1.0,
+                1.0,
+                1.0
+            ],
+            "drag": 0.4000000059604645,
+            "fadeStart": 0.6000000238418579,
+            "gravity": [
+                0.0,
+                15.0,
+                0.0
+            ],
+            "lifeMax": 0.8999999761581421,
+            "lifeMin": 0.5,
+            "scaleEndRate": 0.699999988079071,
+            "scaleMax": 9.0,
+            "scaleMin": 2.0,
+            "spin": 0.0,
+            "weightMax": 1.0,
+            "weightMin": 0.5,
+            "wind": [
+                0.0,
+                0.0,
+                0.0
+            ]
+        },
+        "flash": {
+            "colorEnd": [
+                1.0,
+                0.5,
+                0.20000000298023224
+            ],
+            "colorStart": [
+                1.0,
+                0.949999988079071,
+                0.8500000238418579
+            ],
+            "drag": 0.0,
+            "fadeStart": 0.0,
+            "gravity": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "lifeMax": 0.20000000298023224,
+            "lifeMin": 0.11999999731779099,
+            "scaleEndRate": 3.0,
+            "scaleMax": 30.0,
+            "scaleMin": 20.0,
+            "spin": 0.0,
+            "weightMax": 1.0,
+            "weightMin": 1.0,
+            "wind": [
+                0.0,
+                0.0,
+                0.0
+            ]
+        },
+        "smoke": {
+            "colorEnd": [
+                0.1599999964237213,
+                0.1550000011920929,
+                0.1550000011920929
+            ],
+            "colorStart": [
+                0.10000000149011612,
+                0.0949999988079071,
+                0.0949999988079071
+            ],
+            "drag": 1.5,
+            "fadeStart": 0.30000001192092896,
+            "gravity": [
+                0.0,
+                6.0,
+                0.0
+            ],
+            "lifeMax": 3.5,
+            "lifeMin": 2.0,
+            "scaleEndRate": 2.5,
+            "scaleMax": 20.0,
+            "scaleMin": 10.0,
+            "spin": 0.5,
+            "weightMax": 0.800000011920929,
+            "weightMin": 0.30000001192092896,
+            "wind": [
+                9.0,
+                0.0,
+                -2.5
+            ]
+        },
+        "spark": {
+            "colorEnd": [
+                0.6000000238418579,
+                0.10000000149011612,
+                0.019999999552965164
+            ],
+            "colorStart": [
+                1.0,
+                0.699999988079071,
+                0.30000001192092896
+            ],
+            "drag": 1.0,
+            "fadeStart": 0.5,
+            "gravity": [
+                0.0,
+                -25.0,
+                0.0
+            ],
+            "lifeMax": 1.2000000476837158,
+            "lifeMin": 0.6000000238418579,
+            "scaleEndRate": 0.30000001192092896,
+            "scaleMax": 2.0,
+            "scaleMin": 1.0,
+            "spin": 0.0,
+            "weightMax": 3.0,
+            "weightMin": 1.0,
+            "wind": [
+                0.0,
+                0.0,
+                0.0
+            ]
+        }
+    },
+    "sparkStreakSeconds": 0.10000000149011612,
+    "sparkStreakWidthRate": 0.25
+}

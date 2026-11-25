@@ -113,6 +113,8 @@ private:
 
   /// <summary>
   /// 道筋の点の番号 u の位置（Catmull-Rom）
+  /// 両端の外側には、端の 2 点を結ぶ向きにまっすぐ延ばした点を置き、端でも速さが落ちないようにする
+  /// 最後の点を過ぎた u は、最後の 2 点を結ぶ向きにまっすぐ延ばした所にする
   /// </summary>
   Vector3 PathPoint(float u) const;
 
@@ -123,6 +125,11 @@ private:
 
   void UpdateFly();
   void UpdateEnduring();
+
+  /// <summary>
+  /// カメラの頭上に来たら（レールの前の向きの距離が kPassOverDistance_ より近づいたら）、頭上を過ぎたことにする
+  /// </summary>
+  void CheckPassOver();
   void UpdateDying();
 
   /// <summary>
@@ -133,13 +140,25 @@ private:
   void FollowPathAfterDeath();
 
   /// <summary>
+  /// 倒されたあとの道筋の点の番号 u と、道筋の上の高さ height を dt 秒進める
+  /// 水平の速さは、道筋自身の速さに推力 thrust を掛けたもの。上限 deadSpeedLimit_ を決めたあとは、それより速くしない
+  /// 高さは、頭上を過ぎる前は道筋の高さに乗る。過ぎてからは、道筋が今の高さより下る所だけ下げ、上る所では今の高さを保つ
+  /// </summary>
+  void AdvanceDeadPath(float &u, float &height, float thrust, float dt) const;
+
+  /// <summary>
   /// 死亡演出を見せられる位置か（中心が画面のふちより内側で、カメラから前へ十分に離れている）
   /// </summary>
   bool IsInDeathView() const;
 
   /// <summary>
-  /// 今割れ始めたら、割れ目が走って塊が消えるまでの間、カメラから kDeathMinClearance_ 以上離れていられるか
-  /// 割れ目の間は推力を失いながら道筋を進んで重力で落ち、放したあとの塊の真ん中は速さを引き継いで空気の抵抗で止まりながら落ちる、として先読みする
+  /// 砦の一部でもカメラの画面に映っているか（中心から kScreenExitHalf_ の箱の角と中心のどれかが画面の中にあるか）
+  /// </summary>
+  bool IsOnScreen() const;
+
+  /// <summary>
+  /// 今割れ始めたら、割れ目が走って大爆発するまでの間、本体がカメラから kDeathMinClearance_ 以上離れていられるか
+  /// 毎フレームの動きと同じ計算で、推力を失いながら道筋を進み、重力で落ちる、として先読みする
   /// </summary>
   bool KeepsClearOfCamera() const;
 
@@ -184,9 +203,13 @@ private:
   // 割れ始めてよい、カメラから前への距離（m）。本体（長さ 40 m）が画面の横の約 3 割に映る
   static constexpr float kDeathViewDistance_ = 90.0f;
   static constexpr float kDeathViewMarginUV_ = 0.1f;       // 割れ始めてよい、画面のふちからの内側の幅（画面の大きさに対する割合）
+  // 道筋の終わりを過ぎたあとの動き
+  static constexpr float kScreenExitHalf_ = 32.0f;         // 画面に映っているかを調べる、砦の中心からの箱の半分の大きさ（m）。気嚢の上の端まで入る
+  static constexpr float kMaxOverrunT_ = 1.2f;             // 道筋の終わりを過ぎてから、画面に映っていても消すまでのレールの t
   // 倒されたあとの動き
   static constexpr float kDeadTurnFollow_ = 0.03f;         // 向きが動く向きへ近づく割合（1 フレーム）
   static constexpr float kDeadTurnMinSpeed_ = 5.0f;        // 横の速さがこれより遅い間は向きを変えない（m/秒）
+  static constexpr float kDeadSpeedMin_ = 50.0f;           // 倒されたあとに道筋を進む水平の速さの上限の、いちばん小さい値（m/秒）
   static constexpr float kDeadThrustLossRate_ = 0.7f;      // 割れ始めてから、道筋を進む速さが 1 秒に減る割合（e を底にした指数。1 秒でおよそ半分）
   static constexpr float kDeadGravity_ = 9.8f;             // 割れ始めてから落ちる加速度（m/秒²）
   static constexpr float kDeadTiltSeconds_ = 0.5f;         // 割れ始めてから、落ちる向きへ傾ききるまでの秒数
@@ -197,9 +220,9 @@ private:
   static constexpr float kDeadWobbleRollHz_ = 0.6f;        // 左右のふらつきの、1 秒あたりの往復の数
   static constexpr float kDeadWobblePitch_ = 0.06f;        // 前後のふらつきの大きさ（ラジアン）
   static constexpr float kDeadWobblePitchHz_ = 0.9f;       // 前後のふらつきの、1 秒あたりの往復の数
-  static constexpr float kMaxEnduringSeconds_ = 5.0f;      // 見える位置に来なくても、これだけ耐えたら割れ始める（秒）
-  static constexpr float kDeathMinClearance_ = 60.0f;      // 割れ始めてから塊が消えるまで、塊の真ん中とカメラの間に空けておく距離（m）
-  static constexpr float kClearanceStep_ = 0.1f;           // 先読みで位置を調べる間隔（秒）
+  static constexpr float kMinEnduringSeconds_ = 1.5f;      // 見える位置にいても、頭上を過ぎてからこれだけ耐えるまでは割れ始めない（秒）
+  static constexpr float kMaxEnduringSeconds_ = 5.0f;      // 見える位置に来なくても、頭上を過ぎてからこれだけ耐えたら割れ始める（秒）
+  static constexpr float kDeathMinClearance_ = 60.0f;      // 割れ始めてから大爆発まで、本体とカメラの間に空けておく距離（m）
   static constexpr float kFallRoll_ = 0.5f;                 // 落ちる間に目指す左右の傾き（ラジアン）
   static constexpr float kFallPitch_ = 0.35f;               // 落ちる間に目指す前の下がり（ラジアン）
   static constexpr float kPassOverDistance_ = 10.0f;        // レールの前の向きでこの距離より近づいたら、カメラの頭上に来たとみなす（m）
@@ -227,12 +250,13 @@ private:
   bool hasPosition_ = false;          // 一度でも位置を決めたか
   int flameTimer_ = 0;
   float deadPathU_ = 0.0f;                          // 倒されたあとの、道筋の点の番号
-  float enduringTimer_ = 0.0f;                     // 耐え始めてからの秒数
+  float deadPathHeight_ = 0.0f;                     // 倒されたあとの、落ちる分を引く前の高さ（m）
+  bool hasDeadSpeedLimit_ = false;                  // 倒されたあとに道筋を進む水平の速さの上限を決めたか
+  float deadSpeedLimit_ = kDeadSpeedMin_;           // 倒されたあとに道筋を進む水平の速さの上限（頭上を過ぎて見える位置に入った瞬間の水平の速さ。m/秒）
+  float enduringTimer_ = 0.0f;                     // 頭上を過ぎてから耐えた秒数
   Vector3 lastPartPosition_ = {0.0f, 0.0f, 0.0f};  // 最後に壊れた部品の位置（砦の中の座標）
   float deadTime_ = 0.0f;                          // 倒されてからの秒数
   float fallTime_ = 0.0f;                          // 割れ始めてからの秒数
-  Vector3 pathPosition_ = {0.0f, 0.0f, 0.0f};      // 倒されたあとの、落ちる分を引く前の道筋の上の位置
-  Vector3 pathVelocity_ = {0.0f, 0.0f, 0.0f};      // 倒されたあとの、道筋の上を進む速さ（m/秒）
   Vector3 shakeOffset_ = {0.0f, 0.0f, 0.0f};       // 震えで本体の見た目をずらす量（m）
   float shakeRoll_ = 0.0f;                         // 震えで足す左右の傾き（ラジアン）
   float shakePitch_ = 0.0f;                        // 震えで足す前後の傾き（ラジアン）
