@@ -3,6 +3,8 @@
 #include <memory>
 #include <string>
 
+class IActorPool;
+
 enum class ActorTag {
     Untagged,
     Player,
@@ -63,8 +65,18 @@ public:
     ActorTag GetTag() const { return tag_; }
     void SetTag(ActorTag tag) { tag_ = tag; }
 
-    // この Actor が破棄されるまで期限切れにならない目印（ActorRef が使う）
+    // この Actor が破棄されるか、入れ物へしまわれるまで期限切れにならない目印（ActorRef が使う）
     std::weak_ptr<const void> GetLifeToken() const { return lifeToken_; }
+
+    // 消えたときに返す入れ物（ActorPool から取り出した Actor だけが持つ）
+    void SetPool(IActorPool* pool) { pool_ = pool; }
+    IActorPool* GetPool() const { return pool_; }
+
+    /// <summary>
+    /// 入れ物へしまう前の片付け。派生クラスの片付けをさせてから、作ったばかりの状態に戻し、
+    /// 目印を新しくする（前の目印を持つ ActorRef は、破棄されたときと同じく nullptr を返すようになる）
+    /// </summary>
+    void PrepareForPool();
 
 protected:
     // 3D空間上の位置・回転・スケール
@@ -80,9 +92,16 @@ protected:
     // 連続衝突判定（カプセル）用の速度を計算する
     Vector3 CalculateVelocityForCollision();
 
+    /// <summary>
+    /// 入れ物へしまう直前の、派生クラスの片付け（当たり判定を外す・消えたことを知らせるなど）
+    /// </summary>
+    virtual void OnReturnToPool() {}
+
 private:
     ActorTag tag_ = ActorTag::Untagged;
 
-    // Actor と一緒に破棄され、GetLifeToken() で配った weak_ptr を期限切れにする
+    // Actor と一緒に破棄され（入れ物へしまうときは作り直され）、GetLifeToken() で配った weak_ptr を期限切れにする
     std::shared_ptr<const void> lifeToken_ = std::make_shared<char>(0);
+
+    IActorPool* pool_ = nullptr; // 消えたときに返す入れ物
 };

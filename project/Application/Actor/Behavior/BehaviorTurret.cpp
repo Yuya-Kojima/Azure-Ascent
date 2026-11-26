@@ -82,15 +82,7 @@ void BehaviorTurret::Update(Enemy* enemy) {
           (aimDir.z / aimDist) * config_.bulletSpeed
       };
 
-      auto bullet = std::make_unique<EnemyBullet>();
-      bullet->Initialize(
-          PrefabManager::GetInstance()->GetObject3dRenderer(),
-          myPos,
-          bulletVelocity,
-          player,
-          EnemyBulletType::NormalDestructible
-      );
-      ActorManager::GetInstance()->AddActor(std::move(bullet));
+      EnemyBullet::Spawn(myPos, bulletVelocity, player, EnemyBulletType::NormalDestructible);
     }
   } else if (state_ == State::Combat) {
     // 戦闘継続中：指定インターバルで追加射撃
@@ -103,15 +95,7 @@ void BehaviorTurret::Update(Enemy* enemy) {
           (aimDir.z / aimDist) * config_.bulletSpeed
       };
 
-      auto bullet = std::make_unique<EnemyBullet>();
-      bullet->Initialize(
-          PrefabManager::GetInstance()->GetObject3dRenderer(),
-          myPos,
-          bulletVelocity,
-          player,
-          EnemyBulletType::NormalDestructible
-      );
-      ActorManager::GetInstance()->AddActor(std::move(bullet));
+      EnemyBullet::Spawn(myPos, bulletVelocity, player, EnemyBulletType::NormalDestructible);
     }
   }
 }

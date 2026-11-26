@@ -97,10 +97,5 @@ void EnemyPart::UpdateFire() {
   if (aimLength <= 0.001f) {
     return;
   }
-  auto bullet = std::make_unique<EnemyBullet>();
-  bullet->Initialize(PrefabManager::GetInstance()->GetObject3dRenderer(), myPos,
-                     aim * (EnemyBullet::kAimedShotSpeed_ / aimLength),
-                     player,
-                     EnemyBulletType::NormalDestructible);
-  ActorManager::GetInstance()->AddActor(std::move(bullet));
+  EnemyBullet::Spawn(myPos, aim * (EnemyBullet::kAimedShotSpeed_ / aimLength), player, EnemyBulletType::NormalDestructible);
 }

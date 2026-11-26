@@ -26,6 +26,9 @@ public:
   void OnCollision(Collider* other) override;
 
 private:
+  // 入れ物へしまう前に、当たり判定を外す
+  void OnReturnToPool() override;
+
   std::unique_ptr<Object3d> object3d_;
   std::unique_ptr<SphereCollider> collider_;
   

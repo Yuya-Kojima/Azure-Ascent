@@ -10,6 +10,7 @@
 #include <Windows.h>
 #include <algorithm>
 #include <cmath>
+#include <utility>
 
 #include "Collision/CollisionManager.h"
 #include "Renderer/TrailRenderer.h"
@@ -65,8 +66,12 @@ void HomingBullet::Initialize(Object3dRenderer *renderer,
     endPoint_ = bulgePos + (bulgePos - startPos);
   }
 
-  object3d_ = std::make_unique<Object3d>();
-  object3d_->Initialize(renderer);
+  // 見た目は最初の 1 回だけ作り、入れ物から取り出して使い回すときは作り直さない
+  if (!object3d_) {
+    object3d_ = std::make_unique<Object3d>();
+    object3d_->Initialize(renderer);
+  }
+  trailHistory_.clear();
 
   object3d_->SetModel("__builtin_capsule");
   // 弾頭モデル：トレイル先端と繋げるためのコア（直径0.5m、長さ4m）
@@ -76,8 +81,10 @@ void HomingBullet::Initialize(Object3dRenderer *renderer,
   object3d_->SetTranslation(startPos);
   transform_.translate = startPos;
 
-  // コライダーの設定
-  collider_ = std::make_unique<SphereCollider>(this);
+  // コライダーの設定（作るのは最初の 1 回だけ）
+  if (!collider_) {
+    collider_ = std::make_unique<SphereCollider>(this);
+  }
   collider_->SetRadius(1.0f);
   collider_->SetAttribute(kCollisionAttributePlayerBullet);
   collider_->SetMask(kCollisionAttributeEnemy | kCollisionAttributeEnemyBullet);
@@ -87,6 +94,17 @@ void HomingBullet::Initialize(Object3dRenderer *renderer,
   FaceDirection(bulgePos - startPos);
 
   object3d_->Update();
+}
+
+void HomingBullet::OnReturnToPool() {
+  // 破棄されるときと同じ順に、消えたことを知らせ、当たり判定を外し、射撃のチケットを返す
+  if (std::function<void(BaseActor *)> onDestroy = std::exchange(onDestroyCallback_, nullptr)) {
+    onDestroy(originalTarget_.Get());
+  }
+  CollisionManager::GetInstance()->Remove(collider_.get());
+  volleyTicket_ = VolleyTicket();
+  target_.Reset();
+  originalTarget_.Reset();
 }
 
 void HomingBullet::Update() {

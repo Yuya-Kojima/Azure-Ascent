@@ -53,8 +53,6 @@ void BehaviorStrafe::Update(Enemy* enemy) {
         -cameraForward.z * bulletSpeed
     };
 
-    auto bullet = std::make_unique<EnemyBullet>();
-    bullet->Initialize(PrefabManager::GetInstance()->GetObject3dRenderer(), enemy->GetTransform().translate, bulletVelocity, player);
-    ActorManager::GetInstance()->AddActor(std::move(bullet));
+    EnemyBullet::Spawn(enemy->GetTransform().translate, bulletVelocity, player);
   }
 }

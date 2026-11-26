@@ -1147,14 +1147,7 @@ void Boss::FirePhase1Barrage() {
 
       auto spawnBullet = [&](const Vector3 &vel, EnemyBulletType type,
                              int waitFrames = 0) {
-        auto bullet = std::make_unique<EnemyBullet>();
-        bullet->Initialize(
-            PrefabManager::GetInstance()->GetObject3dRenderer(), myPos, vel,
-            GetPlayer(), type);
-        if (type == EnemyBulletType::LockOnDestructible) {
-          bullet->SetSwarmWait(waitFrames);
-        }
-        ActorManager::GetInstance()->AddActor(std::move(bullet));
+        EnemyBullet::Spawn(myPos, vel, GetPlayer(), type, waitFrames);
       };
 
       if (attackPattern_ == 1) {
@@ -1342,13 +1335,7 @@ void Boss::FirePhase2Missiles() {
       dir.z /= dist;
       auto spawnBullet = [&](const Vector3 &vel, EnemyBulletType type,
                              int waitFrames) {
-        auto bullet = std::make_unique<EnemyBullet>();
-        bullet->Initialize(
-            PrefabManager::GetInstance()->GetObject3dRenderer(), myPos, vel,
-            GetPlayer(), type);
-        bullet->SetSwarmWait(
-            waitFrames); // ランダムではなく指定された待機時間をセット
-        ActorManager::GetInstance()->AddActor(std::move(bullet));
+        EnemyBullet::Spawn(myPos, vel, GetPlayer(), type, waitFrames); // ランダムではなく指定された待機時間をセット
       };
 
       // スウォーム弾幕（6発）をボスの周囲に円形展開（12時方向から時計回りに順次発射）

@@ -126,10 +126,7 @@ void BehaviorSpline::Update(Enemy* enemy) {
                     bulletDir.x /= dist; bulletDir.y /= dist; bulletDir.z /= dist;
                     float bulletSpeed = 2.0f; // 弾速
                     Vector3 bulletVel = {bulletDir.x * bulletSpeed, bulletDir.y * bulletSpeed, bulletDir.z * bulletSpeed};
-                    auto bullet = std::make_unique<EnemyBullet>();
-                    bullet->Initialize(PrefabManager::GetInstance()->GetObject3dRenderer(),
-                                       mPos, bulletVel, player, EnemyBulletType::NormalDestructible);
-                    ActorManager::GetInstance()->AddActor(std::move(bullet));
+                    EnemyBullet::Spawn(mPos, bulletVel, player, EnemyBulletType::NormalDestructible);
                 }
             }
         }

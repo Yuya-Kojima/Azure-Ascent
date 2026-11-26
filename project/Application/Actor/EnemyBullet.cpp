@@ -5,6 +5,8 @@
 #include "Collision/SphereCollider.h"
 #include "Debug/Logger.h"
 #include "Effect/EffectManager.h"
+#include "Framework/ActorManager.h"
+#include "Framework/PrefabManager.h"
 #include "Math/MathUtil.h"
 #include "Render/Camera/ICamera.h"
 #include "Render/Object3d/Object3d.h"
@@ -24,8 +26,19 @@ void EnemyBullet::Initialize(Object3dRenderer *renderer,
                              const Vector3 &startPos, const Vector3 &velocity,
                              const Player *player, EnemyBulletType type) {
   renderer_ = renderer;
-  object3d_ = std::make_unique<Object3d>();
-  object3d_->Initialize(renderer);
+  // 見た目は最初の 1 回だけ作り、入れ物から取り出して使い回すときは作り直さない
+  if (!object3d_) {
+    object3d_ = std::make_unique<Object3d>();
+    object3d_->Initialize(renderer);
+  }
+
+  // 撃つたびに、動きの値を最初の値へ戻す
+  object3d_->SetRotation({0.0f, 0.0f, 0.0f});
+  rollAngle_ = 0.0f;
+  homingStrength_ = 0.0f;
+  aliveFrames_ = 0;
+  swarmWaitFrames_ = 0;
+  trailHistory_.clear();
 
   type_ = type;
   velocity_ = velocity;
@@ -51,9 +64,11 @@ void EnemyBullet::Initialize(Object3dRenderer *renderer,
     object3d_->SetScale({1.0f, 1.0f, 1.0f});
 
     // 子オブジェクト（結晶メッシュ）：進行軸周りの自転を担当
-    crystalObject_ = std::make_unique<Object3d>();
-    crystalObject_->Initialize(renderer);
-    crystalObject_->SetModel("__builtin_crystal");
+    if (!crystalObject_) {
+      crystalObject_ = std::make_unique<Object3d>();
+      crystalObject_->Initialize(renderer);
+      crystalObject_->SetModel("__builtin_crystal");
+    }
     crystalObject_->SetScale({2.6f, 2.6f, 3.8f}); // 視認性確保のための大型結晶サイズ
     crystalObject_->SetColor({0.8f, 3.5f, 6.0f, 1.0f}); // シアンブルー（自己発光）
     crystalObject_->SetParent(object3d_.get());
@@ -84,12 +99,14 @@ void EnemyBullet::Initialize(Object3dRenderer *renderer,
 
   // 初回フレームの描画前にワールド行列を即時確定させる
   object3d_->Update();
-  if (crystalObject_) {
+  if (type_ == EnemyBulletType::LockOnDestructible && crystalObject_) {
     crystalObject_->Update();
   }
 
-  // コライダーの設定
-  collider_ = std::make_unique<SphereCollider>(this);
+  // コライダーの設定（作るのは最初の 1 回だけ）
+  if (!collider_) {
+    collider_ = std::make_unique<SphereCollider>(this);
+  }
   collider_->SetRadius(colliderRadius);
   collider_->SetAttribute(kCollisionAttributeEnemyBullet);
   // プレイヤー自身と、プレイヤーの弾の両方と衝突判定を行う
@@ -97,6 +114,20 @@ void EnemyBullet::Initialize(Object3dRenderer *renderer,
                      kCollisionAttributePlayerBullet);
   collider_->SetVelocity(velocity_);
   CollisionManager::GetInstance()->Register(collider_.get());
+}
+
+void EnemyBullet::Spawn(const Vector3 &startPos, const Vector3 &velocity,
+                        const Player *player, EnemyBulletType type,
+                        int swarmWaitFrames) {
+  std::unique_ptr<EnemyBullet> bullet = ActorManager::GetInstance()->Acquire<EnemyBullet>();
+  bullet->Initialize(PrefabManager::GetInstance()->GetObject3dRenderer(),
+                     startPos, velocity, player, type);
+  bullet->SetSwarmWait(swarmWaitFrames);
+  ActorManager::GetInstance()->AddActor(std::move(bullet));
+}
+
+void EnemyBullet::OnReturnToPool() {
+  CollisionManager::GetInstance()->Remove(collider_.get());
 }
 
 void EnemyBullet::Update() {
@@ -261,7 +292,7 @@ void EnemyBullet::Update() {
   object3d_->Update();
 
   // 誘導弾の場合、子オブジェクトを親の進行軸（ローカルZ軸）周りに自転（Roll）させる
-  if (crystalObject_) {
+  if (type_ == EnemyBulletType::LockOnDestructible && crystalObject_) {
     rollAngle_ += 0.2f;
     if (rollAngle_ > std::numbers::pi_v<float> * 2.0f) {
       rollAngle_ -= std::numbers::pi_v<float> * 2.0f;
@@ -317,7 +348,7 @@ void EnemyBullet::Explode() {
 
 void EnemyBullet::Draw3D() {
   if (!isDead_) {
-    if (crystalObject_) {
+    if (type_ == EnemyBulletType::LockOnDestructible && crystalObject_) {
       crystalObject_->Draw();
     } else if (object3d_) {
       object3d_->Draw();

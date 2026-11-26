@@ -48,6 +48,9 @@ public:
   BaseActor* GetTarget() const { return target_.Get(); }
 
 private:
+  // 入れ物へしまう前に、消えたことを知らせ、当たり判定を外し、射撃のチケットを返す
+  void OnReturnToPool() override;
+
   std::unique_ptr<Object3d> object3d_;
   std::unique_ptr<SphereCollider> collider_;
   ActorRef<BaseActor> target_;

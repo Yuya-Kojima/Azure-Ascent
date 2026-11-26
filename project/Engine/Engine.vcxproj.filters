@@ -431,6 +431,9 @@
     <ClInclude Include="include\Framework\ActorManager.h">
       <Filter>ヘッダー ファイル</Filter>
     </ClInclude>
+    <ClInclude Include="include\Framework\ActorPool.h">
+      <Filter>ヘッダー ファイル</Filter>
+    </ClInclude>
     <ClInclude Include="include\Framework\ActorRef.h">
       <Filter>ヘッダー ファイル</Filter>
     </ClInclude>

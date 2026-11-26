@@ -561,7 +561,7 @@ void Player::SpawnHomingBullet(BaseActor *target, int index, int totalCount,
   };
 
   // 3フレーム間隔で出し、どの弾も同じ秒で届くので、3フレームおきに当たる
-  auto bullet = std::make_unique<HomingBullet>();
+  std::unique_ptr<HomingBullet> bullet = ActorManager::GetInstance()->Acquire<HomingBullet>();
   bullet->Initialize(object3dRenderer_, camera_, toFramingLocal(startPos),
                      toFramingLocal(bulgePos), target,
                      actionConfig_.homingFlightSeconds);
@@ -678,7 +678,7 @@ void Player::FireNormalShot() {
   velocity.y *= speed;
   velocity.z *= speed;
 
-  auto bullet = std::make_unique<NormalBullet>();
+  std::unique_ptr<NormalBullet> bullet = ActorManager::GetInstance()->Acquire<NormalBullet>();
   bullet->Initialize(object3dRenderer_, startPos, velocity);
   ActorManager::GetInstance()->AddActor(std::move(bullet));
 

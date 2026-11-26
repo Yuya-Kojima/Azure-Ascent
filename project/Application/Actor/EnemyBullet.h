@@ -32,6 +32,13 @@ public:
   ~EnemyBullet() override;
 
   void Initialize(Object3dRenderer* renderer, const Vector3& startPos, const Vector3& velocity, const Player* player, EnemyBulletType type = EnemyBulletType::NormalDestructible);
+
+  /// <summary>
+  /// 入れ物から弾を 1 発取り出して撃つ（ActorManager に登録する）
+  /// </summary>
+  /// <param name="swarmWaitFrames">誘導弾が展開してから撃ち出されるまでのフレーム数（誘導弾のときだけ使う）</param>
+  static void Spawn(const Vector3& startPos, const Vector3& velocity, const Player* player,
+                    EnemyBulletType type = EnemyBulletType::NormalDestructible, int swarmWaitFrames = 0);
   
   void Update() override;
   void Draw3D() override;
@@ -57,6 +64,9 @@ public:
   void SetSwarmWait(int frames) { swarmWaitFrames_ = frames; }
 
 private:
+  // 入れ物へしまう前に、当たり判定を外す
+  void OnReturnToPool() override;
+
   std::unique_ptr<Object3d> object3d_;
   std::unique_ptr<Object3d> crystalObject_; // 自転用子オブジェクト（進行軸と自転軸の分離）
   std::unique_ptr<SphereCollider> collider_;
