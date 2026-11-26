@@ -29,18 +29,31 @@ private:
   Vector4 transitionCloudShadowColor_ = Fade::kDefaultCloudShadowColor;
   Vector4 transitionCloudGlowColor_ = Fade::kDefaultCloudGlowColor;
 
-  float holdSec_ = 0.0f;
-  float holdDurationSec_ = 0.20f;
+  float holdDurationSec_ = 0.20f; // 覆ったまま保つ秒数（シーンの差し替えにかかった時間も数える）
 
-  enum class TransitionState {
-    None,
-    FadeOut,
-    BlackHold,
-    SwitchScene,
-    FadeIn,
-  };
+  // 遷移の段階（SceneManager.cpp で定義する。入れ子のクラスなので、private な関数を呼べる）
+  class TransitionState; // 基底
+  class IdleState;       // 遷移していない（次のシーンの予約を待つ）
+  class FadeOutState;    // 覆っていく
+  class HoldState;       // 覆ったまま保つ（入るときにシーンを差し替える）
+  class FadeInState;     // 明けていく
 
-  TransitionState transitionState_ = TransitionState::None;
+  std::unique_ptr<TransitionState> state_; // 今の遷移の段階
+
+  /// <summary>
+  /// 遷移の段階を next に入れ替え、入ったときの準備をさせる
+  /// </summary>
+  void ChangeState(std::unique_ptr<TransitionState> next);
+
+  /// <summary>
+  /// 今のシーンを終え、予約したシーンを始める。かかった秒数を返す
+  /// </summary>
+  float SwitchScene();
+
+  /// <summary>
+  /// 遷移のフェードを始める（isOut が true なら覆っていく、false なら明けていく）
+  /// </summary>
+  void StartTransitionFade(bool isOut);
 
   /// <summary>
   /// 次の遷移の設定（時間・色・種類・イージング）を既定に戻す
@@ -88,17 +101,14 @@ public:
   /// <summary>
   /// シーンの切り替え中か（次のシーンが決まってから、遷移のフェードが明けきるまで）
   /// </summary>
-  bool IsTransitioning() const {
-    return nextScene_ != nullptr ||
-           transitionState_ != TransitionState::None;
-  }
+  bool IsTransitioning() const;
 
   BaseScene* GetCurrentScene() const { return scene_.get(); }
   const std::string& GetCurrentSceneName() const { return currentSceneName_; }
 
 private:
-  SceneManager() = default;
-  ~SceneManager() = default;
+  SceneManager();
+  ~SceneManager();
   SceneManager(const SceneManager &) = delete;
   SceneManager &operator=(const SceneManager &) = delete;
   SceneManager(SceneManager &&) = delete;

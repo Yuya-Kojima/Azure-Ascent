@@ -89,7 +89,7 @@ public:
   /// <summary>
   /// 落ち切った・去り終わった
   /// </summary>
-  bool IsFinished() const { return state_ == State::Finished; }
+  bool IsFinished() const;
 
   // IEnemyPartOwner
   const Matrix4x4 &GetPartFrame(int) const override { return frame_; }
@@ -98,12 +98,17 @@ public:
   void OnPartDestroyed(int index) override;
 
 private:
-  enum class State {
-    Fly,      // 道筋をなぞる
-    Enduring, // 部品を全部壊されて、小さな爆発を起こしながら道筋を進み、見える位置まで耐える
-    Dying,    // 割れ目が走ってから死亡演出が終わるまで（道筋は進み続ける）
-    Finished  // 終わり
-  };
+  // 状態（FloatingFortress.cpp で定義する。砦の入れ子のクラスなので、砦の private な関数を呼べる）
+  class State;         // 基底
+  class FlyState;      // 道筋をなぞる
+  class EnduringState; // 部品を全部壊されて、小さな爆発を起こしながら道筋を進み、見える位置まで耐える
+  class DyingState;    // 割れ目が走ってから死亡演出が終わるまで（道筋は進み続ける）
+  class FinishedState; // 終わり
+
+  /// <summary>
+  /// 状態を next に入れ替え、入ったときの準備をさせる
+  /// </summary>
+  void ChangeState(std::unique_ptr<State> next);
 
   // 本体の箱 1 個（砦の中の中心・半分の大きさ m）。どれもロックの陰になる
   struct BodyBox {
@@ -123,14 +128,30 @@ private:
   /// </summary>
   void BuildFrame();
 
-  void UpdateFly();
-  void UpdateEnduring();
+  /// <summary>
+  /// 道筋をなぞる。道筋の終わりを過ぎて、残った部品と一緒に消えたら true
+  /// </summary>
+  bool UpdateFly();
+
+  /// <summary>
+  /// 部品を全部壊されてから耐える間の動き。割れ始めるときが来たら true
+  /// </summary>
+  bool UpdateEnduring();
+
+  /// <summary>
+  /// 耐え始める（倒されたときの傾き・道筋の位置を覚え、倒されたことを知らせる）
+  /// </summary>
+  /// <param name="lastPartPosition">最後に壊れた部品の位置（砦の中の座標）</param>
+  void BeginEnduring(const Vector3 &lastPartPosition);
 
   /// <summary>
   /// カメラの頭上に来たら（レールの前の向きの距離が kPassOverDistance_ より近づいたら）、頭上を過ぎたことにする
   /// </summary>
   void CheckPassOver();
-  void UpdateDying();
+  /// <summary>
+  /// 割れ目が走ってからの動きと死亡演出。死亡演出が終わったら true
+  /// </summary>
+  bool UpdateDying();
 
   /// <summary>
   /// 倒されたあとの 1 フレーム分、カメラの t ではなく自分の時計で道筋を進む。向きは動く向きへだんだん回し、傾きはふらつかせる
@@ -238,7 +259,7 @@ private:
   float pathSpanT_ = 1.0f;             // 道筋を走り切るまでのレールの t
   std::optional<float> heading_;
 
-  State state_ = State::Fly;
+  std::unique_ptr<State> state_; // 今の状態
   Vector3 position_ = {0.0f, 0.0f, 0.0f};
   Vector3 velocity_ = {0.0f, 0.0f, 0.0f}; // 1 秒に動く量（m/秒）
   float yaw_ = 0.0f;

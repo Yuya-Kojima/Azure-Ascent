@@ -41,7 +41,173 @@ Vector4 LerpColor(const Vector4 &a, const Vector4 &b, float k) {
 }
 } // namespace
 
-MechSerpent::MechSerpent() = default;
+//=======================
+// 状態
+//=======================
+
+/// <summary>
+/// 状態の基底クラス。毎フレームの動きと次の状態を決め、大蛇の今の様子に答える
+/// </summary>
+class MechSerpent::State {
+public:
+  explicit State(MechSerpent &serpent) : serpent_(serpent) {}
+  virtual ~State() = default;
+
+  /// <summary>
+  /// この状態に入ったときの準備
+  /// </summary>
+  virtual void Enter() {}
+
+  /// <summary>
+  /// 毎フレームの更新。次の状態へ移るなら、その状態を返す（このままなら nullptr）
+  /// </summary>
+  virtual std::unique_ptr<State> Update() { return nullptr; }
+
+  /// <summary>
+  /// 光る節を全部撃たれた。次の状態へ移るなら、その状態を返す（このままなら nullptr）
+  /// </summary>
+  virtual std::unique_ptr<State> OnAllCoresDestroyed() { return nullptr; }
+
+  /// <summary>
+  /// 光る節の色と大きさを更新する
+  /// </summary>
+  virtual void UpdateGlow() {}
+
+  /// <summary>
+  /// 前触れの間に、壁が揺れたと知らせるか
+  /// </summary>
+  virtual bool RumblesWall() const { return false; }
+
+  /// <summary>
+  /// 体の節をがたがた揺らすか
+  /// </summary>
+  virtual bool ShakesSegments() const { return false; }
+
+  /// <summary>
+  /// 光る節を撃てるか
+  /// </summary>
+  virtual bool ArePartsActive() const { return false; }
+
+  /// <summary>
+  /// 壁の穴へ潜り終えた・爆発し終えたか
+  /// </summary>
+  virtual bool IsFinished() const { return false; }
+
+protected:
+  MechSerpent &GetSerpent() const { return serpent_; }
+
+private:
+  MechSerpent &serpent_;
+};
+
+/// <summary>
+/// 終わり。何もしない
+/// </summary>
+class MechSerpent::FinishedState : public MechSerpent::State {
+public:
+  using State::State;
+  bool IsFinished() const override { return true; }
+};
+
+/// <summary>
+/// 最後の見せ場で倒された。揺れて電気をまとい、尾から頭へ爆発し終えたら終わりへ
+/// </summary>
+class MechSerpent::DyingState : public MechSerpent::State {
+public:
+  using State::State;
+
+  void Enter() override { GetSerpent().StartDying(); }
+
+  std::unique_ptr<State> Update() override {
+    if (GetSerpent().UpdateDying()) {
+      return std::make_unique<FinishedState>(GetSerpent());
+    }
+    return nullptr;
+  }
+
+  bool ShakesSegments() const override { return true; }
+};
+
+/// <summary>
+/// 道筋の残りを這って壁の穴へ潜る。尾まで潜ったら終わりへ
+/// </summary>
+class MechSerpent::LeaveState : public MechSerpent::State {
+public:
+  using State::State;
+
+  void Enter() override { GetSerpent().BeginLeave(); }
+
+  std::unique_ptr<State> Update() override {
+    if (GetSerpent().UpdateLeave()) {
+      return std::make_unique<FinishedState>(GetSerpent());
+    }
+    return nullptr;
+  }
+};
+
+/// <summary>
+/// 溜めが止まった・電撃を撃った直後の間。間が過ぎたら去る
+/// </summary>
+class MechSerpent::ResultState : public MechSerpent::State {
+public:
+  using State::State;
+
+  std::unique_ptr<State> Update() override {
+    if (GetSerpent().stateTimer_ >= kResultSeconds_) {
+      return std::make_unique<LeaveState>(GetSerpent());
+    }
+    return nullptr;
+  }
+};
+
+/// <summary>
+/// 止まって溜める。溜め終えたら電撃を撃って間へ、光る節を全部撃たれたら溜めが止まる（最後の見せ場の出番はその場で倒れる）
+/// </summary>
+class MechSerpent::ChargeState : public MechSerpent::State {
+public:
+  using State::State;
+
+  void Enter() override { GetSerpent().StartCharge(); }
+
+  std::unique_ptr<State> Update() override {
+    if (GetSerpent().UpdateCharge()) {
+      return std::make_unique<ResultState>(GetSerpent());
+    }
+    return nullptr;
+  }
+
+  std::unique_ptr<State> OnAllCoresDestroyed() override {
+    MechSerpent &serpent = GetSerpent();
+    if (serpent.spec_.isFinal) {
+      return std::make_unique<DyingState>(serpent);
+    }
+    serpent.StartFlinch();
+    return std::make_unique<ResultState>(serpent);
+  }
+
+  void UpdateGlow() override { GetSerpent().UpdateChargeGlow(); }
+  bool ArePartsActive() const override { return true; }
+};
+
+/// <summary>
+/// 止まる所まで這う。止まる所に着いたら溜める
+/// </summary>
+class MechSerpent::ApproachState : public MechSerpent::State {
+public:
+  using State::State;
+
+  std::unique_ptr<State> Update() override {
+    if (GetSerpent().UpdateApproach()) {
+      return std::make_unique<ChargeState>(GetSerpent());
+    }
+    return nullptr;
+  }
+
+  void UpdateGlow() override { GetSerpent().UpdateIdleGlow(); }
+  bool RumblesWall() const override { return true; }
+};
+
+MechSerpent::MechSerpent() : state_(std::make_unique<ApproachState>(*this)) {}
 MechSerpent::~MechSerpent() = default;
 
 void MechSerpent::Initialize(Object3dRenderer *renderer, const RailCamera *railCamera, Player *player,
@@ -54,7 +220,7 @@ void MechSerpent::Initialize(Object3dRenderer *renderer, const RailCamera *railC
   pathSeconds_ = (std::max)(pathSeconds, 1e-3f);
   spec_ = spec;
   std::sort(spec_.coreSegments.begin(), spec_.coreSegments.end());
-  state_ = State::Approach;
+  state_ = std::make_unique<ApproachState>(*this);
   stateTimer_ = 0.0f;
   hasAppeared_ = false;
   events_.clear();
@@ -198,27 +364,14 @@ float MechSerpent::HeadLength(float seconds) const {
 }
 
 void MechSerpent::Update() {
-  stateTimer_ += kFrameTime_;
-  switch (state_) {
-  case State::Approach:
-    UpdateApproach();
-    break;
-  case State::Charge:
-    UpdateCharge();
-    break;
-  case State::Result:
-    UpdateResult();
-    break;
-  case State::Leave:
-    UpdateLeave();
-    break;
-  case State::Dying:
-    UpdateDying();
-    break;
-  case State::Finished:
+  if (state_->IsFinished()) {
     return;
   }
-  if (state_ == State::Finished) {
+  stateTimer_ += kFrameTime_;
+  if (std::unique_ptr<State> next = state_->Update()) {
+    ChangeState(std::move(next));
+  }
+  if (state_->IsFinished()) {
     return;
   }
   if (flinchTimer_ > 0.0f) {
@@ -231,10 +384,18 @@ void MechSerpent::Update() {
   }
   UpdateWarn();
   BuildSegments();
-  UpdateGlow();
+  state_->UpdateGlow();
 }
 
-void MechSerpent::UpdateApproach() {
+void MechSerpent::ChangeState(std::unique_ptr<State> next) {
+  state_ = std::move(next);
+  stateTimer_ = 0.0f;
+  state_->Enter();
+}
+
+bool MechSerpent::IsFinished() const { return state_->IsFinished(); }
+
+bool MechSerpent::UpdateApproach() {
   // レールが進んだ分だけ道筋を進む（巻き戻しはそのまま戻る）
   const float railT = railCamera_ ? railCamera_->GetT() : lastRailT_;
   headSeconds_ = (std::max)(headSeconds_ + (railT - lastRailT_) / kPathTPerSecond_, 0.0f);
@@ -242,15 +403,13 @@ void MechSerpent::UpdateApproach() {
   if (headSeconds_ >= spec_.stopSeconds) {
     headSeconds_ = spec_.stopSeconds;
     PlaceSegments();
-    StartCharge();
-    return;
+    return true;
   }
   PlaceSegments();
+  return false;
 }
 
 void MechSerpent::StartCharge() {
-  state_ = State::Charge;
-  stateTimer_ = 0.0f;
   events_.push_back(Event::ChargeStarted);
   SoundManager::GetInstance()->PlaySE("boss_charge");
   // 溜め始め: 光る節が白く光り、火花が散る
@@ -267,10 +426,12 @@ void MechSerpent::StartCharge() {
   }
 }
 
-void MechSerpent::UpdateCharge() {
+bool MechSerpent::UpdateCharge() {
   if (stateTimer_ >= spec_.chargeSeconds) {
     FireZap();
+    return true;
   }
+  return false;
 }
 
 void MechSerpent::FireZap() {
@@ -298,40 +459,38 @@ void MechSerpent::FireZap() {
   }
   SoundManager::GetInstance()->PlaySE("laser_shot");
   VanishParts();
-  state_ = State::Result;
-  stateTimer_ = 0.0f;
 }
 
-void MechSerpent::UpdateResult() {
-  if (stateTimer_ >= kResultSeconds_) {
-    state_ = State::Leave;
-    stateTimer_ = 0.0f;
-    if (spec_.isFinal) {
-      events_.push_back(Event::Ended);
-    }
+void MechSerpent::StartFlinch() {
+  flinchTimer_ = kFlinchSeconds_;
+  SoundManager::GetInstance()->PlaySE("boss_counter");
+}
+
+void MechSerpent::BeginLeave() {
+  if (spec_.isFinal) {
+    events_.push_back(Event::Ended);
   }
 }
 
-void MechSerpent::UpdateLeave() {
+bool MechSerpent::UpdateLeave() {
   // 道筋の残りを速く進み、尾まで道筋の終わりの先（壁の中）に入ったら終わる
   headSeconds_ += kFrameTime_ * kLeaveRate_;
   PlaceSegments();
   const float tailLength = HeadLength(headSeconds_) - static_cast<float>(kSegmentCount - 1) * kSegmentSpacing_;
   if (arcLength_.empty() || tailLength >= arcLength_.back()) {
     VanishParts();
-    state_ = State::Finished;
+    return true;
   }
+  return false;
 }
 
 void MechSerpent::StartDying() {
-  state_ = State::Dying;
-  stateTimer_ = 0.0f;
   sparkTimer_ = 0.0f;
   explodedCount_ = 0;
   VanishParts();
 }
 
-void MechSerpent::UpdateDying() {
+bool MechSerpent::UpdateDying() {
   EffectManager *effects = EffectManager::GetInstance();
   const int alive = kSegmentCount - explodedCount_;
 
@@ -364,8 +523,9 @@ void MechSerpent::UpdateDying() {
   const float endSeconds = kDyingLead_ + kDyingStep_ * static_cast<float>(kSegmentCount - 1) + kDyingTail_;
   if (explodedCount_ >= kSegmentCount && stateTimer_ >= endSeconds) {
     events_.push_back(Event::Ended);
-    state_ = State::Finished;
+    return true;
   }
+  return false;
 }
 
 void MechSerpent::UpdateWarn() {
@@ -378,7 +538,7 @@ void MechSerpent::UpdateWarn() {
                        kWarnColor.z * brightness, 1.0f});
 
   // 出るまでの間、決まった間隔で壁が揺れたと知らせる
-  if (headSeconds_ < spec_.warnSeconds && state_ == State::Approach) {
+  if (headSeconds_ < spec_.warnSeconds && state_->RumblesWall()) {
     warnShakeTimer_ -= kFrameTime_;
     if (warnShakeTimer_ <= 0.0f) {
       warnShakeTimer_ = kWarnShakeInterval_;
@@ -444,7 +604,7 @@ void MechSerpent::BuildSegments() {
     Vector3 position = segmentPositions_[i] + up * (kFlinchAmplitude_ * wave * flinch);
 
     // 倒された間は、毎フレームばらばらの向きにがたがた揺れる
-    if (state_ == State::Dying) {
+    if (state_->ShakesSegments()) {
       position = position + Vector3{HashSigned(shakeSeed, i * 3), HashSigned(shakeSeed, i * 3 + 1),
                                     HashSigned(shakeSeed, i * 3 + 2)} *
                                 kDyingShake_;
@@ -468,21 +628,18 @@ void MechSerpent::BuildSegments() {
   UpdateTransform();
 }
 
-void MechSerpent::UpdateGlow() {
+void MechSerpent::UpdateIdleGlow() {
   // 溜める前は、核がゆっくり脈打つ
-  if (state_ == State::Approach) {
-    idleClock_ += kFrameTime_;
-    const float pulse = 0.5f + 0.5f * std::sin(idleClock_ * kIdlePulseSpeed_);
-    for (EnemyPart *part : parts_) {
-      if (part) {
-        part->SetBaseColor(LerpColor(kCoreDimColor, kCoreIdleColor, pulse));
-      }
+  idleClock_ += kFrameTime_;
+  const float pulse = 0.5f + 0.5f * std::sin(idleClock_ * kIdlePulseSpeed_);
+  for (EnemyPart *part : parts_) {
+    if (part) {
+      part->SetBaseColor(LerpColor(kCoreDimColor, kCoreIdleColor, pulse));
     }
-    return;
   }
-  if (state_ != State::Charge) {
-    return;
-  }
+}
+
+void MechSerpent::UpdateChargeGlow() {
   // 光る節は頭の側から順に強まり、迎撃の合図の拍ごとに明るく膨らむ。鳴りっぱなしの間は白く焼けて膨らんだまま
   // 溜め始めの少しのあいだは白く光る
   const float charge = spec_.chargeSeconds > 0.0f ? std::clamp(stateTimer_ / spec_.chargeSeconds, 0.0f, 1.0f) : 1.0f;
@@ -537,7 +694,7 @@ void MechSerpent::UpdateTransform() {
 }
 
 void MechSerpent::Draw() {
-  if (state_ == State::Finished) {
+  if (state_->IsFinished()) {
     return;
   }
   // 倒された後は、爆発し終えた尾の側の節を描かない
@@ -573,7 +730,7 @@ Vector3 MechSerpent::GetPartRotation(int index) const {
 
 bool MechSerpent::IsPartActive(int index) const {
   (void)index;
-  return state_ == State::Charge;
+  return state_->ArePartsActive();
 }
 
 void MechSerpent::OnPartDestroyed(int index) {
@@ -590,15 +747,10 @@ void MechSerpent::OnPartDestroyed(int index) {
                                            CorePosition(index),
                                            kSparkColor, kCoreSparkScale);
 
-  // 光る節を全部撃たれたら溜めが止まる。最後の見せ場の出番はその場で倒れる
-  if (aliveCores_ <= 0 && state_ == State::Charge) {
-    if (spec_.isFinal) {
-      StartDying();
-    } else {
-      flinchTimer_ = kFlinchSeconds_;
-      SoundManager::GetInstance()->PlaySE("boss_counter");
-      state_ = State::Result;
-      stateTimer_ = 0.0f;
+  // 光る節を全部撃たれたら、今の状態に知らせ、次の状態が返ってきたら入れ替える
+  if (aliveCores_ <= 0) {
+    if (std::unique_ptr<State> next = state_->OnAllCoresDestroyed()) {
+      ChangeState(std::move(next));
     }
   }
 }

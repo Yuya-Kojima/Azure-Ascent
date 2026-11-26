@@ -117,7 +117,7 @@ public:
   /// <summary>
   /// 壁の穴へ潜り終えた・爆発し終えた
   /// </summary>
-  bool IsFinished() const { return state_ == State::Finished; }
+  bool IsFinished() const;
 
   // IEnemyPartOwner
   const Matrix4x4 &GetPartFrame(int index) const override;
@@ -127,14 +127,19 @@ public:
   bool IsPartActive(int index) const override;
 
 private:
-  enum class State {
-    Approach, // 止まる所まで這う
-    Charge,   // 止まって溜める
-    Result,   // 溜めが止まった・電撃を撃った直後の間
-    Leave,    // 道筋の残りを這って壁の穴へ潜る
-    Dying,    // 最後の見せ場で倒された:揺れて電気をまとい、尾から頭へ爆発する
-    Finished  // 終わり
-  };
+  // 状態（MechSerpent.cpp で定義する。大蛇の入れ子のクラスなので、大蛇の private な関数を呼べる）
+  class State;         // 基底
+  class ApproachState; // 止まる所まで這う
+  class ChargeState;   // 止まって溜める
+  class ResultState;   // 溜めが止まった・電撃を撃った直後の間
+  class LeaveState;    // 道筋の残りを這って壁の穴へ潜る
+  class DyingState;    // 最後の見せ場で倒された:揺れて電気をまとい、尾から頭へ爆発する
+  class FinishedState; // 終わり
+
+  /// <summary>
+  /// 状態を next に入れ替え、状態の時間を 0 に戻して、入ったときの準備をさせる
+  /// </summary>
+  void ChangeState(std::unique_ptr<State> next);
 
   /// <summary>
   /// 道筋の点の番号 u の位置（Catmull-Rom）
@@ -151,16 +156,41 @@ private:
   /// </summary>
   float HeadLength(float seconds) const;
 
-  void UpdateApproach();
-  void UpdateCharge();
-  void UpdateResult();
-  void UpdateLeave();
-  void UpdateDying();
+  /// <summary>
+  /// レールが進んだ分だけ道筋を進む。止まる所に着いたら true
+  /// </summary>
+  bool UpdateApproach();
+
+  /// <summary>
+  /// 溜める。溜め終えて電撃を撃ったら true
+  /// </summary>
+  bool UpdateCharge();
+
+  /// <summary>
+  /// 道筋の残りを速く進む。尾まで壁の中に入ったら true
+  /// </summary>
+  bool UpdateLeave();
+
+  /// <summary>
+  /// 倒されたあと、尾から頭へ爆発させる。爆発し終えたら true
+  /// </summary>
+  bool UpdateDying();
+
   void UpdateWarn();
 
   void StartCharge();
   void FireZap();
   void StartDying();
+
+  /// <summary>
+  /// 溜めを止められて、体を揺らし始める
+  /// </summary>
+  void StartFlinch();
+
+  /// <summary>
+  /// 去り始める（最後の見せ場の出番なら、終わったと知らせる）
+  /// </summary>
+  void BeginLeave();
 
   /// <summary>
   /// 頭の長さから節の位置と前の向きを決める
@@ -173,9 +203,14 @@ private:
   void BuildSegments();
 
   /// <summary>
+  /// 溜める前に、光る節の核をゆっくり脈打たせる
+  /// </summary>
+  void UpdateIdleGlow();
+
+  /// <summary>
   /// 光る節の色と大きさを、溜まり具合と迎撃の合図の拍に合わせ、迎撃の印に位置を渡す
   /// </summary>
-  void UpdateGlow();
+  void UpdateChargeGlow();
 
   /// <summary>
   /// 部品 index の核のワールドの位置
@@ -235,7 +270,7 @@ private:
   InterceptCue *cue_ = nullptr;
   float headSeconds_ = 0.0f;   // 頭が道筋の初めから進んだ秒数（止まる間は進まない）
   float lastRailT_ = 0.0f;
-  State state_ = State::Approach;
+  std::unique_ptr<State> state_; // 今の状態
   float stateTimer_ = 0.0f;    // 今の状態になってからの秒数
   bool hasAppeared_ = false;
   std::vector<Event> events_;

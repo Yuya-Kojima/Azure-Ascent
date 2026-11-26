@@ -5,6 +5,137 @@
 #include "Scene/BaseScene.h"
 #include <cassert>
 
+//=========================
+// 遷移の段階
+//=========================
+
+/// <summary>
+/// 遷移の段階の基底クラス。毎フレームの処理と次の段階を決め、シーンを止めるかに答える
+/// </summary>
+class SceneManager::TransitionState {
+public:
+  explicit TransitionState(SceneManager &manager) : manager_(manager) {}
+  virtual ~TransitionState() = default;
+
+  /// <summary>
+  /// この段階に入ったときの準備
+  /// </summary>
+  virtual void Enter() {}
+
+  /// <summary>
+  /// 毎フレームの更新。次の段階へ移るなら、その段階を返す（このままなら nullptr）
+  /// </summary>
+  virtual std::unique_ptr<TransitionState> Update(float dt) = 0;
+
+  /// <summary>
+  /// 遷移の途中か
+  /// </summary>
+  virtual bool IsTransitioning() const { return true; }
+
+  /// <summary>
+  /// このフレーム、シーンの更新を止めるか
+  /// </summary>
+  virtual bool HoldsSceneUpdate() const { return false; }
+
+protected:
+  SceneManager &GetManager() const { return manager_; }
+
+private:
+  SceneManager &manager_;
+};
+
+/// <summary>
+/// 遷移していない。次のシーンが予約されたら覆っていく
+/// </summary>
+class SceneManager::IdleState : public SceneManager::TransitionState {
+public:
+  using TransitionState::TransitionState;
+  std::unique_ptr<TransitionState> Update(float dt) override;
+  bool IsTransitioning() const override { return false; }
+};
+
+/// <summary>
+/// 覆っていく。覆いきったら、覆ったまま保つ（そのときシーンを差し替える）
+/// </summary>
+class SceneManager::FadeOutState : public SceneManager::TransitionState {
+public:
+  using TransitionState::TransitionState;
+  void Enter() override { GetManager().StartTransitionFade(true); }
+  std::unique_ptr<TransitionState> Update(float dt) override;
+};
+
+/// <summary>
+/// 覆ったまま保つ。入るときにシーンを差し替え、その時間も保つ時間に数える。
+/// 差し替えたフレームは新しいシーンを 1 回更新して描画できる状態にし、その後の保つ間は更新を止める
+/// </summary>
+class SceneManager::HoldState : public SceneManager::TransitionState {
+public:
+  using TransitionState::TransitionState;
+  void Enter() override { holdSec_ = GetManager().SwitchScene(); }
+  std::unique_ptr<TransitionState> Update(float dt) override;
+  bool HoldsSceneUpdate() const override { return isHolding_; }
+
+private:
+  float holdSec_ = 0.0f;    // 覆ってから保った秒数
+  bool isHolding_ = false;  // 保つ間に入ったか（差し替えたフレームは false）
+};
+
+/// <summary>
+/// 明けていく。明けきったら遷移を終える
+/// </summary>
+class SceneManager::FadeInState : public SceneManager::TransitionState {
+public:
+  using TransitionState::TransitionState;
+  void Enter() override;
+  std::unique_ptr<TransitionState> Update(float dt) override;
+};
+
+std::unique_ptr<SceneManager::TransitionState> SceneManager::IdleState::Update(float) {
+  // 予約が入ったら覆っていく
+  if (GetManager().nextScene_) {
+    return std::make_unique<FadeOutState>(GetManager());
+  }
+  return nullptr;
+}
+
+std::unique_ptr<SceneManager::TransitionState> SceneManager::FadeOutState::Update(float) {
+  // 覆いきったら、すぐシーンを差し替えて保つ
+  if (GetManager().fade_.IsCovered()) {
+    return std::make_unique<HoldState>(GetManager());
+  }
+  return nullptr;
+}
+
+std::unique_ptr<SceneManager::TransitionState> SceneManager::HoldState::Update(float dt) {
+  holdSec_ += dt;
+  if (holdSec_ >= GetManager().holdDurationSec_) {
+    return std::make_unique<FadeInState>(GetManager());
+  }
+  isHolding_ = true;
+  return nullptr;
+}
+
+void SceneManager::FadeInState::Enter() {
+  GetManager().StartTransitionFade(false);
+  GetManager().ResetTransitionSettings();
+}
+
+std::unique_ptr<SceneManager::TransitionState> SceneManager::FadeInState::Update(float) {
+  // 明けきったら遷移を終える
+  if (GetManager().fade_.IsClear()) {
+    return std::make_unique<IdleState>(GetManager());
+  }
+  return nullptr;
+}
+
+//=========================
+// SceneManager
+//=========================
+
+SceneManager::SceneManager() : state_(std::make_unique<IdleState>(*this)) {}
+
+SceneManager::~SceneManager() = default;
+
 SceneManager *SceneManager::GetInstance() {
   static SceneManager instance;
   return &instance;
@@ -19,7 +150,7 @@ void SceneManager::Initialize(EngineBase *engine) {
 
   fade_.Initialize(spriteRenderer, "resources/white1x1.png");
 
-  transitionState_ = TransitionState::None;
+  state_ = std::make_unique<IdleState>(*this);
 }
 
 void SceneManager::Finalize() {
@@ -57,87 +188,66 @@ void SceneManager::Update() {
   }
   lastUpdateTime_ = now;
 
-  // 予約が入ったらフェードアウト開始
-  if (transitionState_ == TransitionState::None) {
-    if (nextScene_) {
-      transitionState_ = TransitionState::FadeOut;
-      fade_.SetCloudShade(transitionCloudShadowColor_,
-                          transitionCloudGlowColor_);
-      fade_.StartFadeOut(transitionDurationSec_, transitionFadeType_,
-                         transitionColor_, transitionEasing_);
-    }
-  }
-
-  // フェードアウト完了待ち：覆いきったらすぐシーンを切り替える
-  if (transitionState_ == TransitionState::FadeOut) {
-    if (fade_.IsCovered()) {
-      transitionState_ = TransitionState::SwitchScene;
-    }
-  }
-
-  // 覆ったまま保持：切り替えにかかった時間も保持の時間に数える
-  // 保持の間は新しいシーンを更新しない（フェードインと同時に動き出す）
-  bool isHolding = false;
-  if (transitionState_ == TransitionState::BlackHold) {
-    holdSec_ += dt;
-    if (holdSec_ >= holdDurationSec_) {
-      transitionState_ = TransitionState::FadeIn;
-      fade_.SetCloudShade(transitionCloudShadowColor_,
-                          transitionCloudGlowColor_);
-      fade_.StartFadeIn(transitionDurationSec_, transitionFadeType_,
-                        transitionColor_, transitionEasing_);
-      ResetTransitionSettings();
-    } else {
-      isHolding = true;
-    }
-  }
-
-  // シーン切り替え（このフレームは新しいシーンを1回更新して、描画できる状態にする）
-  if (transitionState_ == TransitionState::SwitchScene) {
-
-    auto switchStart = std::chrono::steady_clock::now();
-
-    // 旧シーン終了
-    if (scene_) {
-      scene_->Finalize();
-      scene_.reset();
-    }
-    auto finalizeEnd = std::chrono::steady_clock::now();
-
-    // 次シーンへ
-    scene_ = std::move(nextScene_);
-    currentSceneName_ = nextSceneName_;
-
-    scene_->SetSceneManger(this);
-    scene_->Initialize(engine_);
-
-    auto initializeEnd = std::chrono::steady_clock::now();
-    using Ms = std::chrono::duration<float, std::milli>;
-    Logger::Log("[SceneManager] " + currentSceneName_ + " switch: finalize " +
-                std::to_string(Ms(finalizeEnd - switchStart).count()) +
-                " ms / initialize " +
-                std::to_string(Ms(initializeEnd - finalizeEnd).count()) +
-                " ms\n");
-    framesToLog_ = kFramesToLogAfterSwitch_;
-
-    // 覆ったまま保持へ（切り替えにかかった時間はすでに保持した分とする）
-    transitionState_ = TransitionState::BlackHold;
-    holdSec_ = Ms(initializeEnd - switchStart).count() / 1000.0f;
-  }
-
-  // フェードイン完了待ち
-  if (transitionState_ == TransitionState::FadeIn) {
-    if (fade_.IsClear()) {
-      transitionState_ = TransitionState::None;
-    }
+  // 今の遷移の段階を進め、次の段階が返ってきたら入れ替える
+  if (std::unique_ptr<TransitionState> next = state_->Update(dt)) {
+    ChangeState(std::move(next));
   }
 
   //=========================
   // シーン更新
   //=========================
-  if (scene_ && !isHolding) {
+  if (scene_ && !state_->HoldsSceneUpdate()) {
     scene_->Update();
   }
+}
+
+void SceneManager::ChangeState(std::unique_ptr<TransitionState> next) {
+  state_ = std::move(next);
+  state_->Enter();
+}
+
+float SceneManager::SwitchScene() {
+  auto switchStart = std::chrono::steady_clock::now();
+
+  // 旧シーン終了
+  if (scene_) {
+    scene_->Finalize();
+    scene_.reset();
+  }
+  auto finalizeEnd = std::chrono::steady_clock::now();
+
+  // 次シーンへ
+  scene_ = std::move(nextScene_);
+  currentSceneName_ = nextSceneName_;
+
+  scene_->SetSceneManger(this);
+  scene_->Initialize(engine_);
+
+  auto initializeEnd = std::chrono::steady_clock::now();
+  using Ms = std::chrono::duration<float, std::milli>;
+  Logger::Log("[SceneManager] " + currentSceneName_ + " switch: finalize " +
+              std::to_string(Ms(finalizeEnd - switchStart).count()) +
+              " ms / initialize " +
+              std::to_string(Ms(initializeEnd - finalizeEnd).count()) +
+              " ms\n");
+  framesToLog_ = kFramesToLogAfterSwitch_;
+
+  return Ms(initializeEnd - switchStart).count() / 1000.0f;
+}
+
+void SceneManager::StartTransitionFade(bool isOut) {
+  fade_.SetCloudShade(transitionCloudShadowColor_, transitionCloudGlowColor_);
+  if (isOut) {
+    fade_.StartFadeOut(transitionDurationSec_, transitionFadeType_,
+                       transitionColor_, transitionEasing_);
+  } else {
+    fade_.StartFadeIn(transitionDurationSec_, transitionFadeType_,
+                      transitionColor_, transitionEasing_);
+  }
+}
+
+bool SceneManager::IsTransitioning() const {
+  return nextScene_ != nullptr || state_->IsTransitioning();
 }
 
 void SceneManager::ResetTransitionSettings() {
@@ -178,7 +288,7 @@ void SceneManager::ChangeScene(const std::string &sceneName) {
 
   assert(sceneFactory_);
 
-  if (transitionState_ != TransitionState::None) {
+  if (state_->IsTransitioning()) {
     Logger::Log("SceneManager::ChangeScene ignored: transitioning\n");
     return;
   }
