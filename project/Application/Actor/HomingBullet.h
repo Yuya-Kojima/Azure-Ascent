@@ -53,6 +53,7 @@ private:
   ActorRef<BaseActor> target_;
   ActorRef<BaseActor> originalTarget_;
   int damage_ = 5;
+  static constexpr int kEnemyBulletDamage_ = 1; // 狙いを失った後に敵の弾へ当たったときに与えるダメージ
 
   // ベジェの点と進み具合
   const RailCamera* camera_ = nullptr;

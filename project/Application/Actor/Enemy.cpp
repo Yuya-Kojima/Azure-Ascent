@@ -162,17 +162,9 @@ void Enemy::SetLights(std::unique_ptr<EnemyLights> lights) {
   lights_ = std::move(lights);
 }
 
-void Enemy::OnCollision(Collider *other) {
-  // プレイヤーと衝突した場合、自身もダメージを受けて自爆する
-  if (other->GetOwner() && dynamic_cast<Player *>(other->GetOwner())) {
-    Player *p = dynamic_cast<Player *>(other->GetOwner());
-    if (p->GetInvincibleTimer() > 0) {
-      return; // 無敵中なら食らわない
-    }
-    p->TakeDamage(1); // プレイヤーにダメージを与える
-    Logger::Log("Enemy Self-Destruct into Player!\n");
-    TakeDamage(999, true); // true を渡して自爆であることを知らせる
-  }
+void Enemy::OnHitPlayer() {
+  Logger::Log("Enemy Self-Destruct into Player!\n");
+  TakeDamage(999, true); // true を渡して自爆であることを知らせる
 }
 
 void Enemy::TakeDamage(int damage, bool isSelfDestruct) {

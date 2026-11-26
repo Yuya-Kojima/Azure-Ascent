@@ -1,20 +1,12 @@
 #include "GamePlayScene.h"
 #include "../../externals/nlohmann/json.hpp"
 #include "../Effect/EffectManager.h"
-#include "Actor/Behavior/BehaviorFighter.h"
 #include "Actor/DragonModel.h"
 #include "Actor/EnemyPart.h"
 #include "Actor/FloatingFortress.h"
 #include "Actor/ILockOnHittable.h"
 #include "Actor/InterceptCue.h"
 #include "Actor/MechSerpent.h"
-#include "Actor/Behavior/BehaviorMeteor.h"
-#include "Actor/Behavior/BehaviorSineWave.h"
-#include "Actor/Behavior/BehaviorSpline.h"
-#include "Actor/Behavior/BehaviorStationary.h"
-#include "Actor/Behavior/BehaviorStrafe.h"
-#include "Actor/Behavior/BehaviorStraight.h"
-#include "Actor/Behavior/BehaviorTurret.h"
 #include "Audio/SoundManager.h"
 #include "Camera/GameCamera.h"
 #include "Camera/SerpentCameraDirector.h"
@@ -52,6 +44,10 @@
 #include "ResultSequence.h"
 #include "Score/ScoreKeeper.h"
 #include "Score/StageRecord.h"
+#include "Spawn/BossSpawner.h"
+#include "Spawn/FortressSpawner.h"
+#include "Spawn/SerpentSpawner.h"
+#include "Spawn/ZakoSpawner.h"
 #include "SkipHold.h"
 #include "Texture/TextureManager.h"
 #include <filesystem>
@@ -301,6 +297,10 @@ void GamePlayScene::Initialize(EngineBase *engine) {
   // 迎撃の印と、大蛇の出来事で動かすカメラ
   interceptCue_ = std::make_unique<InterceptCue>();
   interceptCue_->Initialize(engine_->GetSpriteRenderer());
+  zakoSpawner_ = std::make_unique<ZakoSpawner>();
+  bossSpawner_ = std::make_unique<BossSpawner>();
+  fortressSpawner_ = std::make_unique<FortressSpawner>();
+  serpentSpawner_ = std::make_unique<SerpentSpawner>();
   serpentCamera_ = std::make_unique<SerpentCameraDirector>();
   serpentCamera_->Initialize();
   bossCamera_ = std::make_unique<BossCameraDirector>();
@@ -505,15 +505,7 @@ void GamePlayScene::Update() {
       StartGameOver();
     } else if (railCamera_ && railCamera_->IsFinished()) {
       // ボスが生きている場合はレールが終わってもクリアにしない
-      bool isBossActive = false;
-      for (const auto &enemy : runtimeEnemies_) {
-        if (enemy->IsBoss()) {
-          isBossActive = true;
-          break;
-        }
-      }
-
-      if (!isBossActive) {
+      if (!boss_.Get()) {
         StartClear();
       }
     }
@@ -643,128 +635,10 @@ void GamePlayScene::Update() {
     for (auto &ev : spawnEvents_) {
       if (t < ev.spawnTime) {
         ev.hasSpawned = false; // シークバック時にフラグをリセット
-      } else if (shouldUpdateWorld && !ev.hasSpawned && t >= ev.spawnTime &&
-                 ev.prefabName == kFortressPrefabName_) {
-        // 浮かぶ砦は部品と一緒に出す（Playモード時のみ）
-        if (isPlayMode_) {
-          SpawnFortress(ev);
-        }
-        ev.hasSpawned = true;
-      } else if (shouldUpdateWorld && !ev.hasSpawned && t >= ev.spawnTime &&
-                 ev.prefabName == kSerpentPrefabName_) {
-        // 大蛇の出番は光る節と一緒に出す（Playモード時のみ）
-        if (isPlayMode_) {
-          SpawnSerpent(ev);
-        }
-        ev.hasSpawned = true;
       } else if (shouldUpdateWorld && !ev.hasSpawned && t >= ev.spawnTime) {
-        // スポーン位置の計算
-        Vector3 spawnWorldPos;
-        if (ev.isWorldSpace) {
-          // ワールド絶対座標指定（固定砲台・環境物など）
-          spawnWorldPos = ev.spawnOffset;
-        } else {
-          // カメラ相対座標指定（指定時間tの「レールの基準座標」を用いて計算）
-          Vector3 cameraPos = railCamera_->GetRailPosition();
-          Vector3 cameraRight = railCamera_->GetRailRight();
-          Vector3 cameraUp = railCamera_->GetRailUp();
-          Vector3 cameraForward = railCamera_->GetRailForward();
-
-          spawnWorldPos = cameraPos +
-                          Vector3{cameraRight.x * ev.spawnOffset.x,
-                                  cameraRight.y * ev.spawnOffset.x,
-                                  cameraRight.z * ev.spawnOffset.x} +
-                          Vector3{cameraUp.x * ev.spawnOffset.y,
-                                  cameraUp.y * ev.spawnOffset.y,
-                                  cameraUp.z * ev.spawnOffset.y} +
-                          Vector3{cameraForward.x * ev.spawnOffset.z,
-                                  cameraForward.y * ev.spawnOffset.z,
-                                  cameraForward.z * ev.spawnOffset.z};
-        }
-
-        // 敵の生成
-        auto newEnemy = PrefabManager::GetInstance()->InstantiateEnemy(
-            ev.prefabName,
-            Transform{{3.0f, 3.0f, 3.0f}, {0, 0, 0}, spawnWorldPos});
-
-        Enemy *enemyPtr = newEnemy.get();
-
-        std::unique_ptr<IEnemyBehavior> behavior;
-        switch (static_cast<int>(ev.moveType)) {
-        case 0:
-          behavior = std::make_unique<BehaviorStraight>();
-          break;
-        case 2:
-          behavior = std::make_unique<BehaviorSineWave>();
-          break;
-        case 3:
-          behavior = std::make_unique<BehaviorStationary>();
-          break;
-        case 4:
-          behavior = std::make_unique<BehaviorFighter>();
-          break;
-        case 5:
-          behavior = std::make_unique<BehaviorMeteor>();
-          break;
-        case 6:
-          behavior = std::make_unique<BehaviorStrafe>();
-          break;
-        case 7:
-          behavior = std::make_unique<BehaviorTurret>();
-          break;
-        default:
-          behavior = std::make_unique<BehaviorStraight>();
-          break;
-        }
-        enemyPtr->SetMoveType(ev.moveType);
-        enemyPtr->SetMoveDirection(ev.moveDirection);
-        enemyPtr->SetBehavior(std::move(behavior));
-
-        if (!ev.splineName.empty() && loadedSplines_.count(ev.splineName)) {
-          enemyPtr->SetBehavior(std::make_unique<BehaviorSpline>(
-              loadedSplines_[ev.splineName], ev.splineDuration,
-              ev.isWorldSpaceSpline, ev.fireInterval));
-        }
-
-        if (ev.prefabName == "Boss") {
-          if (auto boss = dynamic_cast<Boss *>(enemyPtr)) {
-            boss_ = ActorRef<Boss>(boss);
-            boss->InitializeUI(engine_->GetSpriteRenderer());
-            boss->SetCamera(railCamera_.get());
-            boss->SetPlayer(player_.get());
-            boss->GetTransform().scale = {10.0f, 10.0f, 10.0f}; // さらに巨大化
-
-            // 最後の一撃でクリア演出を始める
-            boss->SetOnDyingStartedCallback([this](const Vector3 &pos) {
-              const Boss *dyingBoss = boss_.Get();
-              const float size =
-                  dyingBoss ? dyingBoss->GetTransform().scale.x : kDebugBossSize_;
-              const Vector3 rotation =
-                  dyingBoss ? dyingBoss->GetTransform().rotate : Vector3{};
-              StartClearSequence(pos, size, rotation);
-            });
-
-            // ボス戦開始: レールカメラを低速化し、ボスBGMへ切り替え
-            SoundManager::GetInstance()->PlayBGM("boss_bgm");
-            if (railCamera_) {
-              railCamera_->SetSpeed(0.05f);
-            }
-          }
-        }
-
-        // カメラとオフセット、プレイヤー情報をセット
-        newEnemy->SetCamera(railCamera_.get());
-        newEnemy->SetPlayer(player_.get());
-        newEnemy->SetSpawnOffset(ev.spawnOffset);
-
-        // 撃破を数える。ボスは最後の一撃で数え（StartClearSequence）、それ以外は自機の弾で倒したときだけ撃破に数える
-        if (ev.prefabName != "Boss" && isPlayMode_) {
-          CountEnemyForScore(enemyPtr, ev.spawnTime);
-        }
-
-        // Playモード時のみ実際の敵を生成
+        // 名前に合う出し方で出す（Playモード時のみ）
         if (isPlayMode_) {
-          runtimeEnemies_.push_back(std::move(newEnemy));
+          AddSpawned(SelectSpawner(ev.prefabName).Spawn(ev, MakeSpawnContext()));
         }
         ev.hasSpawned = true;
       }
@@ -961,7 +835,7 @@ void GamePlayScene::Update() {
     } else if (gameState_ == GameState::Clear) {
       hudAlpha = clearSequence_->GetHudAlpha();
     }
-    hud_->Update(*player_, *scoreKeeper_, FindBoss(),
+    hud_->Update(*player_, *scoreKeeper_, boss_.Get(),
                  railCamera_->GetViewProjectionMatrix(), hudAlpha);
   }
 
@@ -2517,15 +2391,6 @@ float GamePlayScene::GetBossSpawnTime() const {
   return bossT;
 }
 
-const Boss *GamePlayScene::FindBoss() const {
-  for (const auto &enemy : runtimeEnemies_) {
-    if (const Boss *boss = dynamic_cast<const Boss *>(enemy.get())) {
-      return boss;
-    }
-  }
-  return nullptr;
-}
-
 void GamePlayScene::ApplySkyAndLighting() {
   // クリア演出の晴れの進み具合を、空・光・霧と雲海へ渡す
   if (clearSequence_) {
@@ -2808,82 +2673,6 @@ void GamePlayScene::LoadLevel(const std::string &filename) {
   }
 }
 
-void GamePlayScene::SpawnFortress(const SpawnEvent &ev) {
-  auto spline = loadedSplines_.find(ev.splineName);
-  if (spline == loadedSplines_.end() || spline->second.size() < 2) {
-    Logger::Log("[GamePlayScene] 浮かぶ砦の道筋が見つからない: " + ev.splineName + "\n");
-    return;
-  }
-
-  // 出し方の moveDirection が 0 でなければ、その向き（ワールド）に固定する
-  std::optional<float> heading;
-  if (std::abs(ev.moveDirection.x) + std::abs(ev.moveDirection.z) > 1e-6f) {
-    heading = std::atan2(ev.moveDirection.x, ev.moveDirection.z);
-  }
-
-  auto fortress = std::make_unique<FloatingFortress>();
-  fortress->Initialize(engine_->GetObject3dRenderer(), railCamera_.get(),
-                       spline->second, ev.spawnTime, ev.splineDuration, heading);
-
-  const auto &specs = FloatingFortress::GetPartSpecs();
-  for (int i = 0; i < FloatingFortress::kPartCount; ++i) {
-    auto part = std::make_unique<EnemyPart>();
-    part->Initialize();
-    part->SetTag(ActorTag::Enemy);
-    auto model = std::make_unique<Object3d>();
-    model->Initialize(engine_->GetObject3dRenderer());
-    model->SetModel(kOccluderModelPath_);
-    model->SetSpecularScale(0.0f);
-    part->SetModel(std::move(model));
-    part->SetBaseColor(kFortressPartColor_);
-    part->SetCamera(railCamera_.get());
-    part->SetPlayer(player_.get());
-    part->Setup(fortress.get(), i, specs[i].role, specs[i].localPosition,
-                specs[i].halfSize);
-    fortress->SetPart(i, part.get());
-
-    // ふだんの敵と同じに、出た敵として数え、自機の弾で倒したときだけ撃破に数える
-    CountEnemyForScore(part.get(), ev.spawnTime);
-    runtimeEnemies_.push_back(std::move(part));
-  }
-  fortresses_.push_back(std::move(fortress));
-}
-
-void GamePlayScene::SpawnSerpent(const SpawnEvent &ev) {
-  auto spline = loadedSplines_.find(ev.splineName);
-  if (spline == loadedSplines_.end() || spline->second.size() < 2) {
-    Logger::Log("[GamePlayScene] 大蛇の道筋が見つからない: " + ev.splineName + "\n");
-    return;
-  }
-
-  auto serpent = std::make_unique<MechSerpent>();
-  serpent->Initialize(engine_->GetObject3dRenderer(), railCamera_.get(), player_.get(),
-                      interceptCue_.get(), spline->second, ev.spawnTime, ev.splineDuration,
-                      ev.serpent);
-
-  const auto &specs = serpent->GetPartSpecs();
-  for (int i = 0; i < static_cast<int>(specs.size()); ++i) {
-    auto part = std::make_unique<EnemyPart>();
-    part->Initialize();
-    part->SetTag(ActorTag::Enemy);
-    auto model = std::make_unique<Object3d>();
-    model->Initialize(engine_->GetObject3dRenderer());
-    model->SetModel(kOccluderModelPath_);
-    model->SetSpecularScale(0.0f);
-    part->SetModel(std::move(model));
-    part->SetBaseColor(specs[i].color);
-    part->SetCamera(railCamera_.get());
-    part->SetPlayer(player_.get());
-    part->Setup(serpent.get(), i, specs[i].role, specs[i].localPosition, specs[i].halfSize);
-    serpent->SetPart(i, part.get());
-
-    // ふだんの敵と同じに、出た敵として数え、自機の弾で倒したときだけ撃破に数える
-    CountEnemyForScore(part.get(), ev.spawnTime);
-    runtimeEnemies_.push_back(std::move(part));
-  }
-  serpents_.push_back(std::move(serpent));
-}
-
 void GamePlayScene::CountEnemyForScore(Enemy *enemy, float spawnTime) {
   const int scoreId = scoreKeeper_->OnEnemySpawned(spawnTime);
   enemy->SetOnDestroyedCallback([this, scoreId, enemy](bool isSelfDestruct) {
@@ -2892,6 +2681,68 @@ void GamePlayScene::CountEnemyForScore(Enemy *enemy, float spawnTime) {
                                   enemy->GetTransform().translate);
     }
   });
+}
+
+EnemySpawner &GamePlayScene::SelectSpawner(const std::string &prefabName) {
+  if (prefabName == kBossPrefabName_) {
+    return *bossSpawner_;
+  }
+  if (prefabName == kFortressPrefabName_) {
+    return *fortressSpawner_;
+  }
+  if (prefabName == kSerpentPrefabName_) {
+    return *serpentSpawner_;
+  }
+  return *zakoSpawner_;
+}
+
+SpawnContext GamePlayScene::MakeSpawnContext() {
+  SpawnContext context;
+  context.camera = railCamera_.get();
+  context.player = player_.get();
+  context.object3dRenderer = engine_->GetObject3dRenderer();
+  context.spriteRenderer = engine_->GetSpriteRenderer();
+  context.splines = &loadedSplines_;
+  context.interceptCue = interceptCue_.get();
+  context.countForScore = [this](Enemy *enemy, float spawnTime) {
+    CountEnemyForScore(enemy, spawnTime);
+  };
+  return context;
+}
+
+void GamePlayScene::AddSpawned(SpawnResult result) {
+  for (auto &enemy : result.enemies) {
+    runtimeEnemies_.push_back(std::move(enemy));
+  }
+  if (result.fortress) {
+    fortresses_.push_back(std::move(result.fortress));
+  }
+  if (result.serpent) {
+    serpents_.push_back(std::move(result.serpent));
+  }
+  if (result.boss) {
+    OnBossSpawned(result.boss);
+  }
+}
+
+void GamePlayScene::OnBossSpawned(Boss *boss) {
+  boss_ = ActorRef<Boss>(boss);
+
+  // 最後の一撃でクリア演出を始める
+  boss->SetOnDyingStartedCallback([this](const Vector3 &pos) {
+    const Boss *dyingBoss = boss_.Get();
+    const float size =
+        dyingBoss ? dyingBoss->GetTransform().scale.x : kDebugBossSize_;
+    const Vector3 rotation =
+        dyingBoss ? dyingBoss->GetTransform().rotate : Vector3{};
+    StartClearSequence(pos, size, rotation);
+  });
+
+  // ボス戦開始: レールカメラを低速化し、ボスBGMへ切り替え
+  SoundManager::GetInstance()->PlayBGM("boss_bgm");
+  if (railCamera_) {
+    railCamera_->SetSpeed(0.05f);
+  }
 }
 
 void GamePlayScene::ClearRuntimeEnemies() {

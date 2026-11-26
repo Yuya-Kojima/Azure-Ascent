@@ -4,6 +4,7 @@
 #include "Actor/DragonModel.h"
 #include "Actor/Enemy.h"
 #include "Actor/HomingBullet.h"
+#include "Actor/IPlayerContact.h"
 #include "Actor/LockOn.h"
 #include "Actor/NormalBullet.h"
 #include "Score/ScoreKeeper.h"
@@ -725,6 +726,14 @@ void Player::OnCollision(Collider *other) {
   Logger::Log("========================\n");
   Logger::Log("Player hit by something!\n");
   Logger::Log("========================\n");
+
+  // 敵や敵の弾にぶつかったら、無敵でなければダメージを受け、相手に当たったことを知らせる
+  auto *contact = dynamic_cast<IPlayerContact *>(other->GetOwner());
+  if (!contact || !contact->CanHitPlayer() || invincibleTimer_ > 0) {
+    return;
+  }
+  TakeDamage(kContactDamage_);
+  contact->OnHitPlayer();
 }
 
 void Player::TakeDamage(int damage) {

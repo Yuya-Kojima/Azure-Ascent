@@ -43,21 +43,7 @@ class BossCameraDirector;
 #include "Framework/ActorRef.h"
 #include "Render/SkyBox/SkyBox.h"
 #include "Score/ScoreConfig.h"
-
-struct SpawnEvent {
-  float spawnTime = 0.0f;
-  std::string prefabName = "ZakoEnemy";
-  Vector3 spawnOffset = {0.0f, 0.0f, 50.0f}; // カメラからの相対位置、またはワールド絶対座標
-  bool isWorldSpace = false;        // trueならspawnOffsetをワールド絶対座標として扱う
-  std::string splineName = "";     // 使用するレール名（空なら直線移動）
-  float splineDuration = 5.0f;     // レールを走り切る秒数
-  bool isWorldSpaceSpline = false; // ワールド空間か、カメラローカル空間か
-  int fireInterval = -1;           // -1なら撃たない。0以上なら指定フレーム間隔で射撃
-  bool hasSpawned = false;         // 実行管理用フラグ
-  MoveType moveType = MoveType::Straight;
-  Vector3 moveDirection = {0.0f, 0.0f, 1.0f}; // カメラ基準の移動方向ベクトル（デフォルトは前進）
-  SerpentSpec serpent;             // 大蛇（MechSerpent）の出番の決まり。ほかの出し方では使わない
-};
+#include "Spawn/EnemySpawner.h"
 
 enum class GameState { Intro, Play, Clear, GameOver };
 
@@ -175,7 +161,6 @@ private: // メンバ変数(ゲーム用)
   // 浮かぶ砦（部品は runtimeEnemies_ に入る）
   std::vector<std::unique_ptr<FloatingFortress>> fortresses_;
   static inline const std::string kFortressPrefabName_ = "FloatingFortress"; // 砦を出す出し方の名前
-  static constexpr Vector4 kFortressPartColor_ = {1.0f, 0.2f, 0.2f, 1.0f};      // 砦の部品の色（ふだんの敵と同じ赤）
   static constexpr float kFortressDestroyedShakeIntensity_ = 0.8f;              // 砦の爆発でカメラを揺らす強さ
   static constexpr float kFortressDestroyedShakeSeconds_ = 0.5f;                // 砦の爆発でカメラを揺らす秒数
   // 区間 3 の大蛇の出番（部品は runtimeEnemies_ に入る）
@@ -197,6 +182,12 @@ private: // メンバ変数(ゲーム用)
 
   // スポーンイベント
   std::vector<SpawnEvent> spawnEvents_;
+  // 敵の出し方（雑魚・ボス・浮かぶ砦・大蛇）
+  std::unique_ptr<EnemySpawner> zakoSpawner_;
+  std::unique_ptr<EnemySpawner> bossSpawner_;
+  std::unique_ptr<EnemySpawner> fortressSpawner_;
+  std::unique_ptr<EnemySpawner> serpentSpawner_;
+  static inline const std::string kBossPrefabName_ = "Boss"; // ボスを出す出し方の名前
 
   // 動的配置オブジェクト (ドラッグ＆ドロップで追加された背景・モデル等)
   std::vector<std::unique_ptr<Object3d>> sceneObjects_;
@@ -383,11 +374,6 @@ private:
   float GetBossSpawnTime() const;
 
   /// <summary>
-  /// 出ているボス（いなければ nullptr）
-  /// </summary>
-  const Boss *FindBoss() const;
-
-  /// <summary>
   /// 空・雲海・光・霧・ポストエフェクトを設定する
   /// </summary>
   void ApplySkyAndLighting();
@@ -395,21 +381,31 @@ private:
   void SpawnSceneObject(const std::string &modelPath, const Vector3 &position);
 
   /// <summary>
-  /// 浮かぶ砦と部品 8 個を出す。部品は撃破に数える敵として登録する
-  /// </summary>
-  void SpawnFortress(const SpawnEvent &ev);
-
-  /// <summary>
-  /// 大蛇の 1 回の出番と、その光る節を出す。光る節は撃破に数える敵として登録する
-  /// </summary>
-  void SpawnSerpent(const SpawnEvent &ev);
-
-  /// <summary>
   /// 出た敵として数え、自機の弾で倒されたら、最後に当たった弾の射撃番号つきで撃破を数える
   /// </summary>
   /// <param name="enemy">数える敵（自爆で消えたときは撃破に数えない）</param>
   /// <param name="spawnTime">出たときのレールの進み具合</param>
   void CountEnemyForScore(Enemy *enemy, float spawnTime);
+
+  /// <summary>
+  /// 出す物の名前 prefabName に合う出し方を返す
+  /// </summary>
+  EnemySpawner &SelectSpawner(const std::string &prefabName);
+
+  /// <summary>
+  /// 敵を出すときに使う道具を、今シーンが持っている物でそろえる
+  /// </summary>
+  SpawnContext MakeSpawnContext();
+
+  /// <summary>
+  /// 出した物をそれぞれの一覧に入れる。ボスが出ていればボス戦を始める
+  /// </summary>
+  void AddSpawned(SpawnResult result);
+
+  /// <summary>
+  /// ボス戦を始める（ボスを覚え、倒されたらクリア演出を始めるようにし、BGM を変えてレールを遅くする）
+  /// </summary>
+  void OnBossSpawned(Boss *boss);
 
   /// <summary>
   /// 出ている敵と砦と大蛇をすべて消す

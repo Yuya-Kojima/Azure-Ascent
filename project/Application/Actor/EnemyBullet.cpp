@@ -1,5 +1,4 @@
 #include "EnemyBullet.h"
-#include "Actor/HomingBullet.h"
 #include "Actor/Player.h"
 #include "Collision/CollisionConfig.h"
 #include "Collision/CollisionManager.h"
@@ -288,50 +287,12 @@ void EnemyBullet::Update() {
   }
 }
 
-void EnemyBullet::OnCollision(Collider *other) {
-  if (isDead_)
-    return;
-
-  // 相手がプレイヤーの場合
-  if (other->GetOwner() && dynamic_cast<Player *>(other->GetOwner())) {
-    Player *p = dynamic_cast<Player *>(other->GetOwner());
-    if (p->GetInvincibleTimer() > 0) {
-      return; // 無敵中はすり抜ける（消えない）
-    }
-    isDead_ = true;
-    p->TakeDamage(1);
-    return;
-  }
-
-  // 破壊不可弾は何が当たっても壊れない
-  if (type_ == EnemyBulletType::Indestructible)
-    return;
-
-  // 相手がプレイヤーの弾かチェック
-  if (other->GetAttribute() & kCollisionAttributePlayerBullet) {
-    // 相手を狙って飛んでいるロックオン弾はすり抜ける（狙った相手には着いたときに OnLockOnHit で当たる）
-    auto *homing = dynamic_cast<HomingBullet *>(other->GetOwner());
-    if (homing && homing->GetTarget()) {
-      return;
-    }
-
-    // 通常ショットと、狙う相手を失ったロックオン弾は 1 ダメージ
-    hp_ -= 1;
-    Logger::Log("EnemyBullet: Hit by player bullet!\n");
-
-    if (hp_ <= 0) {
-      Logger::Log("EnemyBullet: Intercepted!\n");
-      Explode(); // エフェクトを発生させて自身を破棄
-    }
-  }
-}
-
-void EnemyBullet::OnLockOnHit(int damage, int /*volleyId*/) {
+void EnemyBullet::OnPlayerBulletHit(int damage, int /*volleyId*/) {
   if (isDead_ || type_ == EnemyBulletType::Indestructible)
     return;
 
   hp_ -= damage;
-  Logger::Log("EnemyBullet: Hit by targeted HomingBullet!\n");
+  Logger::Log("EnemyBullet: Hit by player bullet!\n");
 
   if (hp_ <= 0) {
     Logger::Log("EnemyBullet: Intercepted!\n");

@@ -31,5 +31,6 @@ private:
   
   Vector3 velocity_;
   int damage_ = 1;
+  static constexpr int kEnemyBulletDamage_ = 1; // 敵の弾に当たったときに与えるダメージ
   int lifeTimer_ = 60; // 寿命（約1秒で消滅）
 };

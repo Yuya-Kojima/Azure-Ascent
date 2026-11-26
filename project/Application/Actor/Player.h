@@ -268,6 +268,7 @@ private:
   Vector3 flashColor_ = {1.0f, 0.0f, 0.0f}; // 画面フラッシュカラー
 
   int invincibleTimer_ = 0; // 無敵時間のタイマー
+  static constexpr int kContactDamage_ = 1; // 敵や敵の弾にぶつかったときに受けるダメージ
 
   std::function<void()> onDamagedCallback_ = nullptr; // 被弾して体力が減ったときに呼ぶ関数
 

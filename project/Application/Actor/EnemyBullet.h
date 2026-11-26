@@ -1,5 +1,8 @@
 #pragma once
+#include "Actor/IClearedByBoss.h"
 #include "Actor/ILockOnHittable.h"
+#include "Actor/IPlayerBulletHittable.h"
+#include "Actor/IPlayerContact.h"
 #include "Framework/BaseActor.h"
 #include "Math/Vector3.h"
 #include <memory>
@@ -16,7 +19,11 @@ enum class EnemyBulletType {
   Indestructible      // 破壊不可
 };
 
-class EnemyBullet : public BaseActor, public ILockOnHittable {
+class EnemyBullet : public BaseActor,
+                    public ILockOnHittable,
+                    public IPlayerBulletHittable,
+                    public IPlayerContact,
+                    public IClearedByBoss {
 public:
   // 砲台・砦の砲座が自機を狙って撃つ弾の速さ（m/フレーム）
   static constexpr float kAimedShotSpeed_ = 1.3f;
@@ -29,12 +36,21 @@ public:
   void Update() override;
   void Draw3D() override;
   void Explode(); // 破壊エフェクトを伴って消滅する
-  void OnCollision(class Collider* other) override;
+
+  // 今ぶつかったら自機にダメージを与えるか（壊れた後は与えない）
+  bool CanHitPlayer() const override { return !isDead_; }
+  // 自機に当たった。弾は消える
+  void OnHitPlayer() override { isDead_ = true; }
 
   // ロックオンできるのは、ロックオン可能弾（ボスのミサイルなど）だけ
   bool CanBeLockedOn() const override { return type_ == EnemyBulletType::LockOnDestructible; }
-  // ロックオン弾が着いた: ダメージを受け、HP が尽きたら壊れる
-  void OnLockOnHit(int damage, int volleyId) override;
+  // 自機の弾が当たった: ダメージを受け、HP が尽きたら壊れる（破壊不可弾は壊れない）
+  void OnPlayerBulletHit(int damage, int volleyId) override;
+
+  // ボスの形態変化が始まった: その場で消える
+  void OnBossTransition() override { isDead_ = true; }
+  // ボスが撃破された: 誘爆して消える
+  void OnBossDefeated() override { Explode(); }
 
   EnemyBulletType GetBulletType() const { return type_; }
   void SetBulletType(EnemyBulletType type) { type_ = type; }

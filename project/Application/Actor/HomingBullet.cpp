@@ -1,5 +1,5 @@
 #include "HomingBullet.h"
-#include "Actor/ILockOnHittable.h"
+#include "Actor/IPlayerBulletHittable.h"
 #include "Collision/CollisionConfig.h"
 #include "Camera/RailCamera.h"
 #include "Collision/SphereCollider.h"
@@ -166,9 +166,9 @@ void HomingBullet::Arrive() {
   BaseActor *target = target_.Get();
 
   // 射撃の券を返すとその射撃の点が決まるので、先にダメージを与えて倒した数を射撃に足しておく
-  auto *hittable = dynamic_cast<ILockOnHittable *>(target);
+  auto *hittable = dynamic_cast<IPlayerBulletHittable *>(target);
   if (hittable && !target->IsDead()) {
-    hittable->OnLockOnHit(damage_, volleyTicket_.GetVolleyId());
+    hittable->OnPlayerBulletHit(damage_, volleyTicket_.GetVolleyId());
     volleyTicket_.Finish();
 
     // ホーミング専用着弾演出（太く鋭い十字グリント＋高速プラズマリング）
@@ -201,9 +201,9 @@ void HomingBullet::OnCollision(Collider *other) {
   // 狙った敵を失った弾は、途中でぶつかった敵・敵の弾に当たる
   // 当て方は狙った敵と同じ（射撃番号を覚えさせてからダメージ）
   if (other->GetAttribute() & kCollisionAttributeEnemy) {
-    auto *hittable = dynamic_cast<ILockOnHittable *>(owner);
+    auto *hittable = dynamic_cast<IPlayerBulletHittable *>(owner);
     if (hittable && !owner->IsDead()) {
-      hittable->OnLockOnHit(damage_, volleyTicket_.GetVolleyId());
+      hittable->OnPlayerBulletHit(damage_, volleyTicket_.GetVolleyId());
       isDead_ = true;
       volleyTicket_.Finish();
 
@@ -214,6 +214,9 @@ void HomingBullet::OnCollision(Collider *other) {
       Logger::Log("Homing Bullet Hit Enemy!\n");
     }
   } else if (other->GetAttribute() & kCollisionAttributeEnemyBullet) {
+    if (auto *hittable = dynamic_cast<IPlayerBulletHittable *>(owner)) {
+      hittable->OnPlayerBulletHit(kEnemyBulletDamage_, volleyTicket_.GetVolleyId());
+    }
     isDead_ = true;
     volleyTicket_.Finish();
 

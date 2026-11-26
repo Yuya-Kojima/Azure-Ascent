@@ -4,6 +4,7 @@
 #include "Actor/BossCore.h"
 #include "Actor/BossWeakPoint.h"
 #include "Actor/EnemyBullet.h"
+#include "Actor/IClearedByBoss.h"
 #include "Actor/Player.h"
 #include "Framework/ActorManager.h" 
 #include "Camera/ICamera.h"
@@ -76,6 +77,7 @@ void Boss::Initialize() {
     core->SetOffset(coreOffsets[i]);
 
     BossCore *corePtr = core.get();
+    cores_.push_back(ActorRef<BossCore>(corePtr));
     ActorManager::GetInstance()->AddActor(std::move(core));
 
     // 2. 装甲の生成（手前側）
@@ -860,16 +862,6 @@ void Boss::Draw2D() {
   }
 }
 
-void Boss::OnCollision(Collider *other) {
-  if (other->GetOwner() && dynamic_cast<Player *>(other->GetOwner())) {
-    Player *p = dynamic_cast<Player *>(other->GetOwner());
-    if (p->GetInvincibleTimer() > 0) {
-      return; // 無敵中は食らわない
-    }
-    p->TakeDamage(1); // プレイヤーにダメージを与える
-  }
-}
-
 void Boss::TakeDamage(int damage, bool isSelfDestruct) {
   // 形態変化中、死亡演出中、または死亡済みの場合はダメージを受け付けない（演出リセット防止）
   if (isDead_ || phase_ == BossPhase::PhaseTransition || phase_ == BossPhase::Dying || phase_ == BossPhase::Defeated)
@@ -902,9 +894,14 @@ void Boss::ChangePhase(BossPhase nextPhase) {
   if (phase_ == BossPhase::PhaseTransition) {
     Logger::Log("Boss entering Phase Transition!\n");
     
-    // 形態変化に入った瞬間に、画面上のすべての敵弾（EnemyBullet）を消去する
+    // 形態変化に入った瞬間に、画面上のすべての敵弾を消去する
     ActorManager::GetInstance()->ClearActorsIf([](BaseActor* actor) {
-        return dynamic_cast<EnemyBullet*>(actor) != nullptr;
+        auto* cleared = dynamic_cast<IClearedByBoss*>(actor);
+        if (!cleared) {
+            return false;
+        }
+        cleared->OnBossTransition();
+        return true;
     });
     
     stateTimer_ = 0.0f;
@@ -932,17 +929,22 @@ void Boss::ChangePhase(BossPhase nextPhase) {
     
     // ボス撃破と同時に画面上のすべての敵弾（ミサイル含む）を誘爆させる
     ActorManager::GetInstance()->ClearActorsIf([](BaseActor* actor) {
-        if (auto* bullet = dynamic_cast<EnemyBullet*>(actor)) {
-            bullet->Explode();
-            return true; // 誘爆させつつリストからも直ちに消去する
+        auto* cleared = dynamic_cast<IClearedByBoss*>(actor);
+        if (!cleared) {
+            return false;
         }
-        // 残存しているすべてのコア（BossCore）も爆発エフェクトと共に消去する
-        if (auto* core = dynamic_cast<class BossCore*>(actor)) {
-            EffectManager::GetInstance()->PlayEnemyDeathSimpleEffect(core->GetTransform().translate, {1.0f, 0.5f, 0.0f, 1.0f});
-            return true; 
-        }
-        return false;
+        cleared->OnBossDefeated();
+        return true; // 誘爆させつつリストからも直ちに消去する
     });
+
+    // 残っているコアも爆発させて消す
+    for (const ActorRef<BossCore>& coreRef : cores_) {
+        if (BossCore* core = coreRef.Get()) {
+            EffectManager::GetInstance()->PlayEnemyDeathSimpleEffect(core->GetTransform().translate, kCoreBlastColor_);
+            core->Destroy();
+        }
+    }
+    cores_.clear();
 
     // 残った装甲と突進の的を消す（ボスより長く残って、消えたボスを指さないようにする）
     DestroyParts();

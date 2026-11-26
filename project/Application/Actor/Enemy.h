@@ -1,5 +1,7 @@
 #pragma once
 #include "Actor/ILockOnHittable.h"
+#include "Actor/IPlayerBulletHittable.h"
+#include "Actor/IPlayerContact.h"
 #include "Framework/BaseActor.h"
 #include "Math/Vector3.h"
 #include "Math/Vector4.h"
@@ -27,7 +29,10 @@ enum class MoveType {
   Turret
 };
 
-class Enemy : public BaseActor, public ILockOnHittable {
+class Enemy : public BaseActor,
+              public ILockOnHittable,
+              public IPlayerBulletHittable,
+              public IPlayerContact {
 public:
   Enemy();
   ~Enemy() override;
@@ -36,7 +41,11 @@ public:
   void Update() override;
   void UpdateTransform() override;
   void Draw3D() override;
-  void OnCollision(class Collider *other) override;
+
+  // 今ぶつかったら自機にダメージを与えるか（倒された後は与えない）
+  bool CanHitPlayer() const override { return !IsDead(); }
+  // 自機に当たった。自分も自爆する
+  void OnHitPlayer() override;
 
   // ロックオンできるか（振る舞いがあれば振る舞いが決める）
   bool CanBeLockedOn() const override {
@@ -46,17 +55,14 @@ public:
     return true;
   }
 
-  // ロックオン弾が着いた: 射撃番号を覚えてからダメージを受ける
-  void OnLockOnHit(int damage, int volleyId) override {
+  // 自機の弾が当たった: 射撃番号を覚えてからダメージを受ける
+  void OnPlayerBulletHit(int damage, int volleyId) override {
     SetLastHitVolley(volleyId);
     TakeDamage(damage);
   }
 
-  // ボスかどうかの判定（デスポーン除外等で使用）
-  virtual bool IsBoss() const { return false; }
-
   // 画面の外でカメラの後ろに取り残されたときに消えるか
-  virtual bool CanDespawnBehindCamera() const { return !IsBoss(); }
+  virtual bool CanDespawnBehindCamera() const { return true; }
 
   // 画面内に映っているかどうかの判定（マージン付き）
   bool IsInScreen(float margin = 0.0f) const;

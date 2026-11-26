@@ -153,9 +153,6 @@ void PrefabManager::PreloadLightModels(const std::string& prefabName) const {
 }
 
 std::unique_ptr<Enemy> PrefabManager::InstantiateEnemy(const std::string& prefabName, const Transform& transform) {
-    nlohmann::json root;
-    const bool hasPrefab = LoadPrefabJson(prefabName, root);
-
     // 生成して初期化
     std::unique_ptr<Enemy> newEnemy;
     if (prefabName == "Boss") {
@@ -163,14 +160,22 @@ std::unique_ptr<Enemy> PrefabManager::InstantiateEnemy(const std::string& prefab
     } else {
         newEnemy = std::make_unique<Enemy>();
     }
-    newEnemy->Initialize();
+    InitializeEnemy(*newEnemy, prefabName, transform);
+    return newEnemy;
+}
+
+void PrefabManager::InitializeEnemy(Enemy& enemy, const std::string& prefabName, const Transform& transform) {
+    nlohmann::json root;
+    const bool hasPrefab = LoadPrefabJson(prefabName, root);
+
+    enemy.Initialize();
 
     std::string modelPath = GetDefaultModelPath(prefabName);
 
     if (hasPrefab) {
         // タグの復元
         if (root.contains("tag")) {
-            newEnemy->SetTag(StringToActorTag(root["tag"]));
+            enemy.SetTag(StringToActorTag(root["tag"]));
         }
         
         // モデルパスの復元
@@ -181,27 +186,27 @@ std::unique_ptr<Enemy> PrefabManager::InstantiateEnemy(const std::string& prefab
         // スケールの復元
         if (root.contains("scale")) {
             Vector3 s = {root["scale"][0], root["scale"][1], root["scale"][2]};
-            newEnemy->GetTransform().scale = s;
+            enemy.GetTransform().scale = s;
         }
 
         // ステータスの復元
         if (root.contains("hp")) {
-            newEnemy->SetHP(root["hp"]);
+            enemy.SetHP(root["hp"]);
         }
         if (root.contains("speed")) {
-            newEnemy->SetSpeed(root["speed"]);
+            enemy.SetSpeed(root["speed"]);
         }
         if (root.contains("moveDirection")) {
             Vector3 md = {root["moveDirection"][0], root["moveDirection"][1], root["moveDirection"][2]};
-            newEnemy->SetMoveDirection(md);
+            enemy.SetMoveDirection(md);
         }
         
         // 位置と回転は引数で渡されたものを適用
-        newEnemy->GetTransform().translate = transform.translate;
-        newEnemy->GetTransform().rotate = transform.rotate;
+        enemy.GetTransform().translate = transform.translate;
+        enemy.GetTransform().rotate = transform.rotate;
     } else {
         // プレハブが見つからない場合はデフォルトパラメータを使用
-        newEnemy->GetTransform() = transform;
+        enemy.GetTransform() = transform;
     }
 
     // 体の色（プレハブに色がなければ、ボスは灰青・それ以外は赤）
@@ -215,13 +220,13 @@ std::unique_ptr<Enemy> PrefabManager::InstantiateEnemy(const std::string& prefab
     dummyModel->Initialize(object3dRenderer_);
     dummyModel->SetModel(modelPath);
     dummyModel->SetColor(bodyColor);
-    newEnemy->SetModel(std::move(dummyModel));
-    newEnemy->SetBaseColor(bodyColor);
+    enemy.SetModel(std::move(dummyModel));
+    enemy.SetBaseColor(bodyColor);
 
     if (hasPrefab) {
         // 被弾したときの色
         if (root.contains("hitFlashColor")) {
-            newEnemy->SetHitFlashColor(ReadColor(root["hitFlashColor"]));
+            enemy.SetHitFlashColor(ReadColor(root["hitFlashColor"]));
         }
 
         // ふちの光
@@ -233,17 +238,16 @@ std::unique_ptr<Enemy> PrefabManager::InstantiateEnemy(const std::string& prefab
             }
             float intensity = rim.value("intensity", 0.0f);
             float power = rim.value("power", 3.0f);
-            newEnemy->SetRimLight(rimColor, intensity, power);
+            enemy.SetRimLight(rimColor, intensity, power);
         }
 
         // 光る部品（体のモデルを親にするので、モデルを持たせた後に作る）
         std::vector<EnemyLights::Part> parts = ReadLightParts(root);
         if (!parts.empty()) {
             auto lights = std::make_unique<EnemyLights>();
-            lights->Initialize(object3dRenderer_, newEnemy->GetModel(), parts);
-            newEnemy->SetLights(std::move(lights));
+            lights->Initialize(object3dRenderer_, enemy.GetModel(), parts);
+            enemy.SetLights(std::move(lights));
         }
     }
 
-    return newEnemy;
 }

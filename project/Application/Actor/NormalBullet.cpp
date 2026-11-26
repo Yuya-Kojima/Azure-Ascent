@@ -7,7 +7,8 @@
 #include "Math/MathUtil.h"
 #include "Debug/Logger.h"
 #include <Windows.h>
-#include "Actor/Enemy.h"
+#include "Actor/IPlayerBulletHittable.h"
+#include "Score/VolleyId.h"
 #include "Render/Renderer/LineRenderer.h"
 #include <cmath>
 #include "Collision/SphereCollider.h"
@@ -86,10 +87,10 @@ void NormalBullet::OnCollision(Collider* other) {
   if (isDead_) return;
 
   if (other->GetAttribute() & kCollisionAttributeEnemy) {
-    Enemy* enemy = dynamic_cast<Enemy*>(other->GetOwner());
-    if (enemy && !enemy->IsDead()) {
-      enemy->SetLastHitVolley(kNoVolleyId);
-      enemy->TakeDamage(damage_);
+    BaseActor* owner = other->GetOwner();
+    auto* hittable = dynamic_cast<IPlayerBulletHittable*>(owner);
+    if (hittable && !owner->IsDead()) {
+      hittable->OnPlayerBulletHit(damage_, kNoVolleyId);
       isDead_ = true;
 
       // 着弾ヒットスパーク（通常弾：ゴールド/オレンジ系の火花）
@@ -103,6 +104,9 @@ void NormalBullet::OnCollision(Collider* other) {
     }
   }
   else if (other->GetAttribute() & kCollisionAttributeEnemyBullet) {
+    if (auto* hittable = dynamic_cast<IPlayerBulletHittable*>(other->GetOwner())) {
+      hittable->OnPlayerBulletHit(kEnemyBulletDamage_, kNoVolleyId);
+    }
     isDead_ = true;
 
     // 着弾ヒットスパーク（通常弾：ゴールド/オレンジ系の火花）

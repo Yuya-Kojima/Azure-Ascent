@@ -1,5 +1,6 @@
 #pragma once
 #include "Actor/Enemy.h"
+#include "Framework/ActorRef.h"
 #include "Framework/BaseActor.h"
 #include "Math/Quaternion.h"
 #include "Math/Vector3.h"
@@ -17,6 +18,7 @@ class SphereCollider;
 class Player;
 class SpriteRenderer;
 class BossWeakPoint;
+class BossCore;
 
 enum class BossPhase { Phase1, PhaseTransition, Phase2, Dying, Defeated };
 
@@ -30,15 +32,17 @@ public:
   void Update() override;
   void Draw3D() override;
   void Draw2D() override;
-  void OnCollision(class Collider *other) override;
 
   // 突進中（予兆含む）かどうかの判定
   bool IsDashing() const {
       return currentState_ == BossState::DashTelegraph || currentState_ == BossState::Dash;
   }
 
-  // ボスかどうかの判定
-  bool IsBoss() const override { return true; }
+  // 自機に当たっても自爆しない
+  void OnHitPlayer() override {}
+
+  // 画面の外でカメラの後ろに取り残されても消えない
+  bool CanDespawnBehindCamera() const override { return false; }
 
   // 死亡演出中または死亡済みかどうかの判定
   bool IsDyingOrDefeated() const {
@@ -109,6 +113,7 @@ private:
   int maxHp_ = 100;
   BossPhase phase_ = BossPhase::Phase1;
   static constexpr float kTransitionSeconds_ = 3.5f; // 形態変化にかける秒数
+  static constexpr Vector4 kCoreBlastColor_ = {1.0f, 0.5f, 0.0f, 1.0f}; // 撃破のときにコアが爆発する色
   std::vector<CameraEvent> cameraEvents_; // まだ受け取られていないカメラの出来事
 
   // ステートマシン管理
@@ -154,6 +159,9 @@ private:
   
   // --- 突進時の弱点管理 ---
   std::vector<BossWeakPoint*> activeWeakPoints_;
+
+  // --- コア（装甲の奥の弱点）。撃破のときに爆発させて消す ---
+  std::vector<ActorRef<BossCore>> cores_;
 
 public:
   // 最後の一撃（Dying に入った瞬間）に、ボスの位置を渡して呼ぶ
