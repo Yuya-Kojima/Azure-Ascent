@@ -5,7 +5,9 @@
 #include "Render/Sprite/Sprite.h"
 #include <memory>
 #include <array>
+#include <functional>
 #include <numbers>
+#include <string>
 
 class SpriteRenderer;
 class ICamera;
@@ -71,9 +73,20 @@ public:
   const Vector3& GetTarget3DPosition() const { return target3DPos_; }
   const Vector3& GetRayDirection() const { return rayDirection_; }
 
-  Config& GetConfig() { return config_; }
+  /// <summary>
+  /// エディタで調整値を直す・保存する
+  /// </summary>
+  void DrawImGui();
 
 private:
+  /// <summary>
+  /// 調整値を名前と一緒に 1 つずつ渡す（読み書きで同じ並びを使う）
+  /// </summary>
+  void VisitConfigValues(const std::function<void(const std::string& key, float& value)>& visit);
+
+  void LoadConfig();
+  void SaveConfig();
+
   Config config_;
   SpriteRenderer* spriteRenderer_ = nullptr;
 

@@ -64,6 +64,12 @@ public:
   void Load(const std::string &filePath);
   void Save(const std::string &filePath);
 
+  // UI の JSON を読み込んで、エディタの窓を開く
+  void OpenEditor(const std::string &filePath);
+  // エディタの窓を開く・閉じる（閉じている間 DrawEditor・DrawEditorGizmo は何も描かない）
+  void SetEditorOpen(bool isOpen) { isEditorOpen_ = isOpen; }
+  bool IsEditorOpen() const { return isEditorOpen_; }
+
   // 全ノードの不透明度に掛ける値（0〜1）。Load で 1 に戻る
   void SetGlobalAlpha(float alpha) { globalAlpha_ = alpha; }
   float GetGlobalAlpha() const { return globalAlpha_; }
@@ -82,6 +88,7 @@ private:
   void DrawNodeProperties(UINode *node);
 
   bool isDrawnThisFrame_ = false;
+  bool isEditorOpen_ = false;
   float globalAlpha_ = 1.0f;
 
   SpriteRenderer *renderer_ = nullptr;

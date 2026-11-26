@@ -1102,110 +1102,7 @@ void GamePlayScene::Update() {
     ImGui::Text("Player Action Settings");
     ImGui::Separator();
     if (player_) {
-      bool isDirty = player_->IsActionConfigDirty();
-
-      if (isDirty) {
-        ImGui::PushStyleColor(
-            ImGuiCol_Button,
-            ImVec4(0.8f, 0.6f, 0.0f, 1.0f)); // 警告色（オレンジ）
-        ImGui::PushStyleColor(ImGuiCol_ButtonHovered,
-                              ImVec4(0.9f, 0.7f, 0.1f, 1.0f));
-        ImGui::PushStyleColor(ImGuiCol_ButtonActive,
-                              ImVec4(1.0f, 0.8f, 0.2f, 1.0f));
-      }
-
-      std::string buttonText = isDirty
-                                   ? (const char *)u8"[* 未保存] Save Config"
-                                   : (const char *)u8"Save Config";
-      if (ImGui::Button(buttonText.c_str(),
-                        ImVec2(ImGui::GetContentRegionAvail().x, 30))) {
-        player_->SaveActionConfig();
-        isDirty = false;
-      }
-
-      if (isDirty) {
-        ImGui::PopStyleColor(3);
-      }
-
-      ImGui::Spacing();
-
-      auto &config = player_->GetActionConfig();
-      bool changed = false;
-
-      changed |= ImGui::SliderFloat((const char *)u8"ロックオンの吸いつき範囲",
-                                    &config.lockOnRadius, 10.0f, 500.0f);
-      changed |= ImGui::SliderFloat((const char *)u8"ロックオン弾の届く秒",
-                                    &config.homingFlightSeconds, 0.1f, 1.5f);
-      changed |= ImGui::SliderFloat((const char *)u8"ロックオン弾のふくらみ（フレーム）",
-                                    &config.homingBulgeFrames, 0.0f, 40.0f);
-      changed |= ImGui::SliderFloat((const char *)u8"ホーミング弾の左右拡散幅",
-                                    &config.homingSpreadX, 0.0f, 2.0f);
-      changed |= ImGui::SliderFloat((const char *)u8"ホーミング弾の上方初速",
-                                    &config.homingSpeedY, 0.0f, 5.0f);
-      changed |= ImGui::SliderFloat((const char *)u8"ホーミング弾の前方初速",
-                                    &config.homingSpeedZ, 0.0f, 5.0f);
-      changed |= ImGui::SliderFloat((const char *)u8"照準の加速度",
-                                    &config.reticleAcceleration, 0.1f, 10.0f);
-      changed |= ImGui::SliderFloat((const char *)u8"照準の摩擦力",
-                                    &config.reticleFriction, 0.5f, 0.99f);
-      changed |= ImGui::SliderFloat((const char *)u8"照準の最高速度",
-                                    &config.reticleMaxSpeed, 1.0f, 100.0f);
-      changed |= ImGui::SliderFloat((const char *)u8"自機の画面の上下の基本の位置（m、負で下）",
-                                    &config.playerBaseOffsetY, -5.0f, 1.0f);
-      changed |= ImGui::SliderFloat((const char *)u8"自機が照準の位置の9割へ着く秒",
-                                    &config.playerFollowTime, 0.05f, 2.0f);
-      changed |= ImGui::SliderFloat((const char *)u8"自機の動きの減衰（1で行き過ぎない）",
-                                    &config.playerFollowDamping, 0.3f, 1.5f);
-      changed |= ImGui::SliderFloat((const char *)u8"ロール（バンク）の強さ",
-                                    &config.rollStrength, 0.0f, 20.0f);
-      changed |= ImGui::SliderFloat((const char *)u8"ピッチ（上下）の追従強度",
-                                    &config.pitchStrength, 0.0f, 10.0f);
-      changed |= ImGui::SliderFloat((const char *)u8"ヨー（首振り）の追従強度",
-                                    &config.yawStrength, 0.0f, 10.0f);
-      changed |= ImGui::SliderFloat((const char *)u8"ロールの補間速度（Lerp）",
-                                    &config.rollLerp, 0.01f, 1.0f);
-      changed |= ImGui::SliderFloat((const char *)u8"ピッチの補間速度（Lerp）",
-                                    &config.pitchLerp, 0.01f, 1.0f);
-      changed |= ImGui::SliderFloat((const char *)u8"ヨーの補間速度（Lerp）",
-                                    &config.yawLerp, 0.01f, 1.0f);
-      changed |= ImGui::SliderFloat((const char *)u8"通常弾のスピード",
-                                    &config.normalShotSpeed, 1.0f, 50.0f);
-      changed |= ImGui::DragFloat((const char *)u8"口元の左右オフセット (X)",
-                                  &config.muzzleOffsetX, 0.05f, -10.0f, 10.0f);
-      changed |= ImGui::DragFloat((const char *)u8"口元の上方オフセット (Y)",
-                                  &config.muzzleOffsetY, 0.05f, -10.0f, 10.0f);
-      changed |=
-          ImGui::DragFloat((const char *)u8"口元の前方オフセット (Z)",
-                           &config.muzzleOffsetForward, 0.05f, -10.0f, 10.0f);
-      changed |= ImGui::SliderFloat((const char *)u8"羽ばたきの基本の強さ",
-                                    &config.wingStrength, 0.0f, 1.0f);
-      changed |= ImGui::SliderFloat((const char *)u8"羽ばたきの回数（1秒あたり）",
-                                    &config.wingFrequency, 0.2f, 4.0f);
-      changed |= ImGui::SliderFloat((const char *)u8"上昇で強める量",
-                                    &config.wingClimbStrength, 0.0f, 20.0f);
-      changed |= ImGui::SliderFloat((const char *)u8"下降で畳む量",
-                                    &config.wingDiveFold, 0.0f, 20.0f);
-      changed |= ImGui::SliderFloat((const char *)u8"左右の移動で付ける左右差",
-                                    &config.wingTurnAsymmetry, 0.0f, 40.0f);
-      changed |= ImGui::SliderFloat((const char *)u8"羽ばたきの姿勢の割合",
-                                    &config.wingHover, 0.0f, 1.0f);
-      changed |= ImGui::SliderFloat((const char *)u8"上昇で体を起こす量",
-                                    &config.wingClimbHover, 0.0f, 20.0f);
-      ImGui::SeparatorText((const char *)u8"レールの曲がり・登り");
-      changed |= ImGui::SliderFloat((const char *)u8"曲がる速さ 1度/秒あたりの傾き（度）",
-                                    &config.railBankPerTurn, 0.0f, 10.0f);
-      changed |= ImGui::SliderFloat((const char *)u8"曲がりで傾ける最大（度）",
-                                    &config.railBankMax, 0.0f, 90.0f);
-      changed |= ImGui::SliderFloat((const char *)u8"登りの角度に対する機首上げの割合",
-                                    &config.railClimbNose, 0.0f, 1.0f);
-      changed |= ImGui::SliderFloat((const char *)u8"曲がる速さ 1度/秒あたりの外への流れ（m）",
-                                    &config.railLagPerTurn, 0.0f, 0.5f);
-      changed |= ImGui::SliderFloat((const char *)u8"登り 1度あたりの下への遅れ（m）",
-                                    &config.railLagPerClimb, 0.0f, 0.1f);
-      changed |= ImGui::SliderFloat((const char *)u8"曲がり・登りの追従の割合",
-                                    &config.railFollow, 0.005f, 0.3f);
-      ImGui::Text((const char *)u8"今の曲がる速さ %.1f 度/秒  登り %.1f 度",
-                  player_->GetRailTurnRate(), player_->GetRailClimb());
+      player_->DrawActionConfigImGui();
       // 自機が画面のどこに映っているか（画面は 1280x720、中央は y=360）
       {
         const ICamera *shownCamera = GetActiveCamera() ? GetActiveCamera() : railCamera_.get();
@@ -1218,10 +1115,6 @@ void GamePlayScene::Update() {
                     shownCamera == railCamera_.get() ? "Rail" : "Other",
                     stageIntro_->IsFinished() ? (const char *)u8"終わり" : (const char *)u8"途中",
                     stageIntro_->GetControlRatio());
-      }
-
-      if (changed) {
-        player_->SetActionConfigDirty(true);
       }
     } else {
       ImGui::Text("Player is not active.");
@@ -1273,13 +1166,6 @@ void GamePlayScene::Update() {
     Object3d *selected = sceneObjects_[selectedSceneObjectIndex_].get();
     ImGui::Text("Scene Object %d", selectedSceneObjectIndex_);
     ImGui::TextDisabled("%s", selected->GetModelPath().c_str());
-    ImGui::Separator();
-
-    const char *tagItems[] = {"Untagged", "Player", "Enemy", "LockOnTarget", "ShotTarget"};
-    int currentItem = static_cast<int>(selected->tag_);
-    if (ImGui::Combo("Tag", &currentItem, tagItems, IM_ARRAYSIZE(tagItems))) {
-      selected->tag_ = static_cast<ActorTag>(currentItem);
-    }
     ImGui::Separator();
 
     Vector3 t = selected->GetTranslation();
@@ -1834,6 +1720,9 @@ void GamePlayScene::DrawEditorUI() {
   }
   if (player_ && ImGui::CollapsingHeader("Dragon Wing Config")) {
     player_->DrawWingConfigImGui();
+  }
+  if (player_ && ImGui::CollapsingHeader("Reticle Config")) {
+    player_->DrawReticleConfigImGui();
   }
   ImGui::End();
 
@@ -2706,7 +2595,6 @@ void GamePlayScene::SaveLevel(const std::string &filename) {
     oJson["rotation"] = {r.x, r.y, r.z};
     oJson["scale"] = {s.x, s.y, s.z};
     oJson["modelPath"] = obj->GetModelPath();
-    oJson["tag"] = ActorTagToString(obj->tag_);
     const Vector4 color = obj->GetColor();
     oJson["color"] = {color.x, color.y, color.z};
     oJson["specularScale"] = obj->GetSpecularScale();
@@ -2738,53 +2626,7 @@ void GamePlayScene::DrawLookKeysUI() {
   if (!railCamera_) {
     return;
   }
-  ImGui::SeparatorText("カメラの向き");
-  ImGui::TextDisabled("yaw: 左が負（度） roll: 傾き（度） out: 右へずらす（m）");
-  ImGui::TextDisabled("キーの間は smoothstep、最初と最後のキーの外は 0");
-
-  const float currentT = railCamera_->GetT();
-  const RailCamera::LookKey now = railCamera_->SampleLook(currentT);
-  ImGui::Text("今 t=%.2f  yaw %.1f  roll %.1f  out %.1f", currentT, now.yaw,
-              now.roll, now.out);
-
-  auto &keys = railCamera_->GetLookKeysRef();
-  int eraseIndex = -1;
-  ImGui::PushID("LookKeys");
-  for (size_t i = 0; i < keys.size(); ++i) {
-    ImGui::PushID(static_cast<int>(i));
-    ImGui::SetNextItemWidth(70.0f);
-    ImGui::DragFloat("t", &keys[i].t, 0.01f, 0.0f, 0.0f, "%.2f");
-    ImGui::SameLine();
-    ImGui::SetNextItemWidth(60.0f);
-    ImGui::DragFloat("yaw", &keys[i].yaw, 0.5f, -180.0f, 180.0f, "%.1f");
-    ImGui::SameLine();
-    ImGui::SetNextItemWidth(60.0f);
-    ImGui::DragFloat("roll", &keys[i].roll, 0.5f, -180.0f, 180.0f, "%.1f");
-    ImGui::SameLine();
-    ImGui::SetNextItemWidth(60.0f);
-    ImGui::DragFloat("out", &keys[i].out, 0.1f, -100.0f, 100.0f, "%.1f");
-    ImGui::SameLine();
-    if (ImGui::SmallButton("消す")) {
-      eraseIndex = static_cast<int>(i);
-    }
-    ImGui::PopID();
-  }
-  ImGui::PopID();
-
-  if (eraseIndex >= 0) {
-    keys.erase(keys.begin() + eraseIndex);
-  }
-  // ドラッグ中は並びを変えず、手を離したら t の順に並べ直す
-  if (!ImGui::IsAnyItemActive()) {
-    railCamera_->SortLookKeys();
-  }
-
-  if (ImGui::Button("今の t にキーを足す")) {
-    RailCamera::LookKey key = now;
-    key.t = currentT;
-    keys.push_back(key);
-    railCamera_->SortLookKeys();
-  }
+  railCamera_->DrawLookKeysImGui();
   ImGui::SameLine();
   if (ImGui::Button("カメラの向きを保存")) {
     SaveCameraRail();
@@ -2913,8 +2755,6 @@ void GamePlayScene::LoadLevel(const std::string &filename) {
       auto &obj = sceneObjects_.back();
       obj->SetRotation(r);
       obj->SetScale(s);
-      if (oJson.contains("tag"))
-        obj->tag_ = StringToActorTag(oJson["tag"]);
       // 色と鏡面反射の倍率（ないときは Object3d の既定値のまま）
       if (oJson.contains("color")) {
         obj->SetColor({oJson["color"][0], oJson["color"][1],

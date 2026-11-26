@@ -113,6 +113,11 @@ public:
   void DrawWingConfigImGui();
 
   /// <summary>
+  /// 照準の調整値の ImGui（照準がなければ何も出さない）
+  /// </summary>
+  void DrawReticleConfigImGui();
+
+  /// <summary>
   /// 片方の翼が今打ち下ろしている強さ（0〜1）。ドラゴンのモデルがなければ 0
   /// </summary>
   float GetWingPush(bool isRight) const;
@@ -172,9 +177,6 @@ public:
     float lockOnRadius = 100.0f;           // ロックオンの吸いつき範囲
     float homingFlightSeconds = 0.55f;     // ロックオン弾が撃ってから届くまでの秒
     float homingBulgeFrames = 15.0f;       // ふくらみの点を、出口からカメラから見た初速で何フレーム進めた所に置くか
-    float reticleAcceleration = 2.5f;      // 照準の加速度
-    float reticleFriction = 0.85f;         // 照準の摩擦力
-    float reticleMaxSpeed = 25.0f;         // 照準の最高移動速度
     float playerFollowTime = 0.5f;     // 自機が照準の示す位置の 9 割まで着く秒
     float playerFollowDamping = 0.7f;  // 自機の動きの減衰（1 で行き過ぎずに止まる。0.7 で約 4% 行き過ぎて戻る）
     float playerDeadzone =
@@ -214,23 +216,24 @@ public:
     float railLagPerClimb = 0.014f;  // 登りの角度 1 度あたりに、画面の上で下へ遅れる量（m）
     float railFollow = 0.03f;        // 曲がる速さ・登りの角度が、測った値へ近づく割合（1 フレーム）
   };
-  ActionConfig &GetActionConfig() { return actionConfig_; }
   // なめらかにしたレールの曲がる速さ（度/秒、右が正）と登りの角度（度）
   float GetRailTurnRate() const { return railTurnRate_; }
   float GetRailClimb() const { return railClimb_; }
   // 構図の中の自機の位置（右・上、m。レールの曲がりの流れは含まない）
   const Vector2 &GetFramingOffset() const { return framingOffset_; }
 
-  void SaveActionConfig();
-  void LoadActionConfig();
-
-  bool IsActionConfigDirty() const { return isActionConfigDirty_; }
-  void SetActionConfigDirty(bool dirty) { isActionConfigDirty_ = dirty; }
+  /// <summary>
+  /// 操作・軌道の調整値の ImGui（保存ボタンつき。未保存の変更があればボタンをオレンジにする）
+  /// </summary>
+  void DrawActionConfigImGui();
 
   // 初期化時に設定ファイルをロードするか制御するフラグのセッター
   void SetLoadConfigOnInitialize(bool load) { loadConfigOnInitialize_ = load; }
 
 private:
+  void SaveActionConfig();
+  void LoadActionConfig();
+
   ActionConfig actionConfig_;
   bool isActionConfigDirty_ = false;
   bool loadConfigOnInitialize_ = true;

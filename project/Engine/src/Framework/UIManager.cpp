@@ -174,6 +174,8 @@ void UIManager::Draw() {
 
 void UIManager::DrawEditor() {
 #ifdef USE_IMGUI
+  if (!isEditorOpen_)
+    return;
   ImGui::Begin("UI Editor");
 
   if (currentFilePath_.empty()) {
@@ -445,10 +447,15 @@ void UIManager::Load(const std::string &filePath) {
   selectedNode_ = nullptr;
 }
 
+void UIManager::OpenEditor(const std::string &filePath) {
+  Load(filePath);
+  isEditorOpen_ = true;
+}
+
 void UIManager::DrawEditorGizmo(const ImVec2 &screenPos,
                                 const ImVec2 &imageSize) {
 #ifdef USE_IMGUI
-  if (!selectedNode_)
+  if (!isEditorOpen_ || !selectedNode_)
     return;
 
   ImGuiIO &io = ImGui::GetIO();

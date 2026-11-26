@@ -54,22 +54,7 @@ public:
 
   bool CanBeLockedOn() const override { return false; }
 
-  // 表示用の3Dモデルを外から渡してセットする（overrideで確実にこちらが呼ばれる）
-  void SetModel(std::unique_ptr<Object3d> model) override {
-    model_ = std::move(model);
-  }
-  Object3d *GetModel() const { return model_.get(); }
-  void SetBaseColor(const Vector4 &color) { baseColor_ = color; }
-  const Vector4 &GetBaseColor() const { return baseColor_; }
-
-  void SetPlayer(const Player *player) { player_ = player; }
-
-  Transform &GetTransform() { return transform_; }
-  const Transform &GetTransform() const { return transform_; }
-
   // ステータスのゲッター/セッター
-  int GetHP() const { return hp_; }
-  void SetHP(int hp) { hp_ = hp; }
   int GetMaxHP() const { return maxHp_; }
   void SetMaxHP(int hp) { maxHp_ = hp; }
   BossPhase GetPhase() const { return phase_; }

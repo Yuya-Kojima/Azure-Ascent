@@ -9,13 +9,11 @@ BossWeakPoint::~BossWeakPoint() {}
 void BossWeakPoint::Initialize() {
     Enemy::Initialize();
     
-    hp_ = 1; // 1発で壊れるように
-    baseColor_ = {1.0f, 0.2f, 0.2f, 1.0f}; // 赤く発光する的
+    SetHP(1); // 1発で壊れるように
+    SetBaseColor({1.0f, 0.2f, 0.2f, 1.0f}); // 赤く発光する的
     transform_.scale = {3.0f, 3.0f, 3.0f};
     
-    if (collider_) {
-        collider_->SetRadius(1.5f); // 狙いやすいように少し大きめ
-    }
+    SetColliderRadius(1.5f); // 狙いやすいように少し大きめ
 }
 
 void BossWeakPoint::SetOffset(const Vector3& offset) {
@@ -26,8 +24,7 @@ void BossWeakPoint::SetOffset(const Vector3& offset) {
 void BossWeakPoint::Update() {
     // 親が死んでいるか存在しなければ自壊
     if (!boss_ || boss_->GetHP() <= 0) {
-        hp_ = 0;
-        isDead_ = true;
+        Destroy();
     }
 
     if (!isDead_ && boss_) {

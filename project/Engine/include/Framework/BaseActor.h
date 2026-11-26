@@ -59,10 +59,7 @@ public:
     Transform& GetTransform() { return transform_; }
     const Transform& GetTransform() const { return transform_; }
 
-    // 識別用の名前やタグ
-    std::string name_ = "Actor";
-    ActorTag tag_ = ActorTag::Untagged;
-
+    // 何者か（敵・自機・狙える物など）を表すタグ
     ActorTag GetTag() const { return tag_; }
     void SetTag(ActorTag tag) { tag_ = tag; }
 
@@ -84,6 +81,8 @@ protected:
     Vector3 CalculateVelocityForCollision();
 
 private:
+    ActorTag tag_ = ActorTag::Untagged;
+
     // Actor と一緒に破棄され、GetLifeToken() で配った weak_ptr を期限切れにする
     std::shared_ptr<const void> lifeToken_ = std::make_shared<char>(0);
 };

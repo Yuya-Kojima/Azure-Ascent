@@ -4,13 +4,25 @@
 #include "Math/MathUtil.h"
 #include "Render/Renderer/SpriteRenderer.h"
 #include "Debug/Logger.h"
+#include "../../externals/nlohmann/json.hpp"
 #include <string>
 #include <algorithm>
 #include <cmath>
+#include <filesystem>
 #include <fstream>
+#include <iomanip>
+#ifdef USE_IMGUI
+#include <imgui.h>
+#endif
+
+namespace {
+const char* const kConfigDirectory = "resources/config";
+const char* const kConfigPath = "resources/config/ReticleTunnelConfig.json";
+} // namespace
 
 void ReticleTunnel::Initialize(SpriteRenderer* spriteRenderer) {
   spriteRenderer_ = spriteRenderer;
+  LoadConfig();
 
   // 直線表現用のスプライトを生成（白テクスチャを使用）
   for (size_t i = 0; i < kMaxLineSprites; ++i) {
@@ -236,5 +248,78 @@ void ReticleTunnel::Draw() {
     if (sprite) {
       sprite->Draw();
     }
+  }
+}
+
+void ReticleTunnel::VisitConfigValues(
+    const std::function<void(const std::string& key, float& value)>& visit) {
+  visit("reticleMaxSpeed", config_.reticleMaxSpeed);
+  visit("nearDistance", config_.nearDistance);
+  visit("midDistance", config_.midDistance);
+  visit("farDistance", config_.farDistance);
+  visit("nearSize", config_.nearSize);
+  visit("midSize", config_.midSize);
+  visit("farSize", config_.farSize);
+  visit("originCameraBlend", config_.originCameraBlend);
+  visit("lockOnSpinSpeed", config_.lockOnSpinSpeed);
+  visit("lineThickness", config_.lineThickness);
+  visit("targetDistance", config_.targetDistance);
+}
+
+void ReticleTunnel::DrawImGui() {
+#ifdef USE_IMGUI
+  ImGui::PushID("ReticleTunnel");
+  ImGui::DragFloat("照準の最高速度", &config_.reticleMaxSpeed, 0.1f, 1.0f, 100.0f, "%.1f");
+  ImGui::TextDisabled("枠の奥行き（カメラからの距離）");
+  ImGui::DragFloat("手前の枠", &config_.nearDistance, 0.5f, 1.0f, 500.0f, "%.1f");
+  ImGui::DragFloat("中の枠", &config_.midDistance, 0.5f, 1.0f, 500.0f, "%.1f");
+  ImGui::DragFloat("奥の枠", &config_.farDistance, 0.5f, 1.0f, 500.0f, "%.1f");
+  ImGui::TextDisabled("枠の大きさ");
+  ImGui::DragFloat("手前の枠の大きさ", &config_.nearSize, 0.05f, 0.1f, 20.0f, "%.2f");
+  ImGui::DragFloat("中の枠の大きさ", &config_.midSize, 0.05f, 0.1f, 20.0f, "%.2f");
+  ImGui::DragFloat("奥の枠の大きさ", &config_.farSize, 0.05f, 0.1f, 20.0f, "%.2f");
+  ImGui::DragFloat("起点（0=自機、1=カメラ）", &config_.originCameraBlend, 0.01f, 0.0f, 1.0f, "%.2f");
+  ImGui::DragFloat("ロックオン中の回る速さ（ラジアン/秒）", &config_.lockOnSpinSpeed, 0.1f, 0.0f, 30.0f, "%.1f");
+  ImGui::DragFloat("枠線の太さ（ピクセル）", &config_.lineThickness, 0.1f, 0.5f, 10.0f, "%.1f");
+  ImGui::DragFloat("射撃目標までの距離", &config_.targetDistance, 1.0f, 10.0f, 5000.0f, "%.0f");
+  if (ImGui::Button("照準を保存")) {
+    SaveConfig();
+  }
+  ImGui::SameLine();
+  if (ImGui::Button("読み直す")) {
+    LoadConfig();
+  }
+  ImGui::PopID();
+#endif // USE_IMGUI
+}
+
+void ReticleTunnel::LoadConfig() {
+  std::ifstream file(kConfigPath);
+  if (!file.is_open()) {
+    return;
+  }
+  nlohmann::json root;
+  try {
+    file >> root;
+  } catch (const nlohmann::json::exception&) {
+    return;
+  }
+  // ファイルにないキーは今の値のまま
+  VisitConfigValues([&](const std::string& key, float& value) {
+    if (root.contains(key) && root[key].is_number()) {
+      value = root[key].get<float>();
+    }
+  });
+}
+
+void ReticleTunnel::SaveConfig() {
+  nlohmann::json root;
+  VisitConfigValues([&](const std::string& key, float& value) { root[key] = value; });
+  if (!std::filesystem::exists(kConfigDirectory)) {
+    std::filesystem::create_directories(kConfigDirectory);
+  }
+  std::ofstream file(kConfigPath);
+  if (file.is_open()) {
+    file << std::setw(4) << root << std::endl;
   }
 }

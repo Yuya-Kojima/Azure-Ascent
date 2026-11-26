@@ -29,10 +29,7 @@ Boss::~Boss() {}
 
 void Boss::Initialize() {
   Enemy::Initialize();
-  if (collider_) {
-    collider_->SetRadius(
-        0.4f); // コアより判定を小さくして、弾がボス本体に吸われないようにする
-  }
+  SetColliderRadius(0.4f); // コアより判定を小さくして、弾がボス本体に吸われないようにする
   SetHP(500);
   maxHp_ = 500;
   phase_ = BossPhase::Phase1;
@@ -43,7 +40,7 @@ void Boss::Initialize() {
   startPos_ = {0.0f, 0.0f, 0.0f};
   targetPos_ = {0.0f, 0.0f, 0.0f};
 
-  aliveTime_ = 0.0f;
+  ResetAliveTime();
   isDyingControlled_ = false;
   dyingFlashAmount_ = 0.0f;
 
@@ -171,27 +168,26 @@ void Boss::Update() {
   }
 
   // 被弾時のフラッシュ処理
-  if (hitFlashTimer_ > 0) {
-    hitFlashTimer_--;
-    if (model_) {
-      model_->SetColor({1.0f, 0.0f, 0.0f, 1.0f}); // 赤色に点滅
+  if (TickHitFlash()) {
+    if (GetModel()) {
+      GetModel()->SetColor({1.0f, 0.0f, 0.0f, 1.0f}); // 赤色に点滅
     }
   } else {
     // 状態に応じたカラーの適用
-    if (model_) {
+    if (GetModel()) {
       if (currentState_ == BossState::Telegraph) {
-        model_->SetColor({1.0f, 0.5f, 0.0f, 1.0f}); // 予兆時はオレンジ
+        GetModel()->SetColor({1.0f, 0.5f, 0.0f, 1.0f}); // 予兆時はオレンジ
       } else if (currentState_ == BossState::DashTelegraph) {
-        model_->SetColor({1.0f, 0.0f, 0.0f, 1.0f}); // 突進予兆時は赤
+        GetModel()->SetColor({1.0f, 0.0f, 0.0f, 1.0f}); // 突進予兆時は赤
       } else if (phase_ == BossPhase::Dying) {
-        model_->SetColor(GetDyingColor());
+        GetModel()->SetColor(GetDyingColor());
       } else {
-        model_->SetColor(baseColor_);
+        GetModel()->SetColor(GetBaseColor());
       }
     }
   }
 
-  aliveTime_ += 1.0f / 60.0f;
+  AdvanceAliveTime();
 
   if (currentState_ == BossState::DashTelegraph ||
       currentState_ == BossState::Dash ||
@@ -220,13 +216,13 @@ void Boss::UpdatePhase1() {
   switch (currentState_) {
   case BossState::Enter:
     // カメラの前方（基準位置）に配置
-    if (camera_) {
-      Vector3 cPos = camera_->GetRailPosition();
-      Vector3 cRight = camera_->GetRailRight();
-      Vector3 cUp = camera_->GetRailUp();
-      Vector3 cForward = camera_->GetRailForward();
-      Vector3 center = cPos + cRight * spawnOffset_.x + cUp * spawnOffset_.y +
-                       cForward * spawnOffset_.z;
+    if (GetCamera()) {
+      Vector3 cPos = GetCamera()->GetRailPosition();
+      Vector3 cRight = GetCamera()->GetRailRight();
+      Vector3 cUp = GetCamera()->GetRailUp();
+      Vector3 cForward = GetCamera()->GetRailForward();
+      Vector3 center = cPos + cRight * GetSpawnOffset().x + cUp * GetSpawnOffset().y +
+                       cForward * GetSpawnOffset().z;
       transform_.translate = center;
       startPos_ = center;
       targetPos_ = center;
@@ -250,8 +246,8 @@ void Boss::UpdatePhase1() {
                    hoverWaypoints_[3], easeT);
 
     // 常にプレイヤーの方向を向く
-    if (player_) {
-      Vector3 pPos = player_->GetTransform().translate;
+    if (GetPlayer()) {
+      Vector3 pPos = GetPlayer()->GetTransform().translate;
       Vector3 dir = {pPos.x - transform_.translate.x,
                      pPos.y - transform_.translate.y,
                      pPos.z - transform_.translate.z};
@@ -279,8 +275,8 @@ void Boss::UpdatePhase1() {
     // 予兆パーティクルエフェクトの発生（チャージの進行度 0.0 ~ 1.0 を渡す）
     float chargeRatio = std::min(stateTimer_ / 1.0f, 1.0f);
     Vector3 effectPos = transform_.translate;
-    if (player_) {
-        effectPos = player_->GetTransform().translate;
+    if (GetPlayer()) {
+        effectPos = GetPlayer()->GetTransform().translate;
     }
     EffectManager::GetInstance()->PlayBossTelegraphEffect(transform_.translate, effectPos, chargeRatio, attackPattern_);
 
@@ -298,8 +294,8 @@ void Boss::UpdatePhase1() {
   case BossState::Attack: {
     EffectManager::GetInstance()->PlayBossBurstEffect(transform_.translate);
 
-    if (player_) {
-      Vector3 playerPos = player_->GetTransform().translate;
+    if (GetPlayer()) {
+      Vector3 playerPos = GetPlayer()->GetTransform().translate;
       Vector3 myPos = transform_.translate;
       Vector3 dir = {playerPos.x - myPos.x, playerPos.y - myPos.y,
                      playerPos.z - myPos.z};
@@ -314,7 +310,7 @@ void Boss::UpdatePhase1() {
           auto bullet = std::make_unique<EnemyBullet>();
           bullet->Initialize(
               PrefabManager::GetInstance()->GetObject3dRenderer(), myPos, vel,
-              player_, type);
+              GetPlayer(), type);
           if (type == EnemyBulletType::LockOnDestructible) {
             bullet->SetSwarmWait(waitFrames);
           }
@@ -401,11 +397,11 @@ void Boss::UpdatePhase1() {
           return; // Hoverへは行かずに突進予兆へ遷移
       }
 
-      if (camera_) {
-        Vector3 cPos = camera_->GetRailPosition();
-        Vector3 cRight = camera_->GetRailRight();
-        Vector3 cUp = camera_->GetRailUp();
-        Vector3 cForward = camera_->GetRailForward();
+      if (GetCamera()) {
+        Vector3 cPos = GetCamera()->GetRailPosition();
+        Vector3 cRight = GetCamera()->GetRailRight();
+        Vector3 cUp = GetCamera()->GetRailUp();
+        Vector3 cForward = GetCamera()->GetRailForward();
 
         // 1. 攻撃パターンに基づく目標座標（着地地点）の決定 = 予兆（Telegraph）
         if (attackPattern_ == 1) {
@@ -477,15 +473,15 @@ void Boss::UpdatePhaseTransition() {
 
   float flashSpeed = 10.0f + 30.0f * (stateTimer_ / duration);
   float flashIntensity = (std::sin(stateTimer_ * flashSpeed) + 1.0f) * 0.5f;
-  if (model_) {
+  if (GetModel()) {
       Vector4 flashColor = {1.0f, 1.0f - flashIntensity * 0.8f, 1.0f - flashIntensity * 0.8f, 1.0f};
-      model_->SetColor(flashColor);
+      GetModel()->SetColor(flashColor);
   }
 
   // 3. 移行完了でPhase2へ
   if (stateTimer_ >= duration) {
-      if (model_) {
-          model_->SetColor(baseColor_);
+      if (GetModel()) {
+          GetModel()->SetColor(GetBaseColor());
       }
       cameraEvents_.push_back(CameraEvent::TransitionEnded);
       EffectManager::GetInstance()->PlayBossBurstEffect(transform_.translate);
@@ -507,8 +503,8 @@ void Boss::UpdatePhase2() {
     transform_.translate.y = startPos_.y + (targetPos_.y - startPos_.y) * easeT;
     transform_.translate.z = startPos_.z + (targetPos_.z - startPos_.z) * easeT;
 
-    if (player_) {
-      Vector3 pPos = player_->GetTransform().translate;
+    if (GetPlayer()) {
+      Vector3 pPos = GetPlayer()->GetTransform().translate;
       Vector3 dir = {pPos.x - transform_.translate.x,
                      pPos.y - transform_.translate.y,
                      pPos.z - transform_.translate.z};
@@ -539,8 +535,8 @@ void Boss::UpdatePhase2() {
     // 予兆パーティクルエフェクトの発生（チャージの進行度 0.0 ~ 1.0 を渡す）
     float chargeRatio = std::min(stateTimer_ / 1.0f, 1.0f);
     Vector3 effectPos = transform_.translate;
-    if (player_) {
-        effectPos = player_->GetTransform().translate;
+    if (GetPlayer()) {
+        effectPos = GetPlayer()->GetTransform().translate;
     }
     EffectManager::GetInstance()->PlayBossTelegraphEffect(transform_.translate, effectPos, chargeRatio, 1); // Phase 2のTelegraphはミサイル固定なので1
 
@@ -556,8 +552,8 @@ void Boss::UpdatePhase2() {
     // 発射の瞬間に発散エフェクト（大爆発＋ショックウェーブ）を発生
     EffectManager::GetInstance()->PlayBossBurstEffect(transform_.translate);
 
-    if (player_) {
-      Vector3 playerPos = player_->GetTransform().translate;
+    if (GetPlayer()) {
+      Vector3 playerPos = GetPlayer()->GetTransform().translate;
       Vector3 myPos = transform_.translate;
       Vector3 dir = {playerPos.x - myPos.x, playerPos.y - myPos.y,
                      playerPos.z - myPos.z};
@@ -571,7 +567,7 @@ void Boss::UpdatePhase2() {
           auto bullet = std::make_unique<EnemyBullet>();
           bullet->Initialize(
               PrefabManager::GetInstance()->GetObject3dRenderer(), myPos, vel,
-              player_, type);
+              GetPlayer(), type);
           bullet->SetSwarmWait(
               waitFrames); // ランダムではなく指定された待機時間をセット
           ActorManager::GetInstance()->AddActor(std::move(bullet));
@@ -583,8 +579,8 @@ void Boss::UpdatePhase2() {
         float deploySpeedY = 3.8f; 
         Vector3 rightDir = {dir.z, 0.0f, -dir.x};
         Vector3 upDir = {0.0f, 1.0f, 0.0f};
-        if (camera_) {
-          upDir = camera_->GetUp();
+        if (GetCamera()) {
+          upDir = GetCamera()->GetUp();
         }
 
         Vector3 backwardDir = {-dir.x, 0.0f, -dir.z};
@@ -643,11 +639,11 @@ void Boss::UpdatePhase2() {
       }
       
       startPos_ = targetPos_;
-      if (camera_) {
-        Vector3 cPos = camera_->GetRailPosition();
-        Vector3 cRight = camera_->GetRailRight();
-        Vector3 cUp = camera_->GetRailUp();
-        Vector3 cForward = camera_->GetRailForward();
+      if (GetCamera()) {
+        Vector3 cPos = GetCamera()->GetRailPosition();
+        Vector3 cRight = GetCamera()->GetRailRight();
+        Vector3 cUp = GetCamera()->GetRailUp();
+        Vector3 cForward = GetCamera()->GetRailForward();
         // 次の攻撃パターンに応じて目標位置を変える
         if (attackPattern_ == 1) {
           // 次はミサイル攻撃：画面奥深く（突進と同じ距離200）へ移動
@@ -656,8 +652,8 @@ void Boss::UpdatePhase2() {
           targetPos_.x += offsetX;
         } else if (attackPattern_ == 2) {
           // 次は突進攻撃：一旦手前（基準位置付近）へ移動し、その後大きく下がる演出に繋げる
-          Vector3 center = cPos + cRight * spawnOffset_.x + cUp * spawnOffset_.y +
-                           cForward * spawnOffset_.z;
+          Vector3 center = cPos + cRight * GetSpawnOffset().x + cUp * GetSpawnOffset().y +
+                           cForward * GetSpawnOffset().z;
           float offsetX = ((rand() % 100) / 100.0f - 0.5f) * 24.0f;
           float offsetY = ((rand() % 100) / 100.0f - 0.5f) * 12.0f;
           targetPos_.x = center.x + offsetX;
@@ -685,25 +681,25 @@ void Boss::UpdateDying() {
 
 Vector4 Boss::GetDyingColor() const {
   const float t = std::clamp(dyingFlashAmount_, 0.0f, 1.0f);
-  return {baseColor_.x + (dyingFlashColor_.x - baseColor_.x) * t,
-          baseColor_.y + (dyingFlashColor_.y - baseColor_.y) * t,
-          baseColor_.z + (dyingFlashColor_.z - baseColor_.z) * t,
-          baseColor_.w};
+  return {GetBaseColor().x + (dyingFlashColor_.x - GetBaseColor().x) * t,
+          GetBaseColor().y + (dyingFlashColor_.y - GetBaseColor().y) * t,
+          GetBaseColor().z + (dyingFlashColor_.z - GetBaseColor().z) * t,
+          GetBaseColor().w};
 }
 
 void Boss::SetDyingOrientation(const Quaternion &orientation) {
   // 世界が止まっていて Update が呼ばれない間も、見た目へすぐ渡す
-  if (model_) {
-    model_->SetRotationQuaternion(orientation);
-    model_->Update();
+  if (GetModel()) {
+    GetModel()->SetRotationQuaternion(orientation);
+    GetModel()->Update();
   }
 }
 
 void Boss::SetDyingFlash(const Vector4 &color, float amount) {
   dyingFlashColor_ = color;
   dyingFlashAmount_ = amount;
-  if (model_ && hitFlashTimer_ <= 0) {
-    model_->SetColor(GetDyingColor());
+  if (GetModel() && !IsHitFlashing()) {
+    GetModel()->SetColor(GetDyingColor());
   }
 }
 
@@ -728,7 +724,7 @@ void Boss::ForceDefeat() {
   if (isDead_ || IsDyingOrDefeated()) {
     return;
   }
-  hp_ = 0;
+  SetHP(0);
   ChangePhase(BossPhase::Dying);
 }
 
@@ -746,8 +742,8 @@ void Boss::DestroyParts() {
 }
 
 void Boss::Draw3D() {
-  if (model_) {
-    model_->Draw();
+  if (GetModel()) {
+    GetModel()->Draw();
   }
 }
 
@@ -770,11 +766,11 @@ void Boss::Draw2D() {
   }
 
   // ミサイル予兆中のレティクル描画 (Phase2の場合は常にミサイル)
-  if (currentState_ == BossState::Telegraph && (attackPattern_ == 1 || phase_ == BossPhase::Phase2) && player_ && camera_) {
+  if (currentState_ == BossState::Telegraph && (attackPattern_ == 1 || phase_ == BossPhase::Phase2) && GetPlayer() && GetCamera()) {
     float chargeRatio = std::min(stateTimer_ / 1.0f, 1.0f);
     
-    Vector3 playerPos = player_->GetTransform().translate;
-    Vector2 screenPos = WorldToScreen(playerPos, camera_->GetViewProjectionMatrix(), 1280.0f, 720.0f);
+    Vector3 playerPos = GetPlayer()->GetTransform().translate;
+    Vector2 screenPos = WorldToScreen(playerPos, GetCamera()->GetViewProjectionMatrix(), 1280.0f, 720.0f);
 
     // 画面外を描画から除外
     if (screenPos.x > -100 && screenPos.x < 1380 && screenPos.y > -100 && screenPos.y < 820) {
@@ -883,14 +879,13 @@ void Boss::TakeDamage(int damage, bool isSelfDestruct) {
   if (!activeBits_.empty())
     return;
 
-  hp_ -= damage;
-  hitFlashTimer_ = 5;
+  ApplyDamage(damage);
 
   // フェーズ移行判定 (T-2)
-  if (hp_ <= 0) {
-    hp_ = 0;
+  if (GetHP() <= 0) {
+    SetHP(0);
     ChangePhase(BossPhase::Dying); // 即消滅ではなくDyingフェーズへ
-  } else if (phase_ == BossPhase::Phase1 && hp_ <= maxHp_ * 0.7f) {
+  } else if (phase_ == BossPhase::Phase1 && GetHP() <= maxHp_ * 0.7f) {
     ChangePhase(BossPhase::PhaseTransition);
   }
 }
@@ -915,10 +910,10 @@ void Boss::ChangePhase(BossPhase nextPhase) {
     stateTimer_ = 0.0f;
     cameraEvents_.push_back(CameraEvent::TransitionStarted);
     startPos_ = transform_.translate;
-    if (camera_) {
-      Vector3 cPos = camera_->GetRailPosition();
-      Vector3 cUp = camera_->GetRailUp();
-      Vector3 cForward = camera_->GetRailForward();
+    if (GetCamera()) {
+      Vector3 cPos = GetCamera()->GetRailPosition();
+      Vector3 cUp = GetCamera()->GetRailUp();
+      Vector3 cForward = GetCamera()->GetRailForward();
       // 画面奥深くへ退避
       targetPos_ = cPos + cForward * 200.0f;
     } else {
@@ -953,9 +948,7 @@ void Boss::ChangePhase(BossPhase nextPhase) {
     DestroyParts();
 
     // コライダーを無効化（メモリは破棄しない）
-    if (collider_) {
-      collider_->SetEnable(false);
-    }
+    SetColliderEnabled(false);
     dyingFlashAmount_ = 0.0f;
     // 突進の途中でも、突進の処理をやめて撃破の処理へ移す
     currentState_ = BossState::Hover;
@@ -967,10 +960,8 @@ void Boss::ChangePhase(BossPhase nextPhase) {
   } else if (phase_ == BossPhase::Defeated) {
     Logger::Log("Boss Defeated!\n");
 
-    if (onDestroyedCallback_) {
-      onDestroyedCallback_(false);
-    }
-    isDead_ = true;
+    NotifyDestroyed(false);
+    Destroy();
   }
 }
 
@@ -1011,9 +1002,9 @@ void Boss::UpdateDashSequence() {
         
         // Z奥へ下がるための目標位置を設定
         startPos_ = transform_.translate;
-        if (camera_) {
-            Vector3 cPos = camera_->GetRailPosition();
-            Vector3 cForward = camera_->GetRailForward();
+        if (GetCamera()) {
+            Vector3 cPos = GetCamera()->GetRailPosition();
+            Vector3 cForward = GetCamera()->GetRailForward();
             targetPos_ = cPos + cForward * 200.0f; // かなり奥へ
         }
     }
@@ -1044,13 +1035,13 @@ void Boss::UpdateDashSequence() {
       startPos_ = targetPos_;
       
       // 突進の目標座標を「プレイヤーの現在の位置のさらに後方」へ設定
-      if (player_ && camera_) {
-          Vector3 pPos = player_->GetTransform().translate;
-          Vector3 cForward = camera_->GetRailForward();
+      if (GetPlayer() && GetCamera()) {
+          Vector3 pPos = GetPlayer()->GetTransform().translate;
+          Vector3 cForward = GetCamera()->GetRailForward();
           targetPos_ = pPos - cForward * 50.0f; // 自機の背面へ通り抜ける
-      } else if (camera_) {
-          Vector3 cPos = camera_->GetRailPosition();
-          Vector3 cForward = camera_->GetRailForward();
+      } else if (GetCamera()) {
+          Vector3 cPos = GetCamera()->GetRailPosition();
+          Vector3 cForward = GetCamera()->GetRailForward();
           targetPos_ = cPos - cForward * 50.0f; // カメラの背面へ通り抜ける
       } else {
           targetPos_.z -= 200.0f;
@@ -1100,8 +1091,8 @@ void Boss::UpdateDashSequence() {
       // カウンター成功時、大きく後方へ弾き飛ばされる
       if (stateTimer_ <= 0.02f) {
           startPos_ = transform_.translate;
-          if (camera_) {
-              Vector3 cForward = camera_->GetRailForward();
+          if (GetCamera()) {
+              Vector3 cForward = GetCamera()->GetRailForward();
               // 奥へ吹っ飛ぶ目標 + 少し下に落ちる
               targetPos_ = startPos_ + cForward * 100.0f;
               targetPos_.y -= 25.0f;

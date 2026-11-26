@@ -108,9 +108,6 @@ public:
   void SetPlayer(const Player *player) { player_ = player; }
   const Player *GetPlayer() const { return player_; }
 
-  // Transformへのアクセス（BaseActorのprotectedメンバ）
-  Transform &GetTransform() { return transform_; }
-
   // ステータスのゲッター/セッター
   int GetHP() const { return hp_; }
   void SetHP(int hp) { hp_ = hp; }
@@ -134,6 +131,25 @@ public:
   int GetLastHitVolley() const { return lastHitVolley_; }
 
 protected:
+  // 体力を減らして被弾の点滅を始める（撃破の判定はしない）
+  void ApplyDamage(int damage);
+  // 被弾の点滅を frames フレームの長さで始める
+  void StartHitFlash(int frames) { hitFlashTimer_ = frames; }
+  // 点滅中なら残りを 1 フレーム減らして true を返す（このフレームを被弾の色で塗るか）
+  bool TickHitFlash();
+  bool IsHitFlashing() const { return hitFlashTimer_ > 0; }
+  // 生きている時間を 1 フレーム進める・0 に戻す
+  void AdvanceAliveTime();
+  void ResetAliveTime() { aliveTime_ = 0.0f; }
+  // 当たり判定の半径・有効かどうか（当たり判定がなければ何もしない）
+  void SetColliderRadius(float radius);
+  void SetColliderEnabled(bool isEnabled);
+  // 撃破の知らせ（SetOnDestroyedCallback で渡された関数）を呼ぶ
+  void NotifyDestroyed(bool isSelfDestruct);
+
+private:
+  static constexpr int kHitFlashFrames_ = 5; // 被弾したときに点滅するフレーム数
+
   std::unique_ptr<Object3d> model_;
   std::unique_ptr<SphereCollider> collider_;
   // 光る部品（ない敵は nullptr）。model_ を親にするので、model_ より後に宣言して先に破棄する

@@ -9,11 +9,9 @@ void BossBit::Initialize() {
     Enemy::Initialize();
     
     // 装甲の HP
-    hp_ = 30;
+    SetHP(30);
     
-    if (collider_) {
-        collider_->SetRadius(1.2f); // 装甲板として少し大きめの当たり判定
-    }
+    SetColliderRadius(1.2f); // 装甲板として少し大きめの当たり判定
 }
 
 void BossBit::SetOffset(const Vector3& offset) {
@@ -23,12 +21,12 @@ void BossBit::SetOffset(const Vector3& offset) {
 
 void BossBit::SpreadOut() {
     isSpreadingOut_ = true; // ロックオン不可にする
-    baseColor_ = {0.3f, 0.3f, 0.3f, 1.0f}; // 退避中の色（暗い灰色）
+    SetBaseColor({0.3f, 0.3f, 0.3f, 1.0f}); // 退避中の色（暗い灰色）
 }
 
 void BossBit::ResetPosition() {
     isSpreadingOut_ = false; // ロックオン可能に戻す
-    baseColor_ = {1.0f, 1.0f, 1.0f, 1.0f}; // 元の色に戻す
+    SetBaseColor({1.0f, 1.0f, 1.0f, 1.0f}); // 元の色に戻す
 }
 
 void BossBit::TakeDamage(int damage, bool isSelfDestruct) {
@@ -41,8 +39,7 @@ void BossBit::TakeDamage(int damage, bool isSelfDestruct) {
 void BossBit::Update() {
     // 親が死んでいるか存在しなければ自壊
     if (!boss_ || boss_->GetHP() <= 0) {
-        hp_ = 0;
-        isDead_ = true;
+        Destroy();
     }
 
     if (!isDead_ && boss_) {

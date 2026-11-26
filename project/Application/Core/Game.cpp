@@ -97,8 +97,6 @@ void Game::Initialize() {
 }
 
 #ifdef USE_IMGUI
-static bool g_showUIEditor = false;
-
 static void DrawProjectDirectoryTree(const std::filesystem::path& dirPath) {
   for (const auto& entry : std::filesystem::directory_iterator(dirPath)) {
     if (entry.is_directory()) {
@@ -136,8 +134,7 @@ static void DrawProjectDirectoryTree(const std::filesystem::path& dirPath) {
       ImGui::PushStyleColor(ImGuiCol_Text, color);
       if (ImGui::Selectable(displayStr.c_str(), false, ImGuiSelectableFlags_AllowDoubleClick)) {
         if (ImGui::IsMouseDoubleClicked(0) && ext == ".json") {
-          g_showUIEditor = true;
-          UIManager::GetInstance()->Load(relativePath);
+          UIManager::GetInstance()->OpenEditor(relativePath);
         }
       }
       ImGui::PopStyleColor();
@@ -326,15 +323,16 @@ void Game::Update() {
       }
 
       if (ImGui::BeginMenu("Window")) {
-      ImGui::MenuItem("UI Editor", NULL, &g_showUIEditor);
+      UIManager *ui = UIManager::GetInstance();
+      if (ImGui::MenuItem("UI Editor", NULL, ui->IsEditorOpen())) {
+        ui->SetEditorOpen(!ui->IsEditorOpen());
+      }
       ImGui::EndMenu();
     }
     ImGui::EndMainMenuBar();
   }
 
-  if (g_showUIEditor) {
-    UIManager::GetInstance()->DrawEditor();
-  }
+  UIManager::GetInstance()->DrawEditor();
 
   // =====================================
   // Console
@@ -417,9 +415,7 @@ void Game::Update() {
   ImVec2 screenPos = ImGui::GetCursorScreenPos();
   ImGui::Image((ImTextureID)gpuHandle.ptr, ImVec2(renderWidth, renderHeight));
 
-  if (g_showUIEditor) {
-    UIManager::GetInstance()->DrawEditorGizmo(screenPos, ImVec2(renderWidth, renderHeight));
-  }
+  UIManager::GetInstance()->DrawEditorGizmo(screenPos, ImVec2(renderWidth, renderHeight));
 
   bool isHoveringGameView = false;
   if (ImGui::BeginDragDropTarget()) {
@@ -499,7 +495,7 @@ void Game::Draw() {
 
   // エディタ表示中はUIManagerを強制描画
 #ifdef USE_IMGUI
-  if (g_showUIEditor) {
+  if (UIManager::GetInstance()->IsEditorOpen()) {
     UIManager::GetInstance()->Draw();
   }
 #endif

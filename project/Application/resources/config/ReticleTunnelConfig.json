@@ -1,0 +1,13 @@
+{
+    "farDistance": 120.0,
+    "farSize": 3.2,
+    "lineThickness": 2.5,
+    "lockOnSpinSpeed": 6.0,
+    "midDistance": 70.0,
+    "midSize": 3.0,
+    "nearDistance": 35.0,
+    "nearSize": 3.5,
+    "originCameraBlend": 0.35,
+    "reticleMaxSpeed": 18.0,
+    "targetDistance": 1000.0
+}
