@@ -48,11 +48,15 @@ public:
   BaseActor* GetTarget() const { return target_.Get(); }
 
 private:
+  // 入れ物へしまう前に、消えたことを知らせ、当たり判定を外し、射撃のチケットを返す
+  void OnReturnToPool() override;
+
   std::unique_ptr<Object3d> object3d_;
   std::unique_ptr<SphereCollider> collider_;
   ActorRef<BaseActor> target_;
   ActorRef<BaseActor> originalTarget_;
   int damage_ = 5;
+  static constexpr int kEnemyBulletDamage_ = 1; // 狙いを失った後に敵の弾へ当たったときに与えるダメージ
 
   // ベジェの点と進み具合
   const RailCamera* camera_ = nullptr;

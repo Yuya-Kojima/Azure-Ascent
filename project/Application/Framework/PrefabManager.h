@@ -26,6 +26,11 @@ public:
     std::unique_ptr<Enemy> InstantiateEnemy(const std::string& prefabName, const Transform& transform);
 
     /// <summary>
+    /// 作った敵 enemy を初期化し、プレハブデータ（JSON）の値を入れる
+    /// </summary>
+    void InitializeEnemy(Enemy& enemy, const std::string& prefabName, const Transform& transform);
+
+    /// <summary>
     /// プレハブが使うモデルのパスを返す（敵を生成せずに、モデルだけ先に準備したいとき用）
     /// InstantiateEnemy が使うパスと同じものを返す
     /// </summary>

@@ -43,23 +43,9 @@ class BossCameraDirector;
 #include "Framework/ActorRef.h"
 #include "Render/SkyBox/SkyBox.h"
 #include "Score/ScoreConfig.h"
+#include "Scene/State/GamePlayState.h"
+#include "Spawn/EnemySpawner.h"
 
-struct SpawnEvent {
-  float spawnTime = 0.0f;
-  std::string prefabName = "ZakoEnemy";
-  Vector3 spawnOffset = {0.0f, 0.0f, 50.0f}; // カメラからの相対位置、またはワールド絶対座標
-  bool isWorldSpace = false;        // trueならspawnOffsetをワールド絶対座標として扱う
-  std::string splineName = "";     // 使用するレール名（空なら直線移動）
-  float splineDuration = 5.0f;     // レールを走り切る秒数
-  bool isWorldSpaceSpline = false; // ワールド空間か、カメラローカル空間か
-  int fireInterval = -1;           // -1なら撃たない。0以上なら指定フレーム間隔で射撃
-  bool hasSpawned = false;         // 実行管理用フラグ
-  MoveType moveType = MoveType::Straight;
-  Vector3 moveDirection = {0.0f, 0.0f, 1.0f}; // カメラ基準の移動方向ベクトル（デフォルトは前進）
-  SerpentSpec serpent;             // 大蛇（MechSerpent）の出番の決まり。ほかの出し方では使わない
-};
-
-enum class GameState { Intro, Play, Clear, GameOver };
 
 class GamePlayScene : public BaseScene {
 
@@ -108,8 +94,8 @@ private: // メンバ変数(ゲーム用)
   bool doStep_ = false;
   float playStartT_ = 0.0f; // Play開始時のtの値を保存しておく変数
 
-  // ゲーム状態
-  GameState gameState_ = GameState::Play;
+  // 今のゲームの進行の状態
+  std::unique_ptr<GamePlayState> state_;
 
   // 評価: 点の入り方とランクの基準、1 回のプレイの点と撃墜率、HUD、クリアしたあとのリザルト
   ScoreConfig scoreConfig_;
@@ -175,7 +161,6 @@ private: // メンバ変数(ゲーム用)
   // 浮かぶ砦（部品は runtimeEnemies_ に入る）
   std::vector<std::unique_ptr<FloatingFortress>> fortresses_;
   static inline const std::string kFortressPrefabName_ = "FloatingFortress"; // 砦を出す出し方の名前
-  static constexpr Vector4 kFortressPartColor_ = {1.0f, 0.2f, 0.2f, 1.0f};      // 砦の部品の色（ふだんの敵と同じ赤）
   static constexpr float kFortressDestroyedShakeIntensity_ = 0.8f;              // 砦の爆発でカメラを揺らす強さ
   static constexpr float kFortressDestroyedShakeSeconds_ = 0.5f;                // 砦の爆発でカメラを揺らす秒数
   // 区間 3 の大蛇の出番（部品は runtimeEnemies_ に入る）
@@ -197,6 +182,12 @@ private: // メンバ変数(ゲーム用)
 
   // スポーンイベント
   std::vector<SpawnEvent> spawnEvents_;
+  // 敵の出し方（雑魚・ボス・浮かぶ砦・大蛇）
+  std::unique_ptr<EnemySpawner> zakoSpawner_;
+  std::unique_ptr<EnemySpawner> bossSpawner_;
+  std::unique_ptr<EnemySpawner> fortressSpawner_;
+  std::unique_ptr<EnemySpawner> serpentSpawner_;
+  static inline const std::string kBossPrefabName_ = "Boss"; // ボスを出す出し方の名前
 
   // 動的配置オブジェクト (ドラッグ＆ドロップで追加された背景・モデル等)
   std::vector<std::unique_ptr<Object3d>> sceneObjects_;
@@ -300,11 +291,127 @@ public: // メンバ関数
   // Waypoint
   void AppendWaypoint(const Vector3 &pos);
 
-private:
+  //=======================
+  // 進行の状態（GamePlayState の派生クラス）から呼ぶ
+  //=======================
+
   /// <summary>
   /// ステージ開始演出を始める（レールを止め、操作開始時の自機とカメラの位置を決めてから渡す）
   /// </summary>
   void StartIntro();
+
+  /// <summary>
+  /// 開始演出で、自機の操作が始まったか
+  /// </summary>
+  bool IsIntroControlStarted() const;
+
+  /// <summary>
+  /// 開始演出から操作へ移る（開始演出を見たことを覚え、翼を操作に戻す）
+  /// </summary>
+  void FinishIntro();
+
+  /// <summary>
+  /// ゲームオーバーの空中の演出を始める（レール・BGM を止める）
+  /// </summary>
+  void StartGameOver();
+
+  /// <summary>
+  /// ボスなしでレールが終わったとき、すぐにリザルトを出し始める（点を確定し、記録を書く）
+  /// </summary>
+  void StartClear();
+
+  /// <summary>
+  /// ボスへの最後の一撃で、クリア演出を始める（点を確定し、記録を書き、レール・BGM を止める）
+  /// </summary>
+  void StartClearSequence(const BossLastHit &hit);
+
+  /// <summary>
+  /// リザルトの更新（選んだら次のシーンへ）
+  /// </summary>
+  void UpdateClear();
+
+  /// <summary>
+  /// 自機が倒れたか
+  /// </summary>
+  bool IsPlayerDead() const;
+
+  /// <summary>
+  /// レールの終わりまで進んだか
+  /// </summary>
+  bool IsRailFinished() const;
+
+  /// <summary>
+  /// ボスが出ていて、まだ消えていないか
+  /// </summary>
+  bool IsBossAlive() const;
+
+  /// <summary>
+  /// 開始演出のあと、HUD と照準を薄い状態から現す
+  /// </summary>
+  void UpdateHudFadeIn();
+
+  /// <summary>
+  /// 開始演出のレールの速さの割合（0 で止まる、1 で普通）
+  /// </summary>
+  float GetIntroRailSpeedRatio() const;
+
+  /// <summary>
+  /// ゲームオーバーの演出が決める、世界の時間の速さ
+  /// </summary>
+  float GetGameOverTimeScale() const;
+
+  /// <summary>
+  /// クリア演出の間の世界の時間の速さ（演出をしていなければ 1）
+  /// </summary>
+  float GetClearTimeScale() const;
+
+  /// <summary>
+  /// ゲームオーバーの演出を進め、演出のカメラを返す（演出をしていなければ nullptr）
+  /// </summary>
+  /// <param name="canMove">演出を進めてよいか</param>
+  const ICamera *UpdateGameOverScreen(bool canMove);
+
+  /// <summary>
+  /// クリア演出を進め、演出のカメラを返す（演出をしていなければ nullptr）
+  /// </summary>
+  /// <param name="canMove">演出を進めてよいか</param>
+  const ICamera *UpdateClearScreen(bool canMove);
+
+  /// <summary>
+  /// ゲームオーバーの演出が決める HUD の濃さ
+  /// </summary>
+  float GetGameOverHudAlpha() const;
+
+  /// <summary>
+  /// クリア演出が決める HUD の濃さ
+  /// </summary>
+  float GetClearHudAlpha() const;
+
+  /// <summary>
+  /// リザルトを出しているか
+  /// </summary>
+  bool IsResultActive() const;
+
+  /// <summary>
+  /// リザルトを描く
+  /// </summary>
+  void DrawResult();
+
+  /// <summary>
+  /// ゲームオーバーの黒い幕と「GAME OVER」のカードを描く
+  /// </summary>
+  void DrawGameOverScreen();
+
+private:
+  /// <summary>
+  /// 進行の状態を next に入れ替え、入ったときの準備をさせる
+  /// </summary>
+  void ChangeState(std::unique_ptr<GamePlayState> next);
+
+  /// <summary>
+  /// ボスへの最後の一撃を今の状態に知らせ、次の状態が返ってきたら入れ替える
+  /// </summary>
+  void NotifyBossLastHit(const BossLastHit &hit);
 
   /// <summary>
   /// ステージ開始演出の更新（レールの加速・吠え声の合図・姿勢を渡し、飛び出しに合わせて操作を開始する）
@@ -317,28 +424,9 @@ private:
   void BlendPlayerWithIntro();
 
   /// <summary>
-  /// ゲームオーバーの空中の演出を始める（レール・BGM を止める）
-  /// </summary>
-  void StartGameOver();
-
-  /// <summary>
   /// ゲームオーバーの空中の演出の更新（自機の位置・向き・翼を渡し、合図で拠点への遷移を始める）
   /// </summary>
   void UpdateGameOver();
-
-  /// <summary>
-  /// ボスなしでレールが終わったとき、すぐにリザルトを出し始める（点を確定し、記録を書く）
-  /// </summary>
-  void StartClear();
-
-  /// <summary>
-  /// ボスへの最後の一撃で、クリア演出を始める（点を確定し、記録を書き、レール・BGM を止める）
-  /// </summary>
-  /// <param name="bossPos">ボスの位置</param>
-  /// <param name="bossSize">ボスの大きさ</param>
-  /// <param name="bossRotation">ボスの向き（オイラー角）</param>
-  void StartClearSequence(const Vector3 &bossPos, float bossSize,
-                          const Vector3 &bossRotation);
 
   /// <summary>
   /// クリア演出の大爆発で、ボスの体を割った破片を飛び散らせる
@@ -354,11 +442,6 @@ private:
   /// クリア演出の更新（ボス・自機・HUD を演出に合わせ、出来事で音・ボス・リザルトを動かす）
   /// </summary>
   void UpdateClearSequence();
-
-  /// <summary>
-  /// リザルトの更新（選んだら次のシーンへ）
-  /// </summary>
-  void UpdateClear();
 
   /// <summary>
   /// ポーズ画面の更新（プレイ中に開き、選んだら再開・次のシーンへ）
@@ -383,11 +466,6 @@ private:
   float GetBossSpawnTime() const;
 
   /// <summary>
-  /// 出ているボス（いなければ nullptr）
-  /// </summary>
-  const Boss *FindBoss() const;
-
-  /// <summary>
   /// 空・雲海・光・霧・ポストエフェクトを設定する
   /// </summary>
   void ApplySkyAndLighting();
@@ -395,21 +473,31 @@ private:
   void SpawnSceneObject(const std::string &modelPath, const Vector3 &position);
 
   /// <summary>
-  /// 浮かぶ砦と部品 8 個を出す。部品は撃破に数える敵として登録する
-  /// </summary>
-  void SpawnFortress(const SpawnEvent &ev);
-
-  /// <summary>
-  /// 大蛇の 1 回の出番と、その光る節を出す。光る節は撃破に数える敵として登録する
-  /// </summary>
-  void SpawnSerpent(const SpawnEvent &ev);
-
-  /// <summary>
   /// 出た敵として数え、自機の弾で倒されたら、最後に当たった弾の射撃番号つきで撃破を数える
   /// </summary>
   /// <param name="enemy">数える敵（自爆で消えたときは撃破に数えない）</param>
   /// <param name="spawnTime">出たときのレールの進み具合</param>
   void CountEnemyForScore(Enemy *enemy, float spawnTime);
+
+  /// <summary>
+  /// 出す物の名前 prefabName に合う出し方を返す
+  /// </summary>
+  EnemySpawner &SelectSpawner(const std::string &prefabName);
+
+  /// <summary>
+  /// 敵を出すときに使う道具を、今シーンが持っている物でそろえる
+  /// </summary>
+  SpawnContext MakeSpawnContext();
+
+  /// <summary>
+  /// 出した物をそれぞれの一覧に入れる。ボスが出ていればボス戦を始める
+  /// </summary>
+  void AddSpawned(SpawnResult result);
+
+  /// <summary>
+  /// ボス戦を始める（ボスを覚え、倒されたらクリア演出を始めるようにし、BGM を変えてレールを遅くする）
+  /// </summary>
+  void OnBossSpawned(Boss *boss);
 
   /// <summary>
   /// 出ている敵と砦と大蛇をすべて消す

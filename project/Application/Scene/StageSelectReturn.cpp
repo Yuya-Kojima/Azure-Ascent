@@ -109,7 +109,163 @@ float Hermite(float p0, float p1, float m0, float m1, float span, float t) {
 const float kMinKeySpan = 0.01f;
 } // namespace
 
-StageSelectReturn::StageSelectReturn() = default;
+//=======================
+// 段階
+//=======================
+
+/// <summary>
+/// 段階の基底クラス。毎フレームの動きと次の段階を決め、演出の今の様子に答える
+/// </summary>
+class StageSelectReturn::State {
+public:
+  explicit State(StageSelectReturn &owner) : owner_(owner) {}
+  virtual ~State() = default;
+
+  /// <summary>
+  /// この段階に入ったときの準備
+  /// </summary>
+  virtual void Enter() {}
+
+  /// <summary>
+  /// 毎フレームの更新。次の段階へ移るなら、その段階を返す（このままなら nullptr）
+  /// </summary>
+  /// <param name="input">操作を受けるときの入力。nullptr なら操作を受けない</param>
+  /// <param name="isSkipped">決定の長押しで飛ばしたか</param>
+  virtual std::unique_ptr<State> Update(Input *input, bool isSkipped) = 0;
+
+  /// <summary>
+  /// ImGui のつまみで時刻を動かした。次の段階へ移るなら、その段階を返す（このままなら nullptr）
+  /// </summary>
+  virtual std::unique_ptr<State> OnScrubbed() { return nullptr; }
+
+  /// <summary>
+  /// 決定の長押しで飛ばせるか
+  /// </summary>
+  virtual bool CanSkip() const { return false; }
+
+  /// <summary>
+  /// UI を出しているか
+  /// </summary>
+  virtual bool IsMenuShown() const { return true; }
+
+  /// <summary>
+  /// ドラゴンの位置・向きをこの演出が決めているか
+  /// </summary>
+  virtual bool DrivesDragon() const { return true; }
+
+  /// <summary>
+  /// ImGui のつまみで時刻を動かしてよいか（選ぶ前だけ）
+  /// </summary>
+  virtual bool CanScrub() const { return false; }
+
+  /// <summary>
+  /// ImGui に出す段階の名前
+  /// </summary>
+  virtual const char *GetName() const = 0;
+
+protected:
+  StageSelectReturn &GetOwner() const { return owner_; }
+
+private:
+  StageSelectReturn &owner_;
+};
+
+/// <summary>
+/// 選び終えたあと、UI と見上げる姿勢を消す。拠点に残るときは、カメラもいつもの位置へ戻す
+/// </summary>
+class StageSelectReturn::LeaveState : public StageSelectReturn::State {
+public:
+  /// <param name="isStay">拠点に残るを選んだか（false なら再出撃）</param>
+  LeaveState(StageSelectReturn &owner, bool isStay) : State(owner), isStay_(isStay) {}
+
+  void Enter() override { GetOwner().BeginLeave(); }
+
+  std::unique_ptr<State> Update(Input *, bool) override {
+    GetOwner().UpdateLeave(isStay_);
+    return nullptr;
+  }
+
+  // 再出撃を選ぶと、ドラゴンは出撃演出に任せる
+  bool DrivesDragon() const override { return isStay_; }
+
+  const char *GetName() const override { return isStay_ ? "Stay" : "Retry"; }
+
+private:
+  bool isStay_;
+};
+
+/// <summary>
+/// UI で選ぶ。選んだら、選んだほうの去り方へ
+/// </summary>
+class StageSelectReturn::MenuState : public StageSelectReturn::State {
+public:
+  using State::State;
+
+  void Enter() override {
+    StageSelectReturn &owner = GetOwner();
+    owner.phaseTimer_ = owner.timer_ - owner.menuTime_;
+  }
+
+  std::unique_ptr<State> Update(Input *input, bool) override;
+  std::unique_ptr<State> OnScrubbed() override;
+
+  bool CanScrub() const override { return true; }
+  const char *GetName() const override { return "Menu"; }
+};
+
+/// <summary>
+/// 降りる・起き上がる・見上げる。UI を出す時刻が来たら選ぶ段階へ
+/// </summary>
+class StageSelectReturn::WakeState : public StageSelectReturn::State {
+public:
+  using State::State;
+
+  std::unique_ptr<State> Update(Input *, bool isSkipped) override {
+    StageSelectReturn &owner = GetOwner();
+    if (isSkipped) {
+      owner.timer_ = owner.menuTime_;
+    }
+    owner.UpdateWake();
+    owner.UpdateGlow();
+    owner.UpdateCamera();
+    if (owner.timer_ >= owner.menuTime_) {
+      return std::make_unique<MenuState>(owner);
+    }
+    return nullptr;
+  }
+
+  // 起き上がりの間だけ、決定の長押しで UI が出る所まで飛ばせる
+  bool CanSkip() const override {
+    const StageSelectReturn &owner = GetOwner();
+    return owner.timer_ >= owner.skipLockSec_;
+  }
+
+  bool IsMenuShown() const override { return false; }
+  bool CanScrub() const override { return true; }
+  const char *GetName() const override { return "Wake"; }
+};
+
+std::unique_ptr<StageSelectReturn::State> StageSelectReturn::MenuState::Update(Input *input, bool) {
+  StageSelectReturn &owner = GetOwner();
+  owner.UpdateWake();
+  owner.UpdateGlow();
+  owner.UpdateCamera();
+  if (owner.UpdateMenu(input)) {
+    return std::make_unique<LeaveState>(owner, owner.focused_ == Choice::Stay);
+  }
+  return nullptr;
+}
+
+std::unique_ptr<StageSelectReturn::State> StageSelectReturn::MenuState::OnScrubbed() {
+  // UI が出る時刻より前へ戻したら、起き上がりの段階へ戻す
+  StageSelectReturn &owner = GetOwner();
+  if (owner.timer_ < owner.menuTime_) {
+    return std::make_unique<WakeState>(owner);
+  }
+  return nullptr;
+}
+
+StageSelectReturn::StageSelectReturn() : state_(std::make_unique<WakeState>(*this)) {}
 
 StageSelectReturn::~StageSelectReturn() = default;
 
@@ -247,7 +403,7 @@ void StageSelectReturn::Start(const Vector3 &dragonPos,
                               const Vector3 &baseCameraPos,
                               const Vector3 &baseCameraRot, float progress) {
   isActive_ = true;
-  phase_ = Phase::Wake;
+  state_ = std::make_unique<WakeState>(*this);
   timer_ = 0.0f;
   phaseTimer_ = 0.0f;
   pendingChoice_ = Choice::None;
@@ -279,8 +435,8 @@ void StageSelectReturn::Update(Input *input) {
   // 止めている間は、つまみで決めた時刻の姿を映し、操作を受けない
   if (isPaused_) {
     input = nullptr;
-    if (phase_ == Phase::Menu && timer_ < menuTime_) {
-      phase_ = Phase::Wake;
+    if (std::unique_ptr<State> next = state_->OnScrubbed()) {
+      ChangeState(std::move(next));
     }
     phaseTimer_ = timer_ - menuTime_;
   } else {
@@ -288,36 +444,19 @@ void StageSelectReturn::Update(Input *input) {
     phaseTimer_ += kFrameSec;
   }
 
-  // 起き上がりの間だけ、決定の長押しで UI が出る所まで飛ばせる
-  const bool isSkipped = skipHold_->Update(
-      input, phase_ == Phase::Wake && timer_ >= skipLockSec_);
+  // 決定の長押しで飛ばせるかは、今の段階が決める
+  const bool isSkipped = skipHold_->Update(input, state_->CanSkip());
 
-  switch (phase_) {
-  case Phase::Wake:
-    if (isSkipped) {
-      timer_ = menuTime_;
-    }
-    UpdateWake();
-    UpdateGlow();
-    UpdateCamera();
-    if (timer_ >= menuTime_) {
-      phase_ = Phase::Menu;
-      phaseTimer_ = timer_ - menuTime_;
-    }
-    break;
-  case Phase::Menu:
-    UpdateWake();
-    UpdateGlow();
-    UpdateCamera();
-    UpdateMenu(input);
-    break;
-  case Phase::Retry:
-  case Phase::Stay:
-    UpdateLeave();
-    break;
+  if (std::unique_ptr<State> next = state_->Update(input, isSkipped)) {
+    ChangeState(std::move(next));
   }
 
   UpdateSprites();
+}
+
+void StageSelectReturn::ChangeState(std::unique_ptr<State> next) {
+  state_ = std::move(next);
+  state_->Enter();
 }
 
 StageSelectReturn::Choice StageSelectReturn::ConsumeChoice() {
@@ -327,10 +466,10 @@ StageSelectReturn::Choice StageSelectReturn::ConsumeChoice() {
 }
 
 bool StageSelectReturn::IsDrivingDragon() const {
-  return isActive_ && phase_ != Phase::Retry;
+  return isActive_ && state_->DrivesDragon();
 }
 
-bool StageSelectReturn::IsMenuShown() const { return phase_ != Phase::Wake; }
+bool StageSelectReturn::IsMenuShown() const { return state_->IsMenuShown(); }
 
 Vector3 StageSelectReturn::ToWorld(const Vector3 &offset) const {
   return basePos_ + right_ * offset.x + kWorldUp * offset.y +
@@ -432,7 +571,7 @@ void StageSelectReturn::UpdateCamera() {
   cameraRot_ = LookRotation(cameraPos_, ToWorld(lookOffset));
 }
 
-void StageSelectReturn::UpdateMenu(Input *input) {
+bool StageSelectReturn::UpdateMenu(Input *input) {
   // 下線を、選んでいる方へ動かす
   const float focusTarget = (focused_ == Choice::Retry) ? 0.0f : 1.0f;
   const float focusStep =
@@ -440,7 +579,7 @@ void StageSelectReturn::UpdateMenu(Input *input) {
   focusPos_ += std::clamp(focusTarget - focusPos_, -focusStep, focusStep);
 
   if (!input) {
-    return;
+    return false;
   }
   // 選択肢が現れきる前に決定を押すと、現れきった所まで飛ばす（その押下では選ばない）
   const float readySec = GetChoiceReadySec();
@@ -449,7 +588,7 @@ void StageSelectReturn::UpdateMenu(Input *input) {
       timer_ = menuTime_ + readySec;
       phaseTimer_ = readySec;
     }
-    return;
+    return false;
   }
   if (MenuInput::IsUpTriggered(input) || MenuInput::IsDownTriggered(input)) {
     focused_ = (focused_ == Choice::Retry) ? Choice::Stay : Choice::Retry;
@@ -457,16 +596,20 @@ void StageSelectReturn::UpdateMenu(Input *input) {
 
   if (MenuInput::IsDecideTriggered(input)) {
     pendingChoice_ = focused_;
-    phase_ = (focused_ == Choice::Retry) ? Phase::Retry : Phase::Stay;
-    phaseTimer_ = 0.0f;
-    leaveGesture_ = gesture_;
-    leaveWing_ = wingState_;
-    leaveCameraPos_ = cameraPos_;
-    leaveCameraRot_ = cameraRot_;
+    return true;
   }
+  return false;
 }
 
-void StageSelectReturn::UpdateLeave() {
+void StageSelectReturn::BeginLeave() {
+  phaseTimer_ = 0.0f;
+  leaveGesture_ = gesture_;
+  leaveWing_ = wingState_;
+  leaveCameraPos_ = cameraPos_;
+  leaveCameraRot_ = cameraRot_;
+}
+
+void StageSelectReturn::UpdateLeave(bool returnsCamera) {
   //===========================
   // UI を消し、伏せて見上げる姿勢から立ち姿勢へ戻す。拠点に残るときは、カメラをいつもの位置へ戻す
   //===========================
@@ -482,7 +625,7 @@ void StageSelectReturn::UpdateLeave() {
   wingState_ = LerpWing(leaveWing_, standWing_, 1.0f - remain);
 
   float endSec = leaveSec_;
-  if (phase_ == Phase::Stay) {
+  if (returnsCamera) {
     const float back =
         EaseInOutCubic(Progress(phaseTimer_, 0.0f, stayCameraSec_));
     cameraPos_ = Lerp(leaveCameraPos_, baseCameraPos_, back);
@@ -504,7 +647,7 @@ void StageSelectReturn::UpdateSprites() {
   // 空域名と選択肢の左端は、出撃の点の真下に置く「出撃」の文字の左端にそろえる
   const float textLeft =
       menuLeft_ - (startLabel_->GetSize().x - kLabelPad * 2.0f) * 0.5f;
-  const bool isShown = phase_ != Phase::Wake;
+  const bool isShown = state_->IsMenuShown();
   const float routeAlpha =
       isShown ? EaseOutCubic(Progress(t, 0.0f, routeFadeSec_)) * leaveAlpha_
               : 0.0f;
@@ -610,7 +753,7 @@ void StageSelectReturn::Draw() {
   if (isActive_) {
     skipHold_->Draw();
   }
-  if (!isActive_ || phase_ == Phase::Wake || leaveAlpha_ <= 0.0f) {
+  if (!isActive_ || !state_->IsMenuShown() || leaveAlpha_ <= 0.0f) {
     return;
   }
   plate_->Draw();
@@ -640,9 +783,9 @@ void StageSelectReturn::DrawImGui() {
   if (ImGui::Button("Load Return Config")) {
     LoadConfig();
   }
-  ImGui::Text("Time %.2f (phase %d)", timer_, static_cast<int>(phase_));
+  ImGui::Text("Time %.2f (phase %s)", timer_, state_->GetName());
   // 止めて、つまみで時刻を動かし、その時刻の構図を見る（選ぶ前だけ）
-  if (phase_ == Phase::Wake || phase_ == Phase::Menu) {
+  if (state_->CanScrub()) {
     ImGui::Checkbox("Pause", &isPaused_);
     if (isPaused_) {
       ImGui::SliderFloat("Scrub Time", &timer_, 0.0f,

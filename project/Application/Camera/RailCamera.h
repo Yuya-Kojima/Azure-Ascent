@@ -160,15 +160,17 @@ public:
   // キーを t の順に並べて設定する
   void SetLookKeys(const std::vector<LookKey>& keys);
   const std::vector<LookKey>& GetLookKeys() const { return lookKeys_; }
-  std::vector<LookKey>& GetLookKeysRef() { return lookKeys_; }
-  // キーを t の順に並べ直す（エディタで t を書き換えた後に呼ぶ）
-  void SortLookKeys();
   // t の位置の顔の向き。キーの間は smoothstep でつなぎ、最初のキーより前と最後のキーより後は 0
   LookKey SampleLook(float t) const;
   // 今の顔の向き（止め・解いた後の戻りを含む）
   LookKey CurrentLook() const;
+  // 顔の向きのキーの編集（書き換え・消す・今の t に足す）の ImGui
+  void DrawLookKeysImGui();
 
 private:
+  // キーを t の順に並べ直す
+  void SortLookKeys();
+
   std::vector<LookKey> lookKeys_;
 
   // 顔の向きのキーの止め

@@ -107,13 +107,16 @@ private:
     Vector3 lookOffset{};
   };
 
-  // 演出の段階
-  enum class Phase {
-    Wake,  // 降りる・起き上がる・見上げる
-    Menu,  // UI で選ぶ
-    Retry, // 再出撃を選んだ（UI と見上げる姿勢を消す）
-    Stay,  // 拠点に残るを選んだ（カメラをいつもの位置へ戻す）
-  };
+  // 演出の段階（StageSelectReturn.cpp で定義する。入れ子のクラスなので、この演出の private な関数を呼べる）
+  class State;      // 基底
+  class WakeState;  // 降りる・起き上がる・見上げる
+  class MenuState;  // UI で選ぶ
+  class LeaveState; // 選び終えた（UI と見上げる姿勢を消す。拠点に残るときはカメラをいつもの位置へ戻す）
+
+  /// <summary>
+  /// 段階を next に入れ替え、入ったときの準備をさせる
+  /// </summary>
+  void ChangeState(std::unique_ptr<State> next);
 
   // ドラゴンの位置から、ドラゴンの水平な右・上・前の向きで offset だけ動かした位置
   Vector3 ToWorld(const Vector3 &offset) const;
@@ -129,8 +132,21 @@ private:
   void UpdateWake();
   void UpdateGlow();
   void UpdateCamera();
-  void UpdateMenu(Input *input);
-  void UpdateLeave();
+  /// <summary>
+  /// UI で選ぶ。決定したら true
+  /// </summary>
+  bool UpdateMenu(Input *input);
+
+  /// <summary>
+  /// 去り始める（今の姿勢とカメラを覚える）
+  /// </summary>
+  void BeginLeave();
+
+  /// <summary>
+  /// UI を消し、立ち姿勢へ戻す
+  /// </summary>
+  /// <param name="returnsCamera">カメラをいつもの位置へ戻すか（拠点に残るとき）</param>
+  void UpdateLeave(bool returnsCamera);
   void UpdateSprites();
 
   // UI が出てから、選択肢が現れきって選べるようになるまでの時間（秒）
@@ -140,7 +156,7 @@ private:
 
   bool isActive_ = false;
   bool isPaused_ = false; // 時刻を止めているか（ImGui のつまみで時刻を動かして構図を見る）
-  Phase phase_ = Phase::Wake;
+  std::unique_ptr<State> state_; // 今の段階
   float timer_ = 0.0f;      // 始めてからの時間（秒）
   float phaseTimer_ = 0.0f; // 今の段階に入ってからの時間（秒）
   Choice pendingChoice_ = Choice::None;

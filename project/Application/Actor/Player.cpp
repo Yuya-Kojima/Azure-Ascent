@@ -4,6 +4,7 @@
 #include "Actor/DragonModel.h"
 #include "Actor/Enemy.h"
 #include "Actor/HomingBullet.h"
+#include "Actor/IPlayerContact.h"
 #include "Actor/LockOn.h"
 #include "Actor/NormalBullet.h"
 #include "Score/ScoreKeeper.h"
@@ -26,6 +27,10 @@
 #include <filesystem>
 #include <fstream>
 #include <limits>
+#include <string>
+#ifdef USE_IMGUI
+#include <imgui.h>
+#endif
 
 namespace {
 // 飛んでいる間の見た目の向きが、目標の向きへ 1 フレームで近づく割合
@@ -133,7 +138,6 @@ void Player::Update() {
 
   // 照準の移動操作と3Dパース更新
   if (reticleTunnel_) {
-    reticleTunnel_->GetConfig().reticleMaxSpeed = actionConfig_.reticleMaxSpeed;
     reticleTunnel_->Update(input_, camera_, transform_.translate, IsLockOnMode());
   }
 
@@ -557,7 +561,7 @@ void Player::SpawnHomingBullet(BaseActor *target, int index, int totalCount,
   };
 
   // 3フレーム間隔で出し、どの弾も同じ秒で届くので、3フレームおきに当たる
-  auto bullet = std::make_unique<HomingBullet>();
+  std::unique_ptr<HomingBullet> bullet = ActorManager::GetInstance()->Acquire<HomingBullet>();
   bullet->Initialize(object3dRenderer_, camera_, toFramingLocal(startPos),
                      toFramingLocal(bulgePos), target,
                      actionConfig_.homingFlightSeconds);
@@ -674,7 +678,7 @@ void Player::FireNormalShot() {
   velocity.y *= speed;
   velocity.z *= speed;
 
-  auto bullet = std::make_unique<NormalBullet>();
+  std::unique_ptr<NormalBullet> bullet = ActorManager::GetInstance()->Acquire<NormalBullet>();
   bullet->Initialize(object3dRenderer_, startPos, velocity);
   ActorManager::GetInstance()->AddActor(std::move(bullet));
 
@@ -722,6 +726,14 @@ void Player::OnCollision(Collider *other) {
   Logger::Log("========================\n");
   Logger::Log("Player hit by something!\n");
   Logger::Log("========================\n");
+
+  // 敵や敵の弾にぶつかったら、無敵でなければダメージを受け、相手に当たったことを知らせる
+  auto *contact = dynamic_cast<IPlayerContact *>(other->GetOwner());
+  if (!contact || !contact->CanHitPlayer() || invincibleTimer_ > 0) {
+    return;
+  }
+  TakeDamage(kContactDamage_);
+  contact->OnHitPlayer();
 }
 
 void Player::TakeDamage(int damage) {
@@ -794,6 +806,107 @@ void Player::DrawWingConfigImGui() {
   if (dragonModel_) {
     dragonModel_->GetWingAnimator().DrawImGui();
   }
+}
+
+void Player::DrawReticleConfigImGui() {
+  if (reticleTunnel_) {
+    reticleTunnel_->DrawImGui();
+  }
+}
+
+void Player::DrawActionConfigImGui() {
+#ifdef USE_IMGUI
+  const bool isDirty = isActionConfigDirty_;
+  if (isDirty) {
+    ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.8f, 0.6f, 0.0f, 1.0f)); // 警告色（オレンジ）
+    ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.9f, 0.7f, 0.1f, 1.0f));
+    ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(1.0f, 0.8f, 0.2f, 1.0f));
+  }
+  const std::string buttonText = isDirty ? (const char *)u8"[* 未保存] Save Config"
+                                         : (const char *)u8"Save Config";
+  if (ImGui::Button(buttonText.c_str(), ImVec2(ImGui::GetContentRegionAvail().x, 30))) {
+    SaveActionConfig();
+  }
+  if (isDirty) {
+    ImGui::PopStyleColor(3);
+  }
+
+  ImGui::Spacing();
+
+  ActionConfig &config = actionConfig_;
+  bool changed = false;
+
+  changed |= ImGui::SliderFloat((const char *)u8"ロックオンの吸いつき範囲",
+                                &config.lockOnRadius, 10.0f, 500.0f);
+  changed |= ImGui::SliderFloat((const char *)u8"ロックオン弾の届く秒",
+                                &config.homingFlightSeconds, 0.1f, 1.5f);
+  changed |= ImGui::SliderFloat((const char *)u8"ロックオン弾のふくらみ（フレーム）",
+                                &config.homingBulgeFrames, 0.0f, 40.0f);
+  changed |= ImGui::SliderFloat((const char *)u8"ホーミング弾の左右拡散幅",
+                                &config.homingSpreadX, 0.0f, 2.0f);
+  changed |= ImGui::SliderFloat((const char *)u8"ホーミング弾の上方初速",
+                                &config.homingSpeedY, 0.0f, 5.0f);
+  changed |= ImGui::SliderFloat((const char *)u8"ホーミング弾の前方初速",
+                                &config.homingSpeedZ, 0.0f, 5.0f);
+  changed |= ImGui::SliderFloat((const char *)u8"自機の画面の上下の基本の位置（m、負で下）",
+                                &config.playerBaseOffsetY, -5.0f, 1.0f);
+  changed |= ImGui::SliderFloat((const char *)u8"自機が照準の位置の9割へ着く秒",
+                                &config.playerFollowTime, 0.05f, 2.0f);
+  changed |= ImGui::SliderFloat((const char *)u8"自機の動きの減衰（1で行き過ぎない）",
+                                &config.playerFollowDamping, 0.3f, 1.5f);
+  changed |= ImGui::SliderFloat((const char *)u8"ロール（バンク）の強さ",
+                                &config.rollStrength, 0.0f, 20.0f);
+  changed |= ImGui::SliderFloat((const char *)u8"ピッチ（上下）の追従強度",
+                                &config.pitchStrength, 0.0f, 10.0f);
+  changed |= ImGui::SliderFloat((const char *)u8"ヨー（首振り）の追従強度",
+                                &config.yawStrength, 0.0f, 10.0f);
+  changed |= ImGui::SliderFloat((const char *)u8"ロールの補間速度（Lerp）",
+                                &config.rollLerp, 0.01f, 1.0f);
+  changed |= ImGui::SliderFloat((const char *)u8"ピッチの補間速度（Lerp）",
+                                &config.pitchLerp, 0.01f, 1.0f);
+  changed |= ImGui::SliderFloat((const char *)u8"ヨーの補間速度（Lerp）",
+                                &config.yawLerp, 0.01f, 1.0f);
+  changed |= ImGui::SliderFloat((const char *)u8"通常弾のスピード",
+                                &config.normalShotSpeed, 1.0f, 50.0f);
+  changed |= ImGui::DragFloat((const char *)u8"口元の左右オフセット (X)",
+                              &config.muzzleOffsetX, 0.05f, -10.0f, 10.0f);
+  changed |= ImGui::DragFloat((const char *)u8"口元の上方オフセット (Y)",
+                              &config.muzzleOffsetY, 0.05f, -10.0f, 10.0f);
+  changed |= ImGui::DragFloat((const char *)u8"口元の前方オフセット (Z)",
+                              &config.muzzleOffsetForward, 0.05f, -10.0f, 10.0f);
+  changed |= ImGui::SliderFloat((const char *)u8"羽ばたきの基本の強さ",
+                                &config.wingStrength, 0.0f, 1.0f);
+  changed |= ImGui::SliderFloat((const char *)u8"羽ばたきの回数（1秒あたり）",
+                                &config.wingFrequency, 0.2f, 4.0f);
+  changed |= ImGui::SliderFloat((const char *)u8"上昇で強める量",
+                                &config.wingClimbStrength, 0.0f, 20.0f);
+  changed |= ImGui::SliderFloat((const char *)u8"下降で畳む量",
+                                &config.wingDiveFold, 0.0f, 20.0f);
+  changed |= ImGui::SliderFloat((const char *)u8"左右の移動で付ける左右差",
+                                &config.wingTurnAsymmetry, 0.0f, 40.0f);
+  changed |= ImGui::SliderFloat((const char *)u8"羽ばたきの姿勢の割合",
+                                &config.wingHover, 0.0f, 1.0f);
+  changed |= ImGui::SliderFloat((const char *)u8"上昇で体を起こす量",
+                                &config.wingClimbHover, 0.0f, 20.0f);
+  ImGui::SeparatorText((const char *)u8"レールの曲がり・登り");
+  changed |= ImGui::SliderFloat((const char *)u8"曲がる速さ 1度/秒あたりの傾き（度）",
+                                &config.railBankPerTurn, 0.0f, 10.0f);
+  changed |= ImGui::SliderFloat((const char *)u8"曲がりで傾ける最大（度）",
+                                &config.railBankMax, 0.0f, 90.0f);
+  changed |= ImGui::SliderFloat((const char *)u8"登りの角度に対する機首上げの割合",
+                                &config.railClimbNose, 0.0f, 1.0f);
+  changed |= ImGui::SliderFloat((const char *)u8"曲がる速さ 1度/秒あたりの外への流れ（m）",
+                                &config.railLagPerTurn, 0.0f, 0.5f);
+  changed |= ImGui::SliderFloat((const char *)u8"登り 1度あたりの下への遅れ（m）",
+                                &config.railLagPerClimb, 0.0f, 0.1f);
+  changed |= ImGui::SliderFloat((const char *)u8"曲がり・登りの追従の割合",
+                                &config.railFollow, 0.005f, 0.3f);
+  ImGui::Text((const char *)u8"今の曲がる速さ %.1f 度/秒  登り %.1f 度", railTurnRate_, railClimb_);
+
+  if (changed) {
+    isActionConfigDirty_ = true;
+  }
+#endif // USE_IMGUI
 }
 
 void Player::SetDirectWingRoot(
@@ -925,9 +1038,6 @@ void Player::SaveActionConfig() {
   root["lockOnRadius"] = actionConfig_.lockOnRadius;
   root["homingFlightSeconds"] = actionConfig_.homingFlightSeconds;
   root["homingBulgeFrames"] = actionConfig_.homingBulgeFrames;
-  root["reticleAcceleration"] = actionConfig_.reticleAcceleration;
-  root["reticleFriction"] = actionConfig_.reticleFriction;
-  root["reticleMaxSpeed"] = actionConfig_.reticleMaxSpeed;
   root["playerFollowTime"] = actionConfig_.playerFollowTime;
   root["playerFollowDamping"] = actionConfig_.playerFollowDamping;
   root["playerDeadzone"] = actionConfig_.playerDeadzone;
@@ -984,12 +1094,6 @@ void Player::LoadActionConfig() {
         actionConfig_.homingFlightSeconds = root["homingFlightSeconds"];
       if (root.contains("homingBulgeFrames"))
         actionConfig_.homingBulgeFrames = root["homingBulgeFrames"];
-      if (root.contains("reticleAcceleration"))
-        actionConfig_.reticleAcceleration = root["reticleAcceleration"];
-      if (root.contains("reticleFriction"))
-        actionConfig_.reticleFriction = root["reticleFriction"];
-      if (root.contains("reticleMaxSpeed"))
-        actionConfig_.reticleMaxSpeed = root["reticleMaxSpeed"];
       if (root.contains("playerFollowTime"))
         actionConfig_.playerFollowTime = root["playerFollowTime"];
       if (root.contains("playerFollowDamping"))

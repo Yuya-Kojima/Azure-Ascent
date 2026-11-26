@@ -3,6 +3,9 @@
 #include <algorithm>
 #include <cmath>
 #include <numbers>
+#ifdef USE_IMGUI
+#include <imgui.h>
+#endif
 
 namespace {
 
@@ -219,6 +222,55 @@ void RailCamera::SetLookKeys(const std::vector<LookKey> &keys) {
 void RailCamera::SortLookKeys() {
   std::stable_sort(lookKeys_.begin(), lookKeys_.end(),
                    [](const LookKey &a, const LookKey &b) { return a.t < b.t; });
+}
+
+void RailCamera::DrawLookKeysImGui() {
+#ifdef USE_IMGUI
+  ImGui::SeparatorText("カメラの向き");
+  ImGui::TextDisabled("yaw: 左が負（度） roll: 傾き（度） out: 右へずらす（m）");
+  ImGui::TextDisabled("キーの間は smoothstep、最初と最後のキーの外は 0");
+
+  const LookKey now = SampleLook(t_);
+  ImGui::Text("今 t=%.2f  yaw %.1f  roll %.1f  out %.1f", t_, now.yaw, now.roll, now.out);
+
+  int eraseIndex = -1;
+  ImGui::PushID("LookKeys");
+  for (size_t i = 0; i < lookKeys_.size(); ++i) {
+    ImGui::PushID(static_cast<int>(i));
+    ImGui::SetNextItemWidth(70.0f);
+    ImGui::DragFloat("t", &lookKeys_[i].t, 0.01f, 0.0f, 0.0f, "%.2f");
+    ImGui::SameLine();
+    ImGui::SetNextItemWidth(60.0f);
+    ImGui::DragFloat("yaw", &lookKeys_[i].yaw, 0.5f, -180.0f, 180.0f, "%.1f");
+    ImGui::SameLine();
+    ImGui::SetNextItemWidth(60.0f);
+    ImGui::DragFloat("roll", &lookKeys_[i].roll, 0.5f, -180.0f, 180.0f, "%.1f");
+    ImGui::SameLine();
+    ImGui::SetNextItemWidth(60.0f);
+    ImGui::DragFloat("out", &lookKeys_[i].out, 0.1f, -100.0f, 100.0f, "%.1f");
+    ImGui::SameLine();
+    if (ImGui::SmallButton("消す")) {
+      eraseIndex = static_cast<int>(i);
+    }
+    ImGui::PopID();
+  }
+  ImGui::PopID();
+
+  if (eraseIndex >= 0) {
+    lookKeys_.erase(lookKeys_.begin() + eraseIndex);
+  }
+  // ドラッグ中は並びを変えず、手を離したら t の順に並べ直す
+  if (!ImGui::IsAnyItemActive()) {
+    SortLookKeys();
+  }
+
+  if (ImGui::Button("今の t にキーを足す")) {
+    LookKey key = now;
+    key.t = t_;
+    lookKeys_.push_back(key);
+    SortLookKeys();
+  }
+#endif // USE_IMGUI
 }
 
 RailCamera::LookKey RailCamera::SampleLook(float t) const {

@@ -6,7 +6,7 @@ void BossCore::Initialize() {
   Enemy::Initialize();
   
   // コア自身は死なない（ボス本体が死ねば消滅する）
-  hp_ = 99999; 
+  SetHP(99999);
   
   // 初期状態では装甲に守られているためロックオン不可にする
   lockable_ = false;
@@ -48,14 +48,14 @@ void BossCore::Update() {
     if (boss_->IsDashing() || boss_->IsTransitioning() || boss_->IsDyingOrDefeated()) {
         lockable_ = false;
         if (boss_->IsDyingOrDefeated()) {
-            baseColor_ = {0.1f, 0.1f, 0.1f, 1.0f}; // より暗くして完全な機能停止を表現
+            SetBaseColor({0.1f, 0.1f, 0.1f, 1.0f}); // より暗くして完全な機能停止を表現
         } else {
-            baseColor_ = {0.3f, 0.3f, 0.3f, 1.0f};
+            SetBaseColor({0.3f, 0.3f, 0.3f, 1.0f});
         }
     } else {
         // 全ての装甲が破壊されたら全コアを一斉にロックオン可能にする
         lockable_ = !boss_->HasActiveBits();
-        baseColor_ = {1.0f, 1.0f, 1.0f, 1.0f};
+        SetBaseColor({1.0f, 1.0f, 1.0f, 1.0f});
     }
   }
   
@@ -73,5 +73,5 @@ void BossCore::TakeDamage(int damage, bool isSelfDestruct) {
   }
   
   // 攻撃が当たったフィードバックとして白く点滅させる（フレーム数で指定）
-  hitFlashTimer_ = 10;
+  StartHitFlash(10);
 }

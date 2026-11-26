@@ -101,6 +101,21 @@ void CaptionCard::SetTime(float time) {
   }
 }
 
+void CaptionCard::SetTiming(const Timing &timing) {
+  settings_.cardInTime = timing.cardInTime;
+  settings_.lineGrowSec = timing.lineGrowSec;
+  settings_.textInDelay = timing.textInDelay;
+  settings_.cardOutTime = timing.cardOutTime;
+  settings_.cardOutSec = timing.cardOutSec;
+}
+
+void CaptionCard::SetLayout(const Layout &layout) {
+  settings_.lineY = layout.lineY;
+  settings_.lineWidth = layout.lineWidth;
+  settings_.upperY = layout.upperY;
+  settings_.lowerY = layout.lowerY;
+}
+
 void CaptionCard::Apply() {
   const Settings &s = settings_;
 

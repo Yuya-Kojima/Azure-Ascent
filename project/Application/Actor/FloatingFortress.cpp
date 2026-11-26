@@ -28,7 +28,134 @@ constexpr Vector4 kBodyColor = {0.12f, 0.125f, 0.14f, 1.0f}; // 本体の色（�
 constexpr Vector4 kFlameColor = {1.0f, 0.5f, 0.15f, 1.0f};    // 推進器の火の色
 } // namespace
 
-FloatingFortress::FloatingFortress() = default;
+//=======================
+// 状態
+//=======================
+
+/// <summary>
+/// 状態の基底クラス。毎フレームの動きと次の状態を決め、砦の今の様子に答える
+/// </summary>
+class FloatingFortress::State {
+public:
+  explicit State(FloatingFortress &fortress) : fortress_(fortress) {}
+  virtual ~State() = default;
+
+  /// <summary>
+  /// この状態に入ったときの準備
+  /// </summary>
+  virtual void Enter() {}
+
+  /// <summary>
+  /// 毎フレームの更新。次の状態へ移るなら、その状態を返す（このままなら nullptr）
+  /// </summary>
+  virtual std::unique_ptr<State> Update() { return nullptr; }
+
+  /// <summary>
+  /// 部品を全部壊された。次の状態へ移るなら、その状態を返す（このままなら nullptr）
+  /// </summary>
+  /// <param name="lastPartPosition">最後に壊れた部品の位置（砦の中の座標）</param>
+  virtual std::unique_ptr<State> OnAllPartsDestroyed(const Vector3 &lastPartPosition) {
+    (void)lastPartPosition;
+    return nullptr;
+  }
+
+  /// <summary>
+  /// 部品が撃ってよいか
+  /// </summary>
+  virtual bool CanPartsFire() const { return false; }
+
+  /// <summary>
+  /// 割れ始めて、推力を失って落ちているか
+  /// </summary>
+  virtual bool IsFalling() const { return false; }
+
+  /// <summary>
+  /// 落ち切った・去り終わったか
+  /// </summary>
+  virtual bool IsFinished() const { return false; }
+
+protected:
+  FloatingFortress &GetFortress() const { return fortress_; }
+
+private:
+  FloatingFortress &fortress_;
+};
+
+/// <summary>
+/// 終わり。何もしない
+/// </summary>
+class FloatingFortress::FinishedState : public FloatingFortress::State {
+public:
+  using State::State;
+  bool IsFinished() const override { return true; }
+};
+
+/// <summary>
+/// 割れ目が走ってから死亡演出が終わるまで（道筋は進み続ける）。演出が終わったら終わりへ
+/// </summary>
+class FloatingFortress::DyingState : public FloatingFortress::State {
+public:
+  using State::State;
+
+  void Enter() override {
+    FloatingFortress &fortress = GetFortress();
+    fortress.StartDeath(fortress.lastPartPosition_);
+  }
+
+  std::unique_ptr<State> Update() override {
+    if (GetFortress().UpdateDying()) {
+      return std::make_unique<FinishedState>(GetFortress());
+    }
+    return nullptr;
+  }
+
+  bool IsFalling() const override { return true; }
+};
+
+/// <summary>
+/// 部品を全部壊されて、小さな爆発を起こしながら道筋を進み、見える位置まで耐える。割れ始めるときが来たら死亡へ
+/// </summary>
+class FloatingFortress::EnduringState : public FloatingFortress::State {
+public:
+  EnduringState(FloatingFortress &fortress, const Vector3 &lastPartPosition)
+      : State(fortress), lastPartPosition_(lastPartPosition) {}
+
+  void Enter() override { GetFortress().BeginEnduring(lastPartPosition_); }
+
+  std::unique_ptr<State> Update() override {
+    if (GetFortress().UpdateEnduring()) {
+      return std::make_unique<DyingState>(GetFortress());
+    }
+    return nullptr;
+  }
+
+private:
+  Vector3 lastPartPosition_; // 最後に壊れた部品の位置（砦の中の座標）
+};
+
+/// <summary>
+/// 道筋をなぞる。部品を全部壊されたら耐える状態へ、道筋の終わりを過ぎて消えたら終わりへ
+/// </summary>
+class FloatingFortress::FlyState : public FloatingFortress::State {
+public:
+  using State::State;
+
+  std::unique_ptr<State> Update() override {
+    if (GetFortress().UpdateFly()) {
+      return std::make_unique<FinishedState>(GetFortress());
+    }
+    return nullptr;
+  }
+
+  std::unique_ptr<State> OnAllPartsDestroyed(const Vector3 &lastPartPosition) override {
+    return std::make_unique<EnduringState>(GetFortress(), lastPartPosition);
+  }
+
+  // 頭上を過ぎたら、砲座が撃ってよくなる
+  bool CanPartsFire() const override { return GetFortress().hasPassedOver_; }
+};
+
+FloatingFortress::FloatingFortress() : state_(std::make_unique<FlyState>(*this)) {}
 FloatingFortress::~FloatingFortress() = default;
 
 const std::array<FloatingFortress::PartSpec, FloatingFortress::kPartCount> &
@@ -57,7 +184,7 @@ void FloatingFortress::Initialize(Object3dRenderer *renderer,
   spawnT_ = spawnT;
   pathSpanT_ = (std::max)(pathSeconds * kPathTPerSecond_, 1e-3f);
   heading_ = heading;
-  state_ = State::Fly;
+  state_ = std::make_unique<FlyState>(*this);
   parts_.fill(nullptr);
   aliveParts_ = 0;
 
@@ -144,24 +271,21 @@ Vector3 FloatingFortress::PathPoint(float u) const {
 }
 
 void FloatingFortress::Update() {
-  switch (state_) {
-  case State::Fly:
-    UpdateFly();
-    break;
-  case State::Enduring:
-    UpdateEnduring();
-    break;
-  case State::Dying:
-    UpdateDying();
-    break;
-  case State::Finished:
-    break;
+  if (std::unique_ptr<State> next = state_->Update()) {
+    ChangeState(std::move(next));
   }
 }
 
-void FloatingFortress::UpdateFly() {
+void FloatingFortress::ChangeState(std::unique_ptr<State> next) {
+  state_ = std::move(next);
+  state_->Enter();
+}
+
+bool FloatingFortress::IsFinished() const { return state_->IsFinished(); }
+
+bool FloatingFortress::UpdateFly() {
   if (!railCamera_ || path_.empty()) {
-    return;
+    return false;
   }
   const float n = static_cast<float>(path_.size() - 1);
   const float u = (railCamera_->GetT() - spawnT_) / pathSpanT_ * n;
@@ -177,8 +301,7 @@ void FloatingFortress::UpdateFly() {
       }
     }
     aliveParts_ = 0;
-    state_ = State::Finished;
-    return;
+    return true;
   }
 
   const Vector3 next = PathPoint(u);
@@ -203,11 +326,12 @@ void FloatingFortress::UpdateFly() {
   UpdateTilt();
   EmitThrusterFlames();
   BuildFrame();
+  return false;
 }
 
 void FloatingFortress::FollowPathAfterDeath() {
   deadTime_ += kFrameTime_;
-  const bool isFalling = state_ == State::Dying;
+  const bool isFalling = state_->IsFalling();
   if (isFalling) {
     fallTime_ += kFrameTime_;
     deadTiltRate_ = (std::min)(deadTiltRate_ + kFrameTime_ / kDeadTiltSeconds_, 1.0f);
@@ -293,7 +417,7 @@ void FloatingFortress::CheckPassOver() {
   }
 }
 
-void FloatingFortress::UpdateEnduring() {
+bool FloatingFortress::UpdateEnduring() {
   FollowPathAfterDeath();
   death_.UpdateDamage(deathBoxes_, velocity_);
 
@@ -302,7 +426,7 @@ void FloatingFortress::UpdateEnduring() {
     CheckPassOver();
   }
   if (!hasPassedOver_) {
-    return;
+    return false;
   }
   enduringTimer_ += kFrameTime_;
 
@@ -317,14 +441,11 @@ void FloatingFortress::UpdateEnduring() {
   // そうならなくても、頭上を過ぎてから耐える時間の上限を過ぎたら割れ始める
   const float n = static_cast<float>(path_.size() - 1);
   const bool hasEnduredEnough = enduringTimer_ >= kMinEnduringSeconds_;
-  if ((hasEnduredEnough && ((IsInDeathView() && KeepsClearOfCamera()) || deadPathU_ >= n)) ||
-      enduringTimer_ >= kMaxEnduringSeconds_) {
-    state_ = State::Dying;
-    StartDeath(lastPartPosition_);
-  }
+  return (hasEnduredEnough && ((IsInDeathView() && KeepsClearOfCamera()) || deadPathU_ >= n)) ||
+         enduringTimer_ >= kMaxEnduringSeconds_;
 }
 
-void FloatingFortress::UpdateDying() {
+bool FloatingFortress::UpdateDying() {
   FollowPathAfterDeath();
   const Vector3 cameraPosition = railCamera_ ? railCamera_->GetTranslate() : position_;
   death_.Update(frame_, deathBoxes_, velocity_, cameraPosition);
@@ -337,9 +458,7 @@ void FloatingFortress::UpdateDying() {
       events_.push_back(Event::Exploded);
     }
   }
-  if (death_.IsFinished()) {
-    state_ = State::Finished;
-  }
+  return death_.IsFinished();
 }
 
 bool FloatingFortress::KeepsClearOfCamera() const {
@@ -444,7 +563,7 @@ void FloatingFortress::UpdateTransform() {
 }
 
 void FloatingFortress::Draw() {
-  if (state_ == State::Finished || !death_.IsBodyVisible()) {
+  if (state_->IsFinished() || !death_.IsBodyVisible()) {
     return;
   }
   // 死亡演出が始まったら、本体の箱の代わりにつかんでいる塊を描く
@@ -462,7 +581,7 @@ void FloatingFortress::Draw() {
 }
 
 void FloatingFortress::AppendOccluders(std::vector<Matrix4x4> &worldToBoxes) const {
-  if (state_ == State::Finished || !death_.IsBodyVisible()) {
+  if (state_->IsFinished() || !death_.IsBodyVisible()) {
     return;
   }
   // 箱のモデルは -0.5〜0.5 の立方体なので、箱のワールド行列の逆のあとに 2 倍して -1〜1 にそろえる
@@ -478,9 +597,7 @@ Vector3 FloatingFortress::GetPartRotation(int) const {
   return {pitch_, yaw_, roll_};
 }
 
-bool FloatingFortress::CanPartFire() const {
-  return state_ == State::Fly && hasPassedOver_;
-}
+bool FloatingFortress::CanPartFire() const { return state_->CanPartsFire(); }
 
 void FloatingFortress::OnPartDestroyed(int index) {
   if (index < 0 || index >= kPartCount || !parts_[index]) {
@@ -496,22 +613,27 @@ void FloatingFortress::OnPartDestroyed(int index) {
     targetPitch_ += (spec.localPosition.z > 0.0f ? 1.0f : -1.0f) * kBalloonPitch_;
   }
 
-  // 全部壊れたら、道筋を進みながら耐える。割れ目は最後の部品の所から走る
-  if (aliveParts_ <= 0 && state_ == State::Fly) {
-    state_ = State::Enduring;
-    deadRollStart_ = targetRoll_;
-    deadPitchStart_ = targetPitch_;
-    deadRollBase_ = (targetRoll_ < 0.0f ? -1.0f : 1.0f) * kFallRoll_;
-    deadTiltRate_ = 0.0f;
-    deadTime_ = 0.0f;
-    fallTime_ = 0.0f;
-    deadPathU_ = (railCamera_->GetT() - spawnT_) / pathSpanT_ * static_cast<float>(path_.size() - 1);
-    deadPathHeight_ = PathPoint(deadPathU_).y;
-    hasDeadSpeedLimit_ = false;
-    enduringTimer_ = 0.0f;
-    lastPartPosition_ = spec.localPosition;
-    events_.push_back(Event::Killed);
+  // 全部壊れたら、今の状態に知らせ、次の状態が返ってきたら入れ替える
+  if (aliveParts_ <= 0) {
+    if (std::unique_ptr<State> next = state_->OnAllPartsDestroyed(spec.localPosition)) {
+      ChangeState(std::move(next));
+    }
   }
+}
+
+void FloatingFortress::BeginEnduring(const Vector3 &lastPartPosition) {
+  deadRollStart_ = targetRoll_;
+  deadPitchStart_ = targetPitch_;
+  deadRollBase_ = (targetRoll_ < 0.0f ? -1.0f : 1.0f) * kFallRoll_;
+  deadTiltRate_ = 0.0f;
+  deadTime_ = 0.0f;
+  fallTime_ = 0.0f;
+  deadPathU_ = (railCamera_->GetT() - spawnT_) / pathSpanT_ * static_cast<float>(path_.size() - 1);
+  deadPathHeight_ = PathPoint(deadPathU_).y;
+  hasDeadSpeedLimit_ = false;
+  enduringTimer_ = 0.0f;
+  lastPartPosition_ = lastPartPosition;
+  events_.push_back(Event::Killed);
 }
 
 void FloatingFortress::StartDeath(const Vector3 &lastPartPosition) {

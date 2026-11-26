@@ -6,7 +6,7 @@ ActorManager* ActorManager::GetInstance() {
 }
 
 void ActorManager::Initialize() {
-    actors_.clear();
+    Clear();
 }
 
 void ActorManager::Update() {
@@ -15,10 +15,18 @@ void ActorManager::Update() {
         actor->Update();
     }
 
-    // 2. 死亡フラグが立っているActorをリストから削除（メモリ解放）
-    actors_.remove_if([](const std::unique_ptr<BaseActor>& actor) {
-        return actor->IsDead();
-    });
+    // 2. 死亡フラグが立っているActorをリストから外す（入れ物から取り出した Actor は入れ物へしまい、ほかは破棄する）
+    for (auto it = actors_.begin(); it != actors_.end();) {
+        if (!(*it)->IsDead()) {
+            ++it;
+            continue;
+        }
+        if (IActorPool* pool = (*it)->GetPool()) {
+            (*it)->PrepareForPool();
+            pool->Return(std::move(*it));
+        }
+        it = actors_.erase(it);
+    }
 }
 
 void ActorManager::Draw3D() {
@@ -43,7 +51,9 @@ void ActorManager::AddActor(std::unique_ptr<BaseActor> actor) {
 }
 
 void ActorManager::Clear() {
+    // Actor を先に破棄してから入れ物を破棄する（破棄される Actor は入れ物へ返さない）
     actors_.clear();
+    pools_.clear();
 }
 
 void ActorManager::ClearActorsIf(std::function<bool(BaseActor*)> condition) {

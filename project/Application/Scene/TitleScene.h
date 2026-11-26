@@ -103,18 +103,31 @@ private: // メンバ変数(ゲーム用)
   float exposureOffset_ = 0.0f;
   float bloomIntensityOffset_ = 0.0f;
 
-  // シネマティックカメラ管理
-public:
-  enum class TitleCameraCut {
-    RearWide,        // カット1: 後方ワイド追従
-    FrontTracking,   // カット2: 斜め前方並走
-    LowAngle,        // カット3: 下からのあおり
-    DistantOverlook, // カット4: 遠景の俯瞰（ロングショット）
-    WingtipCloseUp,  // カット5: 翼端トレイルクローズアップ
+  // シネマティックカメラ管理（カットは TitleScene.cpp で定義する。入れ子のクラスなので、private な関数を呼べる）
+  class CameraCut;          // 基底
+  class RearWideCut;        // カット1: 後方ワイド追従
+  class FrontTrackingCut;   // カット2: 斜め前方並走
+  class LowAngleCut;        // カット3: 下からのあおり
+  class DistantOverlookCut; // カット4: 遠景の俯瞰（ロングショット）
+  class WingtipCloseUpCut;  // カット5: 翼端トレイルクローズアップ
+
+  // ふだんのカメラが使う、ドラゴンの飛び方の値
+  struct CruiseContext {
+    float time;     // 起動からの連続時計（秒）
+    float weaveEnv; // 蛇行の育ち具合（0〜1）
+    float flightZ;  // ドラゴンの前後の位置（基準の位置から）
   };
 
-private:
-  TitleCameraCut currentCut_ = TitleCameraCut::RearWide;
+  // 発進の進み具合
+  struct LaunchMotion {
+    float progress;   // 発進の進み（0〜1）
+    float accelCurve; // 加速カーブ（進みの 3 乗）
+    float accelDist;  // ドラゴンが前へ進んだ距離
+    float extraTime;  // 発進の時間を過ぎてからの秒数
+    float smoothPose; // 前傾姿勢への補間（0〜1）
+  };
+
+  std::unique_ptr<CameraCut> cut_; // 今のカット
   float cutTimer_ = 0.0f;
   const float kCutDuration_ = 7.0f; // 各カットの持続秒数
   bool isManualCut_ = false;        // デバッグ手動固定フラグ
@@ -148,7 +161,6 @@ private:
   bool isStarting_ = false;
   float startTimer_ = 0.0f;
   const float kStartDuration_ = 1.3f;
-  TitleCameraCut startCut_ = TitleCameraCut::RearWide;
   Vector3 startCamPos_{};
   Vector3 startCamRot_{};
   float startCamFov_ = 0.70f;
@@ -236,6 +248,30 @@ private: // 更新サブ処理（パイプライン用プライベート関数�
   /// カメラカット連動ライティングの更新
   /// </summary>
   void UpdateLighting();
+
+  /// <summary>
+  /// カットを next に入れ替え、カットの時間・翼端トレイル・追従カメラを始め直す
+  /// </summary>
+  void ChangeCut(std::unique_ptr<CameraCut> next);
+
+  /// <summary>
+  /// 並び順の番号のカットを作る（ImGui のカットの選択に使う）
+  /// </summary>
+  std::unique_ptr<CameraCut> CreateCut(int index);
+
+  // カット1（とオープニング）の追従カメラ。ばね・ダンパーで慣性をつけて追う
+  void UpdateFollowCamera(const CruiseContext &context, Vector3 &outTargetCamPos, Vector3 &outTargetCamRot);
+  // カット2〜5 のふだんのカメラ
+  void UpdateFrontTrackingCamera(Vector3 &outTargetCamPos, Vector3 &outTargetCamRot);
+  void UpdateLowAngleCamera(Vector3 &outTargetCamPos, Vector3 &outTargetCamRot);
+  void UpdateDistantOverlookCamera(Vector3 &outTargetCamPos, Vector3 &outTargetCamRot);
+  void UpdateWingtipCloseUpCamera(Vector3 &outTargetCamPos, Vector3 &outTargetCamRot);
+  // カットごとの発進（カメラとドラゴンの動き）
+  void LaunchFromRearWide(const LaunchMotion &motion, Vector3 &outTargetCamPos, Vector3 &outTargetCamRot);
+  void LaunchFromFrontTracking(const LaunchMotion &motion, Vector3 &outTargetCamPos, Vector3 &outTargetCamRot);
+  void LaunchFromLowAngle(const LaunchMotion &motion, Vector3 &outTargetCamPos, Vector3 &outTargetCamRot);
+  void LaunchFromDistantOverlook(const LaunchMotion &motion, Vector3 &outTargetCamPos, Vector3 &outTargetCamRot);
+  void LaunchFromWingtipCloseUp(const LaunchMotion &motion, Vector3 &outTargetCamPos, Vector3 &outTargetCamRot);
 
   /// <summary>
   /// カメラの更新とアクティブカメラの確定

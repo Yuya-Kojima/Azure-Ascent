@@ -1,5 +1,6 @@
 #pragma once
 #include "Actor/Enemy.h"
+#include "Framework/ActorRef.h"
 #include "Framework/BaseActor.h"
 #include "Math/Quaternion.h"
 #include "Math/Vector3.h"
@@ -17,8 +18,7 @@ class SphereCollider;
 class Player;
 class SpriteRenderer;
 class BossWeakPoint;
-
-enum class BossPhase { Phase1, PhaseTransition, Phase2, Dying, Defeated };
+class BossCore;
 
 class Boss : public Enemy {
 public:
@@ -30,49 +30,29 @@ public:
   void Update() override;
   void Draw3D() override;
   void Draw2D() override;
-  void OnCollision(class Collider *other) override;
 
   // 突進中（予兆含む）かどうかの判定
-  bool IsDashing() const {
-      return currentState_ == BossState::DashTelegraph || currentState_ == BossState::Dash;
-  }
+  bool IsDashing() const;
 
-  // ボスかどうかの判定
-  bool IsBoss() const override { return true; }
+  // 自機に当たっても自爆しない
+  void OnHitPlayer() override {}
+
+  // 画面の外でカメラの後ろに取り残されても消えない
+  bool CanDespawnBehindCamera() const override { return false; }
 
   // 死亡演出中または死亡済みかどうかの判定
-  bool IsDyingOrDefeated() const {
-      return phase_ == BossPhase::Dying || phase_ == BossPhase::Defeated;
-  }
+  bool IsDyingOrDefeated() const;
 
   // 形態変化中かどうかの判定
-  bool IsTransitioning() const {
-      return phase_ == BossPhase::PhaseTransition;
-  }
+  bool IsTransitioning() const;
 
   bool HasActiveBits() const { return !activeBits_.empty(); }
 
   bool CanBeLockedOn() const override { return false; }
 
-  // 表示用の3Dモデルを外から渡してセットする（overrideで確実にこちらが呼ばれる）
-  void SetModel(std::unique_ptr<Object3d> model) override {
-    model_ = std::move(model);
-  }
-  Object3d *GetModel() const { return model_.get(); }
-  void SetBaseColor(const Vector4 &color) { baseColor_ = color; }
-  const Vector4 &GetBaseColor() const { return baseColor_; }
-
-  void SetPlayer(const Player *player) { player_ = player; }
-
-  Transform &GetTransform() { return transform_; }
-  const Transform &GetTransform() const { return transform_; }
-
   // ステータスのゲッター/セッター
-  int GetHP() const { return hp_; }
-  void SetHP(int hp) { hp_ = hp; }
   int GetMaxHP() const { return maxHp_; }
   void SetMaxHP(int hp) { maxHp_ = hp; }
-  BossPhase GetPhase() const { return phase_; }
 
   // カメラに関わる出来事（受け取ったシーンがカメラを動かす）
   enum class CameraEvent {
@@ -110,36 +90,97 @@ public:
   static const std::vector<Vector3> &GetBlastPoints();
 
 private:
-  void ChangePhase(BossPhase nextPhase);
-  void UpdatePhase1();
-  void UpdatePhaseTransition();
-  void UpdatePhase2();
-  void UpdateDying();
+  // 形態（Boss.cpp で定義する。ボスの入れ子のクラスなので、ボスの private な関数を呼べる）
+  class PhaseState;      // 基底
+  class Phase1State;     // 第 1 形態
+  class TransitionState; // 形態変化
+  class Phase2State;     // 第 2 形態
+  class DyingState;      // 撃破の間
+  class DefeatedState;   // 撃破済み
+
+  // 形態を next に入れ替え、入ったときの準備をさせる
+  void ChangePhase(std::unique_ptr<PhaseState> next);
+  // 形態変化に入る（敵弾を消し、画面奥へ退く位置を決める）
+  void EnterTransition();
+  // 第 2 形態に入る（形態変化の直後はスキを作る）
+  void EnterPhase2();
+  // 撃破の間に入る（敵弾を誘爆させ、コア・装甲・的を消し、当たり判定と HP バーを消す）
+  void EnterDying();
+  // 撃破済みになる（倒されたことを知らせて消える）
+  void EnterDefeated();
+  // 形態変化の動き。終わったら true
+  bool UpdatePhaseTransition();
+  // 撃破の間の動き。撃破の見た目を外から進めていなければ、その場で爆発して true
+  bool UpdateDying();
   // 撃破の間の体の色（元の色から赤く光らせる色へ、光らせる割合で寄せる）
   Vector4 GetDyingColor() const;
   // 残っている装甲と突進の的を消す
   void DestroyParts();
-  void UpdateDashSequence(); // 突進の一連の処理（予兆・突進本体・スタン・終了後クールダウン）
+
+  // 動き（Boss.cpp で定義する。ボスの入れ子のクラスなので、ボスの private な関数を呼べる）
+  class ActionState;           // 基底
+  class IdleAction;            // 何もしない（形態が動きを決めている間）
+  class Phase1EnterAction;     // 第 1 形態の登場
+  class Phase1HoverAction;     // 第 1 形態の滞空
+  class Phase1TelegraphAction; // 第 1 形態の予兆
+  class Phase1AttackAction;    // 第 1 形態の攻撃
+  class Phase1CooldownAction;  // 第 1 形態のクールダウン
+  class Phase2HoverAction;     // 第 2 形態の滞空
+  class Phase2TelegraphAction; // 第 2 形態の予兆
+  class Phase2AttackAction;    // 第 2 形態の攻撃
+  class Phase2CooldownAction;  // 第 2 形態のクールダウン
+  class DashTelegraphAction;   // 突進の予兆
+  class DashAction;            // 突進
+  class StaggerAction;         // ダウン（カウンター成功）
+  class DashCooldownAction;    // 突進のあと
+
+  // 今の動きを 1 フレーム進め、次の動きが返ってきたら入れ替える
+  void UpdateAction();
+  // 動きを next に入れ替え、動きの時間を 0 に戻して、入ったときの準備をさせる
+  void ChangeAction(std::unique_ptr<ActionState> next);
+
+  // カメラの前の基準の位置に置く（登場）
+  void PlaceAtSpawn();
+  // 第 1 形態の滞空。移り終えたら true
+  bool UpdatePhase1Hover();
+  // 第 1 形態の予兆。溜め終えたら true
+  bool UpdatePhase1Telegraph();
+  // 第 1 形態の攻撃（扇状の弾かミサイルを撃つ）
+  void FirePhase1Barrage();
+  // 第 1 形態のクールダウン。待ち終えて次の攻撃を選んだら true（突進でなければ、滞空の道筋も決める）
+  bool UpdatePhase1Cooldown();
+  // 第 2 形態の滞空。移り終えたら true
+  bool UpdatePhase2Hover();
+  // 第 2 形態の予兆。溜め終えたら true
+  bool UpdatePhase2Telegraph();
+  // 第 2 形態の攻撃（ミサイルを円形に出す）
+  void FirePhase2Missiles();
+  // 第 2 形態のクールダウン。待ち終えて次の攻撃とその位置を決めたら true
+  bool UpdatePhase2Cooldown();
+  // 突進の予兆。溜め終えて突進の行き先を決めたら true
+  bool UpdateDashTelegraph();
+  // 突進。通り抜けて的を消したら true
+  bool UpdateDash();
+  // ダウン。弾き飛ばされて元の位置へ戻ったら true
+  bool UpdateStagger();
+  // ダウンに入る（カウンター成功の音・装甲を戻す・カメラと光の出来事）
+  void BeginStagger();
 
   int maxHp_ = 100;
-  BossPhase phase_ = BossPhase::Phase1;
+  std::unique_ptr<PhaseState> phase_; // 今の形態
+  static constexpr float kPhase2HpRatio_ = 0.7f; // HP がこの割合まで減ったら形態変化する
   static constexpr float kTransitionSeconds_ = 3.5f; // 形態変化にかける秒数
+  static constexpr Vector4 kCoreBlastColor_ = {1.0f, 0.5f, 0.0f, 1.0f}; // 撃破のときにコアが爆発する色
   std::vector<CameraEvent> cameraEvents_; // まだ受け取られていないカメラの出来事
 
-  // ステートマシン管理
-  enum class BossState {
-    Enter,
-    Hover,
-    Telegraph,
-    Attack,
-    Cooldown,
-    DashTelegraph,
-    Dash,
-    DashCooldown,
-    Stagger // カウンター成功時のダウン状態
-  };
-  BossState currentState_ = BossState::Enter;
-  float stateTimer_ = 0.0f;
+  std::unique_ptr<ActionState> action_; // 今の動き
+  float stateTimer_ = 0.0f;              // 今の動き（形態変化の間は形態変化）に入ってからの秒数
+  static constexpr float kFrameSeconds_ = 1.0f / 60.0f;      // 1 フレームの秒数
+  static constexpr float kDashCooldownSeconds_ = 1.5f;       // 突進のあとに隙を晒す秒数
+  static constexpr int kPatternMissile_ = 1;                 // attackPattern_ のミサイル
+  static constexpr int kPatternDash_ = 2;                    // attackPattern_ の突進
+  static constexpr Vector4 kTelegraphColor_ = {1.0f, 0.5f, 0.0f, 1.0f};     // 予兆の体の色（オレンジ）
+  static constexpr Vector4 kDashTelegraphColor_ = {1.0f, 0.0f, 0.0f, 1.0f}; // 突進の予兆の体の色（赤）
   int attackStep_ = 0;
   int attackPattern_ = 0; // 0: 通常弾, 1: ミサイル, 2: 突進
   int dashCooldown_ = 0;  // 突進のクールダウン管理用
@@ -169,6 +210,9 @@ private:
   
   // --- 突進時の弱点管理 ---
   std::vector<BossWeakPoint*> activeWeakPoints_;
+
+  // --- コア（装甲の奥の弱点）。撃破のときに爆発させて消す ---
+  std::vector<ActorRef<BossCore>> cores_;
 
 public:
   // 最後の一撃（Dying に入った瞬間）に、ボスの位置を渡して呼ぶ

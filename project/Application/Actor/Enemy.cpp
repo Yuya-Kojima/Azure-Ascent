@@ -79,7 +79,7 @@ void Enemy::Update() {
     }
   }
 
-  aliveTime_ += 1.0f / 60.0f; // 簡易的に60FPS固定で時間計算
+  AdvanceAliveTime();
 
   // 画面の外に続けている時間を数える（画面に戻ったら 0 に戻す）
   if (camera_ && !IsInScreen(kLeaveScreenMargin_)) {
@@ -93,8 +93,7 @@ void Enemy::Update() {
   }
 
   // 被弾中は被弾の色（hitFlashColor_）で塗り、終わったら基本色に戻す
-  if (hitFlashTimer_ > 0) {
-    hitFlashTimer_--;
+  if (TickHitFlash()) {
     if (model_) {
       model_->SetColor(hitFlashColor_);
     }
@@ -163,17 +162,9 @@ void Enemy::SetLights(std::unique_ptr<EnemyLights> lights) {
   lights_ = std::move(lights);
 }
 
-void Enemy::OnCollision(Collider *other) {
-  // プレイヤーと衝突した場合、自身もダメージを受けて自爆する
-  if (other->GetOwner() && dynamic_cast<Player *>(other->GetOwner())) {
-    Player *p = dynamic_cast<Player *>(other->GetOwner());
-    if (p->GetInvincibleTimer() > 0) {
-      return; // 無敵中なら食らわない
-    }
-    p->TakeDamage(1); // プレイヤーにダメージを与える
-    Logger::Log("Enemy Self-Destruct into Player!\n");
-    TakeDamage(999, true); // true を渡して自爆であることを知らせる
-  }
+void Enemy::OnHitPlayer() {
+  Logger::Log("Enemy Self-Destruct into Player!\n");
+  TakeDamage(999, true); // true を渡して自爆であることを知らせる
 }
 
 void Enemy::TakeDamage(int damage, bool isSelfDestruct) {
@@ -181,8 +172,7 @@ void Enemy::TakeDamage(int damage, bool isSelfDestruct) {
     return;
   }
 
-  hp_ -= damage;
-  hitFlashTimer_ = 5; // 5フレーム点滅
+  ApplyDamage(damage);
 
   if (hp_ <= 0) {
     Logger::Log("Enemy Destroyed!\n");
@@ -238,12 +228,43 @@ void Enemy::TakeDamage(int damage, bool isSelfDestruct) {
       }
     }
 
-    if (onDestroyedCallback_) {
-      onDestroyedCallback_(isSelfDestruct);
-    }
+    NotifyDestroyed(isSelfDestruct);
     Destroy();
   } else {
     SoundManager::GetInstance()->PlaySE_Once("enemy_hit");
+  }
+}
+
+void Enemy::ApplyDamage(int damage) {
+  hp_ -= damage;
+  StartHitFlash(kHitFlashFrames_);
+}
+
+bool Enemy::TickHitFlash() {
+  if (hitFlashTimer_ <= 0) {
+    return false;
+  }
+  hitFlashTimer_--;
+  return true;
+}
+
+void Enemy::AdvanceAliveTime() { aliveTime_ += kFixedDeltaTime; }
+
+void Enemy::SetColliderRadius(float radius) {
+  if (collider_) {
+    collider_->SetRadius(radius);
+  }
+}
+
+void Enemy::SetColliderEnabled(bool isEnabled) {
+  if (collider_) {
+    collider_->SetEnable(isEnabled);
+  }
+}
+
+void Enemy::NotifyDestroyed(bool isSelfDestruct) {
+  if (onDestroyedCallback_) {
+    onDestroyedCallback_(isSelfDestruct);
   }
 }
 

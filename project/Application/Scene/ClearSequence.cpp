@@ -902,22 +902,27 @@ void ClearSequence::UpdateCard() {
     return;
   }
   // ドラゴンが太陽の前を過ぎた時刻に出始め、リザルトの時刻に消えきる（まだ過ぎていなければ出さない）
-  CaptionCard::Settings &settings = card_->GetSettings();
   const float sunPassTime = flight_->GetSunPassTime();
-  settings.cardInTime = sunPassTime >= 0.0f
-                            ? dragonEnterSec_ + sunPassTime
-                            : afterglowSec_;
-  settings.lineGrowSec = (std::max)(cardGrowSec_, 0.01f);
-  settings.textInDelay = cardLowerDelay_;
-  settings.cardOutSec = (std::max)(cardOutSec_, 0.01f);
-  settings.cardOutTime = afterglowSec_ - settings.cardOutSec;
-  settings.lineY = cardLineY_;
-  settings.lineWidth = cardLineWidth_;
+  CaptionCard::Timing timing;
+  timing.cardInTime = sunPassTime >= 0.0f
+                          ? dragonEnterSec_ + sunPassTime
+                          : afterglowSec_;
+  timing.lineGrowSec = (std::max)(cardGrowSec_, 0.01f);
+  timing.textInDelay = cardLowerDelay_;
+  timing.cardOutSec = (std::max)(cardOutSec_, 0.01f);
+  timing.cardOutTime = afterglowSec_ - timing.cardOutSec;
+  card_->SetTiming(timing);
+
   // 上下の文字は、ゲームオーバーのカードと同じ間隔で横線から離す（px）
   const float kUpperGap = 54.0f;
   const float kLowerGap = 40.0f;
-  settings.upperY = cardLineY_ - kUpperGap;
-  settings.lowerY = cardLineY_ + kLowerGap;
+  CaptionCard::Layout layout;
+  layout.lineY = cardLineY_;
+  layout.lineWidth = cardLineWidth_;
+  layout.upperY = cardLineY_ - kUpperGap;
+  layout.lowerY = cardLineY_ + kLowerGap;
+  card_->SetLayout(layout);
+
   card_->SetTime(timer_ - AfterglowStart());
 }
 

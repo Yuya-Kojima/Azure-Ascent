@@ -1,7 +1,10 @@
 #pragma once
+#include "ActorPool.h"
 #include "BaseActor.h"
 #include <list>
 #include <memory>
+#include <typeindex>
+#include <unordered_map>
 #include <vector>
 #include <string>
 #include <functional>
@@ -24,6 +27,19 @@ public:
     /// </summary>
     /// <param name="actor">追加するActor（std::make_uniqueで渡す）</param>
     void AddActor(std::unique_ptr<BaseActor> actor);
+
+    /// <summary>
+    /// 型 T の入れ物から Actor を 1 つ取り出す（しまってある物がなければ新しく作る）。
+    /// 取り出した Actor は消えたとき破棄されず、入れ物へしまわれる
+    /// </summary>
+    template <class T>
+    std::unique_ptr<T> Acquire() {
+        std::unique_ptr<IActorPool>& pool = pools_[std::type_index(typeid(T))];
+        if (!pool) {
+            pool = std::make_unique<ActorPool<T>>();
+        }
+        return static_cast<ActorPool<T>*>(pool.get())->Acquire();
+    }
 
     /// <summary>
     /// 登録されている全てのActorを削除する（シーン切り替え時などに呼ぶ）
@@ -58,4 +74,7 @@ private:
 
     // Actorを管理するためのリスト
     std::list<std::unique_ptr<BaseActor>> actors_;
+
+    // 型ごとの、使い終わった Actor をしまう入れ物
+    std::unordered_map<std::type_index, std::unique_ptr<IActorPool>> pools_;
 };

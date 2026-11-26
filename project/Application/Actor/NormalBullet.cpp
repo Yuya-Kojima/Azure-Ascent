@@ -7,7 +7,8 @@
 #include "Math/MathUtil.h"
 #include "Debug/Logger.h"
 #include <Windows.h>
-#include "Actor/Enemy.h"
+#include "Actor/IPlayerBulletHittable.h"
+#include "Score/VolleyId.h"
 #include "Render/Renderer/LineRenderer.h"
 #include <cmath>
 #include "Collision/SphereCollider.h"
@@ -23,8 +24,12 @@ NormalBullet::~NormalBullet() {
 }
 
 void NormalBullet::Initialize(Object3dRenderer* renderer, const Vector3& startPos, const Vector3& velocity) {
-  object3d_ = std::make_unique<Object3d>();
-  object3d_->Initialize(renderer);
+  // 見た目は最初の 1 回だけ作り、入れ物から取り出して使い回すときは作り直さない
+  if (!object3d_) {
+    object3d_ = std::make_unique<Object3d>();
+    object3d_->Initialize(renderer);
+  }
+  object3d_->SetRotation({0.0f, 0.0f, 0.0f});
   
   // エンジンのビルトインカプセルモデルを使用
   object3d_->SetModel("__builtin_capsule");
@@ -48,13 +53,19 @@ void NormalBullet::Initialize(Object3dRenderer* renderer, const Vector3& startPo
     transform_.rotate = rot;
   }
 
-  // コライダーの設定（当てやすい元の2.0f）
-  collider_ = std::make_unique<SphereCollider>(this);
+  // コライダーの設定（当てやすい元の2.0f。作るのは最初の 1 回だけ）
+  if (!collider_) {
+    collider_ = std::make_unique<SphereCollider>(this);
+  }
   collider_->SetRadius(2.0f);
   collider_->SetAttribute(kCollisionAttributePlayerBullet);
   collider_->SetMask(kCollisionAttributeEnemy | kCollisionAttributeEnemyBullet);
   collider_->SetVelocity(velocity_);
   CollisionManager::GetInstance()->Register(collider_.get());
+}
+
+void NormalBullet::OnReturnToPool() {
+  CollisionManager::GetInstance()->Remove(collider_.get());
 }
 
 void NormalBullet::Update() {
@@ -86,10 +97,10 @@ void NormalBullet::OnCollision(Collider* other) {
   if (isDead_) return;
 
   if (other->GetAttribute() & kCollisionAttributeEnemy) {
-    Enemy* enemy = dynamic_cast<Enemy*>(other->GetOwner());
-    if (enemy && !enemy->IsDead()) {
-      enemy->SetLastHitVolley(kNoVolleyId);
-      enemy->TakeDamage(damage_);
+    BaseActor* owner = other->GetOwner();
+    auto* hittable = dynamic_cast<IPlayerBulletHittable*>(owner);
+    if (hittable && !owner->IsDead()) {
+      hittable->OnPlayerBulletHit(damage_, kNoVolleyId);
       isDead_ = true;
 
       // 着弾ヒットスパーク（通常弾：ゴールド/オレンジ系の火花）
@@ -103,6 +114,9 @@ void NormalBullet::OnCollision(Collider* other) {
     }
   }
   else if (other->GetAttribute() & kCollisionAttributeEnemyBullet) {
+    if (auto* hittable = dynamic_cast<IPlayerBulletHittable*>(other->GetOwner())) {
+      hittable->OnPlayerBulletHit(kEnemyBulletDamage_, kNoVolleyId);
+    }
     isDead_ = true;
 
     // 着弾ヒットスパーク（通常弾：ゴールド/オレンジ系の火花）

@@ -21,7 +21,180 @@
 #include "Debug/ImGuiManager.h"
 #endif
 
-TitleScene::TitleScene() = default;
+namespace {
+// 0〜1 に収めてから、両端がなめらかな S 字で補間する
+float Smooth01(float x) {
+  x = (std::clamp)(x, 0.0f, 1.0f);
+  return x * x * (3.0f - 2.0f * x);
+}
+} // namespace
+
+//===========================
+// カメラカット
+//===========================
+
+/// <summary>
+/// カメラカットの基底クラス。ふだんと発進のカメラ、ライトの向き、次のカットを決める
+/// </summary>
+class TitleScene::CameraCut {
+public:
+  explicit CameraCut(TitleScene &scene) : scene_(scene) {}
+  virtual ~CameraCut() = default;
+
+  /// <summary>
+  /// 持続時間が過ぎたときに切り替える、次のカット
+  /// </summary>
+  virtual std::unique_ptr<CameraCut> CreateNext() const = 0;
+
+  /// <summary>
+  /// ふだん（オープニングの後）のカメラの目標の位置・回転を決める
+  /// </summary>
+  virtual void UpdateCruise(const CruiseContext &context, Vector3 &outTargetCamPos, Vector3 &outTargetCamRot) = 0;
+
+  /// <summary>
+  /// 発進のカメラの目標の位置・回転と、ドラゴンの動きを決める
+  /// </summary>
+  virtual void UpdateLaunch(const LaunchMotion &motion, Vector3 &outTargetCamPos, Vector3 &outTargetCamRot) = 0;
+
+  /// <summary>
+  /// ライトの水平方向の向き
+  /// </summary>
+  virtual Vector3 GetLightHorizontal() const { return {0.55f, 0.0f, 0.65f}; }
+
+  /// <summary>
+  /// 並び順の番号（ImGui のカットの選択に使う）
+  /// </summary>
+  virtual int GetIndex() const = 0;
+
+protected:
+  TitleScene &GetScene() const { return scene_; }
+
+private:
+  TitleScene &scene_;
+};
+
+/// <summary>
+/// カット1: 後方ワイド追従。オープニングと同じ追従カメラで、ばねで慣性をつけて追う
+/// </summary>
+class TitleScene::RearWideCut : public TitleScene::CameraCut {
+public:
+  using CameraCut::CameraCut;
+  std::unique_ptr<CameraCut> CreateNext() const override;
+  void UpdateCruise(const CruiseContext &context, Vector3 &outTargetCamPos, Vector3 &outTargetCamRot) override {
+    GetScene().UpdateFollowCamera(context, outTargetCamPos, outTargetCamRot);
+  }
+  void UpdateLaunch(const LaunchMotion &motion, Vector3 &outTargetCamPos, Vector3 &outTargetCamRot) override {
+    GetScene().LaunchFromRearWide(motion, outTargetCamPos, outTargetCamRot);
+  }
+  int GetIndex() const override { return 0; }
+};
+
+/// <summary>
+/// カット2: 斜め前方並走。ライトを前から当てて顔・胸元の逆光を防ぐ
+/// </summary>
+class TitleScene::FrontTrackingCut : public TitleScene::CameraCut {
+public:
+  using CameraCut::CameraCut;
+  std::unique_ptr<CameraCut> CreateNext() const override;
+  void UpdateCruise(const CruiseContext &context, Vector3 &outTargetCamPos, Vector3 &outTargetCamRot) override {
+    GetScene().UpdateFrontTrackingCamera(outTargetCamPos, outTargetCamRot);
+  }
+  void UpdateLaunch(const LaunchMotion &motion, Vector3 &outTargetCamPos, Vector3 &outTargetCamRot) override {
+    GetScene().LaunchFromFrontTracking(motion, outTargetCamPos, outTargetCamRot);
+  }
+  Vector3 GetLightHorizontal() const override { return {-0.45f, 0.0f, -0.72f}; }
+  int GetIndex() const override { return 1; }
+};
+
+/// <summary>
+/// カット3: 下からのあおり
+/// </summary>
+class TitleScene::LowAngleCut : public TitleScene::CameraCut {
+public:
+  using CameraCut::CameraCut;
+  std::unique_ptr<CameraCut> CreateNext() const override;
+  void UpdateCruise(const CruiseContext &context, Vector3 &outTargetCamPos, Vector3 &outTargetCamRot) override {
+    GetScene().UpdateLowAngleCamera(outTargetCamPos, outTargetCamRot);
+  }
+  void UpdateLaunch(const LaunchMotion &motion, Vector3 &outTargetCamPos, Vector3 &outTargetCamRot) override {
+    GetScene().LaunchFromLowAngle(motion, outTargetCamPos, outTargetCamRot);
+  }
+  int GetIndex() const override { return 2; }
+};
+
+/// <summary>
+/// カット4: 遠景の俯瞰（ロングショット）
+/// </summary>
+class TitleScene::DistantOverlookCut : public TitleScene::CameraCut {
+public:
+  using CameraCut::CameraCut;
+  std::unique_ptr<CameraCut> CreateNext() const override;
+  void UpdateCruise(const CruiseContext &context, Vector3 &outTargetCamPos, Vector3 &outTargetCamRot) override {
+    GetScene().UpdateDistantOverlookCamera(outTargetCamPos, outTargetCamRot);
+  }
+  void UpdateLaunch(const LaunchMotion &motion, Vector3 &outTargetCamPos, Vector3 &outTargetCamRot) override {
+    GetScene().LaunchFromDistantOverlook(motion, outTargetCamPos, outTargetCamRot);
+  }
+  int GetIndex() const override { return 3; }
+};
+
+/// <summary>
+/// カット5: 翼端トレイルクローズアップ
+/// </summary>
+class TitleScene::WingtipCloseUpCut : public TitleScene::CameraCut {
+public:
+  using CameraCut::CameraCut;
+  std::unique_ptr<CameraCut> CreateNext() const override;
+  void UpdateCruise(const CruiseContext &context, Vector3 &outTargetCamPos, Vector3 &outTargetCamRot) override {
+    GetScene().UpdateWingtipCloseUpCamera(outTargetCamPos, outTargetCamRot);
+  }
+  void UpdateLaunch(const LaunchMotion &motion, Vector3 &outTargetCamPos, Vector3 &outTargetCamRot) override {
+    GetScene().LaunchFromWingtipCloseUp(motion, outTargetCamPos, outTargetCamRot);
+  }
+  int GetIndex() const override { return 4; }
+};
+
+// 後方ワイド → 前方並走 → あおり → 俯瞰 → 翼端 → 後方ワイド の順に巡る
+std::unique_ptr<TitleScene::CameraCut> TitleScene::RearWideCut::CreateNext() const {
+  return std::make_unique<FrontTrackingCut>(GetScene());
+}
+std::unique_ptr<TitleScene::CameraCut> TitleScene::FrontTrackingCut::CreateNext() const {
+  return std::make_unique<LowAngleCut>(GetScene());
+}
+std::unique_ptr<TitleScene::CameraCut> TitleScene::LowAngleCut::CreateNext() const {
+  return std::make_unique<DistantOverlookCut>(GetScene());
+}
+std::unique_ptr<TitleScene::CameraCut> TitleScene::DistantOverlookCut::CreateNext() const {
+  return std::make_unique<WingtipCloseUpCut>(GetScene());
+}
+std::unique_ptr<TitleScene::CameraCut> TitleScene::WingtipCloseUpCut::CreateNext() const {
+  return std::make_unique<RearWideCut>(GetScene());
+}
+
+std::unique_ptr<TitleScene::CameraCut> TitleScene::CreateCut(int index) {
+  switch (index) {
+  case 1:
+    return std::make_unique<FrontTrackingCut>(*this);
+  case 2:
+    return std::make_unique<LowAngleCut>(*this);
+  case 3:
+    return std::make_unique<DistantOverlookCut>(*this);
+  case 4:
+    return std::make_unique<WingtipCloseUpCut>(*this);
+  default:
+    return std::make_unique<RearWideCut>(*this);
+  }
+}
+
+void TitleScene::ChangeCut(std::unique_ptr<CameraCut> next) {
+  cut_ = std::move(next);
+  cutTimer_ = 0.0f;
+  rightTrailHistory_.clear();
+  leftTrailHistory_.clear();
+  camSmoothValid_ = false; // 追従カメラは、次に使うときに今の目標へ瞬時に合わせる
+}
+
+TitleScene::TitleScene() : cut_(std::make_unique<RearWideCut>(*this)) {}
 TitleScene::~TitleScene() = default;
 
 void TitleScene::Initialize(EngineBase *engine) {
@@ -214,7 +387,7 @@ void TitleScene::UpdateUI() {
       openingTimer_ = 0.0f;
       uiIntroTimer_ = 0.0f;
       isBgmStarted_ = false;
-      currentCut_ = TitleCameraCut::RearWide;
+      cut_ = std::make_unique<RearWideCut>(*this); // カット1から見せ直す
       loopFadeAlpha_ = 1.0f;
     }
   } else {
@@ -238,7 +411,6 @@ void TitleScene::UpdateUI() {
     if (!isStarting_ && isStartTextReady && MenuInput::IsDecideTriggered(engine_->GetInputManager())) {
       isStarting_ = true;
       startTimer_ = 0.0f;
-      startCut_ = currentCut_; // 発進時のカメラカットを記録
       if (camera_) {
         startCamPos_ = camera_->GetTranslate();
         startCamRot_ = camera_->GetRotate();
@@ -390,106 +562,8 @@ void TitleScene::UpdateLaunchSequence(Vector3 &outTargetCamPos, Vector3 &outTarg
     cloudsObjectFar_->SetTranslation({0.0f, -17.0f, 4500.0f + cloudsScrollZ_});
   }
 
-  switch (startCut_) {
-  case TitleCameraCut::RearWide: {
-    // カット1（後方）：背後追従しながら前傾姿勢で加速
-    dragonTransform_.translate = startDragonPos_ + Vector3{0.0f, 0.15f * progress, accelDist};
-    dragonTransform_.rotate = Lerp(startDragonRot_, Vector3{0.14f, 0.0f, 0.0f}, smoothPose);
-
-    // 通常時の見やすい距離（約 -5.5m）を基準に、発進前傾姿勢に合わせてオフセットを調整
-    Vector3 initialOffset = startCamPos_ - startDragonPos_;
-    Vector3 readyOffset = Vector3{0.0f, 0.85f, -5.5f};
-    Vector3 currentOffset = Lerp(initialOffset, readyOffset, smoothPose);
-
-    // 加速によるカメラの引き離され演出（ドラゴンの急加速にカメラが一瞬遅れて追従することで飛び出し感を表現）
-    float lagDistance = accelCurve * 3.5f; // 最大で約3.5m後方に引き離される
-    currentOffset.z -= lagDistance;
-
-    outTargetCamPos = dragonTransform_.translate + currentOffset;
-    outTargetCamRot = Lerp(startCamRot_, Vector3{0.06f, 0.0f, 0.0f}, smoothPose);
-
-    if (camera_) {
-      camera_->SetFovY(Lerp(startCamFov_, 0.88f, accelCurve));
-    }
-    break;
-  }
-  case TitleCameraCut::FrontTracking: {
-    // カット2（正面）：カメラ位置を保持し、ドラゴンの前進通過を注視追尾
-    float flybyDist = accelCurve * 110.0f + extraTime * 150.0f;
-
-    dragonTransform_.translate = startDragonPos_ + Vector3{0.0f, 0.20f * progress, flybyDist};
-    dragonTransform_.rotate = Lerp(startDragonRot_, Vector3{0.14f, 0.0f, 0.0f}, smoothPose);
-
-    // カメラは初期位置でドラゴンの通過を注視
-    outTargetCamPos = startCamPos_ + Vector3{0.0f, 0.10f * progress, 0.0f};
-    Vector3 lookTarget = dragonTransform_.translate + Vector3{0.0f, 0.2f, 0.0f};
-    Vector3 desiredRot = CalcLookAtRot(outTargetCamPos, lookTarget);
-    outTargetCamRot = Lerp(startCamRot_, desiredRot, smoothPose);
-
-    if (camera_) {
-      camera_->SetFovY(Lerp(startCamFov_, 0.80f, accelCurve));
-    }
-    break;
-  }
-  case TitleCameraCut::LowAngle: {
-    // カット3（ローアングル）：下からの煽り構図。カメラのZ追従を抑え、ドラゴンが画面斜め上・前方へ一気に突き抜けて飛び去る
-    float flyupDist = accelCurve * 240.0f + extraTime * 280.0f;
-    dragonTransform_.translate = startDragonPos_ + Vector3{0.0f, 0.40f * progress + accelCurve * 12.0f, flyupDist};
-    dragonTransform_.rotate = Lerp(startDragonRot_, Vector3{0.25f, 0.0f, 0.0f}, smoothPose);
-
-    Vector3 initialOffset = startCamPos_ - startDragonPos_;
-    // カメラのZ移動はドラゴンの約25%に抑え、急加速Gで下へ沈みつつ飛び去るドラゴンを仰ぎ見る
-    Vector3 camProgressOffset = Vector3{initialOffset.x, initialOffset.y - 0.8f * accelCurve, initialOffset.z + flyupDist * 0.25f - 2.0f * accelCurve};
-    outTargetCamPos = startDragonPos_ + camProgressOffset;
-
-    Vector3 lookTarget = dragonTransform_.translate + Vector3{0.0f, 1.0f, 0.0f};
-    Vector3 desiredRot = CalcLookAtRot(outTargetCamPos, lookTarget);
-    outTargetCamRot = Lerp(startCamRot_, desiredRot, smoothPose);
-
-    if (camera_) {
-      camera_->SetFovY(Lerp(startCamFov_, 0.95f, accelCurve));
-    }
-    break;
-  }
-  case TitleCameraCut::DistantOverlook: {
-    // カット4（遠景見下ろし）：広大な引きアングル。カメラ位置を固定気味にし、自機が遥か彼方（画面奥）へ飛び去る
-    float flyawayDist = accelCurve * 280.0f + extraTime * 320.0f;
-    dragonTransform_.translate = startDragonPos_ + Vector3{0.0f, 0.10f * progress, flyawayDist};
-    dragonTransform_.rotate = Lerp(startDragonRot_, Vector3{0.14f, 0.0f, 0.0f}, smoothPose);
-
-    // カメラ位置は少しだけ上空をゆっくり並行移動
-    outTargetCamPos = startCamPos_ + Vector3{0.0f, 0.20f * progress, extraTime * 10.0f};
-    Vector3 lookTarget = dragonTransform_.translate + Vector3{0.0f, 0.0f, 0.0f};
-    Vector3 desiredRot = CalcLookAtRot(outTargetCamPos, lookTarget);
-    outTargetCamRot = Lerp(startCamRot_, desiredRot, smoothPose);
-
-    if (camera_) {
-      camera_->SetFovY(Lerp(startCamFov_, 0.75f, accelCurve));
-    }
-    break;
-  }
-  case TitleCameraCut::WingtipCloseUp: {
-    // カット5（翼端クローズアップ）：超至近距離。強烈な加速Gでカメラが一瞬大きく後方＆外側に置き去りにされる圧倒的臨場感
-    dragonTransform_.translate = startDragonPos_ + Vector3{0.0f, 0.15f * progress, accelDist};
-    Vector3 targetRot = Vector3{0.14f, 0.0f, startDragonRot_.z * 0.4f};
-    dragonTransform_.rotate = Lerp(startDragonRot_, targetRot, smoothPose);
-
-    Vector3 wingOffset = startCamPos_ - startDragonPos_;
-    float sideSign = (wingOffset.x >= 0.0f) ? 1.0f : -1.0f;
-    Vector3 gLag = Vector3{sideSign * 0.85f * accelCurve, -0.3f * accelCurve, -7.5f * accelCurve};
-
-    outTargetCamPos = dragonTransform_.translate + wingOffset + gLag;
-    Vector3 lookTarget = dragonTransform_.translate + Vector3{0.0f, 0.15f, 4.0f};
-    Vector3 desiredRot = CalcLookAtRot(outTargetCamPos, lookTarget);
-    desiredRot.z = Lerp(startCamRot_.z, dragonTransform_.rotate.z * 0.75f, smoothPose);
-    outTargetCamRot = Lerp(startCamRot_, desiredRot, smoothPose);
-
-    if (camera_) {
-      camera_->SetFovY(Lerp(startCamFov_, 0.98f, accelCurve));
-    }
-    break;
-  }
-  }
+  // 今のカットが、発進のカメラとドラゴンの動きを決める
+  cut_->UpdateLaunch({progress, accelCurve, accelDist, extraTime, smoothPose}, outTargetCamPos, outTargetCamRot);
 
   // DoF
   if (postProcess_) {
@@ -560,17 +634,12 @@ void TitleScene::UpdateIdleMotion(Vector3 &outTargetCamPos, Vector3 &outTargetCa
     motionTimer_ += dt;
   }
 
-  auto smooth01 = [](float x) {
-    x = (std::clamp)(x, 0.0f, 1.0f);
-    return x * x * (3.0f - 2.0f * x);
-  };
-
   //===========================
   // ドラゴン: 起動の瞬間から1本の連続した軌道を飛ぶ（「位置につく」瞬間を作らない）
   //===========================
   // 頭上通過 → ゆっくり蛇行が育つ → 8の字、を同じ式で滑らかにつなぐ
-  const float weaveEnv = smooth01((t - kWeaveStartTime_) / kWeaveRampTime_);
-  const float noiseEnv = smooth01(t / 1.5f);
+  const float weaveEnv = Smooth01((t - kWeaveStartTime_) / kWeaveRampTime_);
+  const float noiseEnv = Smooth01(t / 1.5f);
   const float tau = (std::max)(0.0f, t - kWeaveStartTime_);
   const float kTwoPi = 6.2831853f;
 
@@ -630,155 +699,239 @@ void TitleScene::UpdateIdleMotion(Vector3 &outTargetCamPos, Vector3 &outTargetCa
   dragonWingState_.hover =
       (std::clamp)(kWingHover_ + vy * kWingClimbHover_, 0.0f, 1.0f);
 
-  // カメラアングルの自動切り替え（オープニング終了後のみ）
+  // カメラアングルの自動切り替え（オープニング終了後のみ）。次のカットは今のカットが決める
   if (!isOpening && !isManualCut_) {
     cutTimer_ += dt;
     if (cutTimer_ >= kCutDuration_) {
-      cutTimer_ = 0.0f;
-      static const TitleCameraCut kCutOrder[] = {
-          TitleCameraCut::RearWide,
-          TitleCameraCut::FrontTracking,
-          TitleCameraCut::LowAngle,
-          TitleCameraCut::DistantOverlook,
-          TitleCameraCut::WingtipCloseUp,
-      };
-      const int kCutCount = static_cast<int>(sizeof(kCutOrder) / sizeof(kCutOrder[0]));
-      int currentIndex = 0;
-      for (int i = 0; i < kCutCount; ++i) {
-        if (kCutOrder[i] == currentCut_) {
-          currentIndex = i;
-          break;
-        }
-      }
-      currentCut_ = kCutOrder[(currentIndex + 1) % kCutCount];
-      rightTrailHistory_.clear();
-      leftTrailHistory_.clear();
+      ChangeCut(cut_->CreateNext());
     }
   }
 
-  //===========================
-  // カメラ: オープニングとカット1は同じ「慣性つき追従」で処理する（モード切り替えなし）
-  //===========================
-  const bool useRearWideCam = isOpening || (currentCut_ == TitleCameraCut::RearWide);
-  if (!useRearWideCam) {
-    camSmoothValid_ = false; // カット1へ戻るときはカット切り替えとして瞬時に合わせる
+  // オープニングはカット1と同じ追従カメラ、そのあとは今のカットのカメラ
+  const CruiseContext context{t, weaveEnv, flightZ};
+  if (isOpening) {
+    UpdateFollowCamera(context, outTargetCamPos, outTargetCamRot);
+  } else {
+    cut_->UpdateCruise(context, outTargetCamPos, outTargetCamRot);
+  }
+}
+
+//===========================
+// カメラカットの中身
+//===========================
+
+void TitleScene::UpdateFollowCamera(const CruiseContext &context, Vector3 &outTargetCamPos, Vector3 &outTargetCamRot) {
+  const float dt = 1.0f / 60.0f;
+  const float t = context.time;
+  const float weaveEnv = context.weaveEnv;
+  const float flightZ = context.flightZ;
+
+  // 引きの進行: f=1 でドラゴン真下から見上げ、f=0 でカット1の定位置
+  // 開始はSmootherStep、終盤はイーズアウトに寄せて、終端の平坦な尾を短くする
+  float opProgress = (std::clamp)((t - kCamTiltStartTime_) / (kOpeningDuration_ - kCamTiltStartTime_), 0.0f, 1.0f);
+  float sSmoother = opProgress * opProgress * opProgress * (opProgress * (opProgress * 6.0f - 15.0f) + 10.0f);
+  float sOut = 1.0f - std::pow(1.0f - opProgress, 1.6f);
+  float f = 1.0f - ((1.0f - opProgress) * sSmoother + opProgress * sOut);
+
+  // 自機が頭上を通過してからカメラのZ追従を始める（それまではカメラは動かない）
+  const float followW = Smooth01((t - kCamFollowStartTime_) / kCamFollowBlendTime_);
+
+  // カット1のドリフト（時間の連続関数なので、オープニング終了時に継ぎ目が出ない）
+  Vector3 drift = {std::sin(t * 0.5f) * 0.40f * weaveEnv,
+                   std::cos((t - kOpeningDuration_) * 0.35f) * kRearWideDriftY_, 0.0f};
+
+  // カメラの基準位置: Zのみ自機に追従（X/Yの蛇行には追従せず、画面内で自機が動く）
+  Vector3 anchor = baseDragonPos_ + Vector3{0.0f, 0.0f, flightZ * followW};
+
+  Vector3 desiredPos = anchor + Vector3{
+      drift.x * (1.0f - f),
+      -2.8f * f + (0.9f + drift.y) * (1.0f - f),
+      -0.5f * f - 5.5f * (1.0f - f)};
+
+  Vector3 closeLook = anchor + Vector3{(dragonTransform_.translate.x - baseDragonPos_.x) * 0.25f, 0.25f, 1.2f};
+  Vector3 upLook = anchor + Vector3{0.0f, 5.0f, 0.5f};
+  // 通過後に自機が画面下へ出ないよう、見上げの注視点を自機へ寄せていく
+  const float trackW = kLookTrackMax_ * Smooth01((t - kLookTrackStartTime_) / kLookTrackBlendTime_);
+  upLook = Lerp(upLook, dragonTransform_.translate + Vector3{0.0f, 0.2f, 0.0f}, trackW);
+  Vector3 desiredLook = Lerp(closeLook, upLook, f);
+
+  // ばね・ダンパーで追従（自機やカメラ目標の急な動きに少し遅れて追い、慣性を出す）
+  if (!camSmoothValid_) {
+    camSmoothPos_ = desiredPos;
+    camSmoothLook_ = desiredLook;
+    camSmoothPosVel_ = {0.0f, 0.0f, 0.0f};
+    camSmoothLookVel_ = {0.0f, 0.0f, 0.0f};
+    camSmoothValid_ = true;
+  } else {
+    const float settle = Smooth01((t - kOpeningDuration_) / kCamSmoothRampTime_);
+    const float posSmooth = Lerp(kCamPosSmoothOpening_, kCamPosSmoothCruise_, settle);
+    const float lookSmooth = Lerp(kCamLookSmoothOpening_, kCamLookSmoothCruise_, settle);
+    camSmoothPos_ = SmoothDamp(camSmoothPos_, desiredPos, camSmoothPosVel_, posSmooth, dt);
+    camSmoothLook_ = SmoothDamp(camSmoothLook_, desiredLook, camSmoothLookVel_, lookSmooth, dt);
   }
 
-  if (useRearWideCam) {
-    // 引きの進行: f=1 でドラゴン真下から見上げ、f=0 でカット1の定位置
-    // 開始はSmootherStep、終盤はイーズアウトに寄せて、終端の平坦な尾を短くする
-    float opProgress = (std::clamp)((t - kCamTiltStartTime_) / (kOpeningDuration_ - kCamTiltStartTime_), 0.0f, 1.0f);
-    float sSmoother = opProgress * opProgress * opProgress * (opProgress * (opProgress * 6.0f - 15.0f) + 10.0f);
-    float sOut = 1.0f - std::pow(1.0f - opProgress, 1.6f);
-    float f = 1.0f - ((1.0f - opProgress) * sSmoother + opProgress * sOut);
-
-    // 自機が頭上を通過してからカメラのZ追従を始める（それまではカメラは動かない）
-    const float followW = smooth01((t - kCamFollowStartTime_) / kCamFollowBlendTime_);
-
-    // カット1のドリフト（時間の連続関数なので、オープニング終了時に継ぎ目が出ない）
-    Vector3 drift = {std::sin(t * 0.5f) * 0.40f * weaveEnv,
-                     std::cos((t - kOpeningDuration_) * 0.35f) * kRearWideDriftY_, 0.0f};
-
-    // カメラの基準位置: Zのみ自機に追従（X/Yの蛇行には追従せず、画面内で自機が動く）
-    Vector3 anchor = baseDragonPos_ + Vector3{0.0f, 0.0f, flightZ * followW};
-
-    Vector3 desiredPos = anchor + Vector3{
-        drift.x * (1.0f - f),
-        -2.8f * f + (0.9f + drift.y) * (1.0f - f),
-        -0.5f * f - 5.5f * (1.0f - f)};
-
-    Vector3 closeLook = anchor + Vector3{(dragonTransform_.translate.x - baseDragonPos_.x) * 0.25f, 0.25f, 1.2f};
-    Vector3 upLook = anchor + Vector3{0.0f, 5.0f, 0.5f};
-    // 通過後に自機が画面下へ出ないよう、見上げの注視点を自機へ寄せていく
-    const float trackW = kLookTrackMax_ * smooth01((t - kLookTrackStartTime_) / kLookTrackBlendTime_);
-    upLook = Lerp(upLook, dragonTransform_.translate + Vector3{0.0f, 0.2f, 0.0f}, trackW);
-    Vector3 desiredLook = Lerp(closeLook, upLook, f);
-
-    // ばね・ダンパーで追従（自機やカメラ目標の急な動きに少し遅れて追い、慣性を出す）
-    if (!camSmoothValid_) {
-      camSmoothPos_ = desiredPos;
-      camSmoothLook_ = desiredLook;
-      camSmoothPosVel_ = {0.0f, 0.0f, 0.0f};
-      camSmoothLookVel_ = {0.0f, 0.0f, 0.0f};
-      camSmoothValid_ = true;
-    } else {
-      const float settle = smooth01((t - kOpeningDuration_) / kCamSmoothRampTime_);
-      const float posSmooth = Lerp(kCamPosSmoothOpening_, kCamPosSmoothCruise_, settle);
-      const float lookSmooth = Lerp(kCamLookSmoothOpening_, kCamLookSmoothCruise_, settle);
-      camSmoothPos_ = SmoothDamp(camSmoothPos_, desiredPos, camSmoothPosVel_, posSmooth, dt);
-      camSmoothLook_ = SmoothDamp(camSmoothLook_, desiredLook, camSmoothLookVel_, lookSmooth, dt);
-    }
-
-    outTargetCamPos = camSmoothPos_;
-    outTargetCamRot = CalcLookAtRot(camSmoothPos_, camSmoothLook_);
-    if (camera_) {
-      camera_->SetFovY(0.70f + 0.35f * f);
-    }
+  outTargetCamPos = camSmoothPos_;
+  outTargetCamRot = CalcLookAtRot(camSmoothPos_, camSmoothLook_);
+  if (camera_) {
+    camera_->SetFovY(0.70f + 0.35f * f);
   }
+}
 
-  switch (useRearWideCam ? TitleCameraCut::RearWide : currentCut_) {
-  case TitleCameraCut::RearWide:
-    break; // 上で処理済み
-  case TitleCameraCut::FrontTracking: {
-    // カット2: 斜め前方並走
-    Vector3 baseOffset = {1.9f, 0.25f, 3.8f};
-    Vector3 drift = {std::cos(cutTimer_ * 0.45f) * 0.2f,
-                     std::sin(cutTimer_ * 0.35f) * 0.15f, -cutTimer_ * 0.05f};
-    outTargetCamPos = dragonTransform_.translate + baseOffset + drift;
-    // 注視点をドラゴンの画面右・上へずらし、ドラゴンを画面の左下寄りに配置する
-    Vector3 toDragon = Normalize(dragonTransform_.translate - outTargetCamPos);
-    Vector3 camRight = Normalize(Cross(Vector3{0.0f, 1.0f, 0.0f}, toDragon));
-    const float kFrameShiftRight = 0.15f; // 大きいほどドラゴンが画面左へ寄る（0で中央）
-    const float kFrameShiftUp = 0.4f;    // 大きいほどドラゴンが画面下へ寄る
-    Vector3 lookTarget = dragonTransform_.translate + camRight * kFrameShiftRight +
-                         Vector3{0.0f, kFrameShiftUp, 0.0f};
-    outTargetCamRot = CalcLookAtRot(outTargetCamPos, lookTarget);
-    if (camera_) {
-      camera_->SetFovY(0.65f);
-    }
-    break;
+void TitleScene::UpdateFrontTrackingCamera(Vector3 &outTargetCamPos, Vector3 &outTargetCamRot) {
+  // カット2: 斜め前方並走
+  Vector3 baseOffset = {1.9f, 0.25f, 3.8f};
+  Vector3 drift = {std::cos(cutTimer_ * 0.45f) * 0.2f,
+                   std::sin(cutTimer_ * 0.35f) * 0.15f, -cutTimer_ * 0.05f};
+  outTargetCamPos = dragonTransform_.translate + baseOffset + drift;
+  // 注視点をドラゴンの画面右・上へずらし、ドラゴンを画面の左下寄りに配置する
+  Vector3 toDragon = Normalize(dragonTransform_.translate - outTargetCamPos);
+  Vector3 camRight = Normalize(Cross(Vector3{0.0f, 1.0f, 0.0f}, toDragon));
+  const float kFrameShiftRight = 0.15f; // 大きいほどドラゴンが画面左へ寄る（0で中央）
+  const float kFrameShiftUp = 0.4f;    // 大きいほどドラゴンが画面下へ寄る
+  Vector3 lookTarget = dragonTransform_.translate + camRight * kFrameShiftRight +
+                       Vector3{0.0f, kFrameShiftUp, 0.0f};
+  outTargetCamRot = CalcLookAtRot(outTargetCamPos, lookTarget);
+  if (camera_) {
+    camera_->SetFovY(0.65f);
   }
-  case TitleCameraCut::LowAngle: {
-    // カット3: 下からのあおり。ドラゴンの後方下から見上げ、ゆっくり浮上・接近する
-    Vector3 baseOffset = {0.9f, -1.9f, -3.6f};
-    Vector3 drift = {std::sin(cutTimer_ * 0.30f) * 0.20f,
-                     cutTimer_ * 0.05f, cutTimer_ * 0.06f};
-    outTargetCamPos = dragonTransform_.translate + baseOffset + drift;
-    Vector3 lookTarget = dragonTransform_.translate + Vector3{0.0f, 0.3f, 0.0f};
-    outTargetCamRot = CalcLookAtRot(outTargetCamPos, lookTarget);
-    if (camera_) {
-      camera_->SetFovY(0.75f);
-    }
-    break;
+}
+
+void TitleScene::UpdateLowAngleCamera(Vector3 &outTargetCamPos, Vector3 &outTargetCamRot) {
+  // カット3: 下からのあおり。ドラゴンの後方下から見上げ、ゆっくり浮上・接近する
+  Vector3 baseOffset = {0.9f, -1.9f, -3.6f};
+  Vector3 drift = {std::sin(cutTimer_ * 0.30f) * 0.20f,
+                   cutTimer_ * 0.05f, cutTimer_ * 0.06f};
+  outTargetCamPos = dragonTransform_.translate + baseOffset + drift;
+  Vector3 lookTarget = dragonTransform_.translate + Vector3{0.0f, 0.3f, 0.0f};
+  outTargetCamRot = CalcLookAtRot(outTargetCamPos, lookTarget);
+  if (camera_) {
+    camera_->SetFovY(0.75f);
   }
-  case TitleCameraCut::DistantOverlook: {
-    // カット4: 遠景の俯瞰（ロングショット）。高空斜め後方から、広大な雲海と空、小さなドラゴンを見下ろす
-    Vector3 baseOffset = {-4.5f, 4.0f, -11.0f};
-    Vector3 drift = {std::sin(cutTimer_ * 0.22f) * 0.6f,
-                     std::cos(cutTimer_ * 0.18f) * 0.3f, cutTimer_ * 0.08f};
-    outTargetCamPos = dragonTransform_.translate + baseOffset + drift;
-    Vector3 lookTarget = dragonTransform_.translate + Vector3{0.2f, -0.3f, 1.5f};
-    outTargetCamRot = CalcLookAtRot(outTargetCamPos, lookTarget);
-    if (camera_) {
-      camera_->SetFovY(0.70f);
-    }
-    break;
+}
+
+void TitleScene::UpdateDistantOverlookCamera(Vector3 &outTargetCamPos, Vector3 &outTargetCamRot) {
+  // カット4: 遠景の俯瞰（ロングショット）。高空斜め後方から、広大な雲海と空、小さなドラゴンを見下ろす
+  Vector3 baseOffset = {-4.5f, 4.0f, -11.0f};
+  Vector3 drift = {std::sin(cutTimer_ * 0.22f) * 0.6f,
+                   std::cos(cutTimer_ * 0.18f) * 0.3f, cutTimer_ * 0.08f};
+  outTargetCamPos = dragonTransform_.translate + baseOffset + drift;
+  Vector3 lookTarget = dragonTransform_.translate + Vector3{0.2f, -0.3f, 1.5f};
+  outTargetCamRot = CalcLookAtRot(outTargetCamPos, lookTarget);
+  if (camera_) {
+    camera_->SetFovY(0.70f);
   }
-  case TitleCameraCut::WingtipCloseUp: {
-    // カット5: 翼端トレイルクローズアップ。右翼の先端に超近接し、光るトレイルと羽ばたきの迫力を捉える
-    // 注視点を上にずらしてドラゴンを画面下寄りに収め、タイトルUIとの被りを防ぐ
-    Vector3 baseOffset = {2.2f, 0.65f, -2.0f};
-    Vector3 drift = {std::sin(cutTimer_ * 0.35f) * 0.10f,
-                     std::cos(cutTimer_ * 0.28f) * 0.08f, cutTimer_ * 0.05f};
-    outTargetCamPos = dragonTransform_.translate + baseOffset + drift;
-    Vector3 lookTarget = dragonTransform_.translate + Vector3{0.0f, 0.60f, 0.8f};
-    outTargetCamRot = CalcLookAtRot(outTargetCamPos, lookTarget);
-    outTargetCamRot.z = dragonTransform_.rotate.z * 0.35f; // バンクに同調
-    if (camera_) {
-      camera_->SetFovY(0.75f);
-    }
-    break;
+}
+
+void TitleScene::UpdateWingtipCloseUpCamera(Vector3 &outTargetCamPos, Vector3 &outTargetCamRot) {
+  // カット5: 翼端トレイルクローズアップ。右翼の先端に超近接し、光るトレイルと羽ばたきの迫力を捉える
+  // 注視点を上にずらしてドラゴンを画面下寄りに収め、タイトルUIとの被りを防ぐ
+  Vector3 baseOffset = {2.2f, 0.65f, -2.0f};
+  Vector3 drift = {std::sin(cutTimer_ * 0.35f) * 0.10f,
+                   std::cos(cutTimer_ * 0.28f) * 0.08f, cutTimer_ * 0.05f};
+  outTargetCamPos = dragonTransform_.translate + baseOffset + drift;
+  Vector3 lookTarget = dragonTransform_.translate + Vector3{0.0f, 0.60f, 0.8f};
+  outTargetCamRot = CalcLookAtRot(outTargetCamPos, lookTarget);
+  outTargetCamRot.z = dragonTransform_.rotate.z * 0.35f; // バンクに同調
+  if (camera_) {
+    camera_->SetFovY(0.75f);
   }
+}
+
+void TitleScene::LaunchFromRearWide(const LaunchMotion &motion, Vector3 &outTargetCamPos, Vector3 &outTargetCamRot) {
+  // カット1（後方）：背後追従しながら前傾姿勢で加速
+  dragonTransform_.translate = startDragonPos_ + Vector3{0.0f, 0.15f * motion.progress, motion.accelDist};
+  dragonTransform_.rotate = Lerp(startDragonRot_, Vector3{0.14f, 0.0f, 0.0f}, motion.smoothPose);
+
+  // 通常時の見やすい距離（約 -5.5m）を基準に、発進前傾姿勢に合わせてオフセットを調整
+  Vector3 initialOffset = startCamPos_ - startDragonPos_;
+  Vector3 readyOffset = Vector3{0.0f, 0.85f, -5.5f};
+  Vector3 currentOffset = Lerp(initialOffset, readyOffset, motion.smoothPose);
+
+  // 加速によるカメラの引き離され演出（ドラゴンの急加速にカメラが一瞬遅れて追従することで飛び出し感を表現）
+  float lagDistance = motion.accelCurve * 3.5f; // 最大で約3.5m後方に引き離される
+  currentOffset.z -= lagDistance;
+
+  outTargetCamPos = dragonTransform_.translate + currentOffset;
+  outTargetCamRot = Lerp(startCamRot_, Vector3{0.06f, 0.0f, 0.0f}, motion.smoothPose);
+
+  if (camera_) {
+    camera_->SetFovY(Lerp(startCamFov_, 0.88f, motion.accelCurve));
+  }
+}
+
+void TitleScene::LaunchFromFrontTracking(const LaunchMotion &motion, Vector3 &outTargetCamPos, Vector3 &outTargetCamRot) {
+  // カット2（正面）：カメラ位置を保持し、ドラゴンの前進通過を注視追尾
+  float flybyDist = motion.accelCurve * 110.0f + motion.extraTime * 150.0f;
+
+  dragonTransform_.translate = startDragonPos_ + Vector3{0.0f, 0.20f * motion.progress, flybyDist};
+  dragonTransform_.rotate = Lerp(startDragonRot_, Vector3{0.14f, 0.0f, 0.0f}, motion.smoothPose);
+
+  // カメラは初期位置でドラゴンの通過を注視
+  outTargetCamPos = startCamPos_ + Vector3{0.0f, 0.10f * motion.progress, 0.0f};
+  Vector3 lookTarget = dragonTransform_.translate + Vector3{0.0f, 0.2f, 0.0f};
+  Vector3 desiredRot = CalcLookAtRot(outTargetCamPos, lookTarget);
+  outTargetCamRot = Lerp(startCamRot_, desiredRot, motion.smoothPose);
+
+  if (camera_) {
+    camera_->SetFovY(Lerp(startCamFov_, 0.80f, motion.accelCurve));
+  }
+}
+
+void TitleScene::LaunchFromLowAngle(const LaunchMotion &motion, Vector3 &outTargetCamPos, Vector3 &outTargetCamRot) {
+  // カット3（ローアングル）：下からの煽り構図。カメラのZ追従を抑え、ドラゴンが画面斜め上・前方へ一気に突き抜けて飛び去る
+  float flyupDist = motion.accelCurve * 240.0f + motion.extraTime * 280.0f;
+  dragonTransform_.translate = startDragonPos_ + Vector3{0.0f, 0.40f * motion.progress + motion.accelCurve * 12.0f, flyupDist};
+  dragonTransform_.rotate = Lerp(startDragonRot_, Vector3{0.25f, 0.0f, 0.0f}, motion.smoothPose);
+
+  Vector3 initialOffset = startCamPos_ - startDragonPos_;
+  // カメラのZ移動はドラゴンの約25%に抑え、急加速Gで下へ沈みつつ飛び去るドラゴンを仰ぎ見る
+  Vector3 camProgressOffset = Vector3{initialOffset.x, initialOffset.y - 0.8f * motion.accelCurve, initialOffset.z + flyupDist * 0.25f - 2.0f * motion.accelCurve};
+  outTargetCamPos = startDragonPos_ + camProgressOffset;
+
+  Vector3 lookTarget = dragonTransform_.translate + Vector3{0.0f, 1.0f, 0.0f};
+  Vector3 desiredRot = CalcLookAtRot(outTargetCamPos, lookTarget);
+  outTargetCamRot = Lerp(startCamRot_, desiredRot, motion.smoothPose);
+
+  if (camera_) {
+    camera_->SetFovY(Lerp(startCamFov_, 0.95f, motion.accelCurve));
+  }
+}
+
+void TitleScene::LaunchFromDistantOverlook(const LaunchMotion &motion, Vector3 &outTargetCamPos, Vector3 &outTargetCamRot) {
+  // カット4（遠景見下ろし）：広大な引きアングル。カメラ位置を固定気味にし、自機が遥か彼方（画面奥）へ飛び去る
+  float flyawayDist = motion.accelCurve * 280.0f + motion.extraTime * 320.0f;
+  dragonTransform_.translate = startDragonPos_ + Vector3{0.0f, 0.10f * motion.progress, flyawayDist};
+  dragonTransform_.rotate = Lerp(startDragonRot_, Vector3{0.14f, 0.0f, 0.0f}, motion.smoothPose);
+
+  // カメラ位置は少しだけ上空をゆっくり並行移動
+  outTargetCamPos = startCamPos_ + Vector3{0.0f, 0.20f * motion.progress, motion.extraTime * 10.0f};
+  Vector3 lookTarget = dragonTransform_.translate + Vector3{0.0f, 0.0f, 0.0f};
+  Vector3 desiredRot = CalcLookAtRot(outTargetCamPos, lookTarget);
+  outTargetCamRot = Lerp(startCamRot_, desiredRot, motion.smoothPose);
+
+  if (camera_) {
+    camera_->SetFovY(Lerp(startCamFov_, 0.75f, motion.accelCurve));
+  }
+}
+
+void TitleScene::LaunchFromWingtipCloseUp(const LaunchMotion &motion, Vector3 &outTargetCamPos, Vector3 &outTargetCamRot) {
+  // カット5（翼端クローズアップ）：超至近距離。強烈な加速Gでカメラが一瞬大きく後方＆外側に置き去りにされる圧倒的臨場感
+  dragonTransform_.translate = startDragonPos_ + Vector3{0.0f, 0.15f * motion.progress, motion.accelDist};
+  Vector3 targetRot = Vector3{0.14f, 0.0f, startDragonRot_.z * 0.4f};
+  dragonTransform_.rotate = Lerp(startDragonRot_, targetRot, motion.smoothPose);
+
+  Vector3 wingOffset = startCamPos_ - startDragonPos_;
+  float sideSign = (wingOffset.x >= 0.0f) ? 1.0f : -1.0f;
+  Vector3 gLag = Vector3{sideSign * 0.85f * motion.accelCurve, -0.3f * motion.accelCurve, -7.5f * motion.accelCurve};
+
+  outTargetCamPos = dragonTransform_.translate + wingOffset + gLag;
+  Vector3 lookTarget = dragonTransform_.translate + Vector3{0.0f, 0.15f, 4.0f};
+  Vector3 desiredRot = CalcLookAtRot(outTargetCamPos, lookTarget);
+  desiredRot.z = Lerp(startCamRot_.z, dragonTransform_.rotate.z * 0.75f, motion.smoothPose);
+  outTargetCamRot = Lerp(startCamRot_, desiredRot, motion.smoothPose);
+
+  if (camera_) {
+    camera_->SetFovY(Lerp(startCamFov_, 0.98f, motion.accelCurve));
   }
 }
 
@@ -786,14 +939,9 @@ void TitleScene::UpdateLighting() {
   // シネマティックカメラカットに連動したライトの向き制御
   // 雲海(上向きの面)への当たり方がカットで変わると色味・明るさが変わるため、
   // 仰角(Y成分)は固定し、水平方向の向き(方位角)だけをカットに合わせて変える。
-  TitleCameraCut activeCut = isStarting_ ? startCut_ : currentCut_;
   const float kLightY = -0.45f;       // 固定の仰角成分
   const float kLightHorizontal = 0.85f; // 水平成分の長さ
-  Vector3 targetHorizontal = {0.55f, 0.0f, 0.65f};
-  if (activeCut == TitleCameraCut::FrontTracking) {
-    // カット2（正面・並走）：斜め前方から顔・胸元を照らして逆光を防ぐ
-    targetHorizontal = {-0.45f, 0.0f, -0.72f};
-  }
+  const Vector3 targetHorizontal = cut_->GetLightHorizontal();
   float targetAz = std::atan2(targetHorizontal.x, targetHorizontal.z);
   float currentAz = std::atan2(currentLightDir_.x, currentLightDir_.z);
 
@@ -1271,12 +1419,9 @@ void TitleScene::DrawEditorUI() {
         "Cut 4: Distant Overlook (遠景俯瞰)",
         "Cut 5: Wingtip Close-up (翼端トレイル)",
     };
-    int cutIndex = static_cast<int>(currentCut_);
+    int cutIndex = cut_->GetIndex();
     if (ImGui::Combo("Active Cut", &cutIndex, cutNames, IM_ARRAYSIZE(cutNames))) {
-      currentCut_ = static_cast<TitleCameraCut>(cutIndex);
-      cutTimer_ = 0.0f;
-      rightTrailHistory_.clear();
-      leftTrailHistory_.clear();
+      ChangeCut(CreateCut(cutIndex));
     }
     ImGui::Checkbox("Manual Cut (Pause Auto Switch)", &isManualCut_);
     float progress = cutTimer_ / kCutDuration_;

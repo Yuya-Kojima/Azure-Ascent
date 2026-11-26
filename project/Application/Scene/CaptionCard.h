@@ -80,9 +80,35 @@ public:
   void DrawImGui();
 
   /// <summary>
-  /// 出す文字と時刻・置き場所（演出の側の調整値で書き換える）
+  /// 作った後に変えてよい時刻（開始してからの秒）
   /// </summary>
-  Settings &GetSettings() { return settings_; }
+  struct Timing {
+    float cardInTime = 0.0f;   // 横線が伸び始める時刻
+    float lineGrowSec = 0.25f; // 横線が伸びきるまでの時間
+    float textInDelay = 0.25f; // 横線が伸び始めてから文字が出始めるまでの時間
+    float cardOutTime = 1.5f;  // 消し始める時刻
+    float cardOutSec = 0.3f;   // 消えきるまでの時間
+  };
+
+  /// <summary>
+  /// 作った後に変えてよい置き場所（1280x720 の px）
+  /// </summary>
+  struct Layout {
+    float lineY = 100.0f;     // 横線の高さ（画面上端から）
+    float lineWidth = 560.0f; // 横線の長さ
+    float upperY = 72.0f;     // 線の上の文字の中心の高さ
+    float lowerY = 150.0f;    // 線の下の文字の中心の高さ
+  };
+
+  /// <summary>
+  /// 出す時刻を変える（次の SetTime・Update から反映される）
+  /// </summary>
+  void SetTiming(const Timing &timing);
+
+  /// <summary>
+  /// 横線と文字の置き場所を変える（次の SetTime・Update から反映される）
+  /// </summary>
+  void SetLayout(const Layout &layout);
 
   /// <summary>
   /// 消えきる時刻（開始してからの秒）
